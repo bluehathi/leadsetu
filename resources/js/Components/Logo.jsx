@@ -40,3 +40,51 @@ function SomeComponent() {
 
 export default SomeComponent;
 */
+
+// Full LeadSetu Logo SVG
+export function LogoFull({ className = '', ...props }) {
+    return (
+        <svg
+            className={className}
+            width="40"
+            height="40"
+            viewBox="0 0 40 40"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            {...props}
+        >
+            <rect width="40" height="40" rx="10" fill="url(#leadsetu-gradient)" />
+            <text x="50%" y="54%" textAnchor="middle" fontWeight="bold" fontSize="16" fill="#fff" fontFamily="Inter, Arial, sans-serif" dy=".3em">LeadSetu</text>
+            <defs>
+                <linearGradient id="leadsetu-gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#3b82f6" />
+                    <stop offset="1" stopColor="#a78bfa" />
+                </linearGradient>
+            </defs>
+        </svg>
+    );
+}
+
+// LS Monogram Logo SVG for collapsed sidebar
+export function LogoLS({ className = '', ...props }) {
+    return (
+        <svg
+            className={className}
+            width="40"
+            height="40"
+            viewBox="0 0 40 40"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            {...props}
+        >
+            <rect width="40" height="40" rx="10" fill="url(#ls-gradient)" />
+            <text x="50%" y="54%" textAnchor="middle" fontWeight="bold" fontSize="20" fill="#fff" fontFamily="Inter, Arial, sans-serif" dy=".3em">LS</text>
+            <defs>
+                <linearGradient id="ls-gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#3b82f6" />
+                    <stop offset="1" stopColor="#a78bfa" />
+                </linearGradient>
+            </defs>
+        </svg>
+    );
+}

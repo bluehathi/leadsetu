@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 // Import desired icons from lucide-react
-import { Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react'; // Added CheckCircle2, XCircle for flash
+import { Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Info } from 'lucide-react'; // Added CheckCircle2, XCircle for flash
 import Sidebar from '@/Components/parts/Sidebar'; // Adjust path if needed
 import AddLeadModal from '@/Components/leads/AddLeadModal'; // Import the modal component
 import Pagination from '@/Components/Pagination'; // Import the Pagination component
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
 
 // Assuming you might refactor Dashboard into a layout component:
 // import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout'; // Example import
@@ -41,6 +43,50 @@ export default function LeadsIndex({ user, leads }) {
         { value: 'other', label: 'Other' },
     ];
     // --- End Status/Method Options ---
+
+    // --- Filtering and Sorting State ---
+    const [qualificationFilter, setQualificationFilter] = useState('');
+    const [minScore, setMinScore] = useState('');
+    const [maxScore, setMaxScore] = useState('');
+    const [sortField, setSortField] = useState('');
+    const [sortDir, setSortDir] = useState('asc');
+
+    // --- Filtered and Sorted Leads ---
+    const filteredLeads = useMemo(() => {
+        let data = leads && leads.data ? [...leads.data] : [];
+        if (qualificationFilter) {
+            data = data.filter(l => l.qualification === qualificationFilter);
+        }
+        if (minScore !== '') {
+            data = data.filter(l => l.score >= parseInt(minScore, 10));
+        }
+        if (maxScore !== '') {
+            data = data.filter(l => l.score <= parseInt(maxScore, 10));
+        }
+        if (sortField) {
+            data = data.sort((a, b) => {
+                if (sortField === 'score') {
+                    return sortDir === 'asc' ? a.score - b.score : b.score - a.score;
+                }
+                if (sortField === 'qualification') {
+                    const order = { Hot: 3, Warm: 2, Cold: 1 };
+                    return sortDir === 'asc' ? (order[a.qualification] || 0) - (order[b.qualification] || 0) : (order[b.qualification] || 0) - (order[a.qualification] || 0);
+                }
+                return 0;
+            });
+        }
+        return data;
+    }, [leads, qualificationFilter, minScore, maxScore, sortField, sortDir]);
+
+    // --- Sorting Handlers ---
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDir('asc');
+        }
+    };
 
     return (
         // If using a separate Layout component, remove the outer div and Sidebar,
@@ -98,6 +144,49 @@ export default function LeadsIndex({ user, leads }) {
                                 </div>
                             )}
 
+                            {/* Filter Bar */}
+                            <div className="mb-4 flex flex-wrap gap-4 items-center">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Qualification:
+                                    <select
+                                        className="ml-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
+                                        value={qualificationFilter}
+                                        onChange={e => setQualificationFilter(e.target.value)}
+                                    >
+                                        <option value="">All</option>
+                                        <option value="Hot">Hot</option>
+                                        <option value="Warm">Warm</option>
+                                        <option value="Cold">Cold</option>
+                                    </select>
+                                </label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Min Score:
+                                    <input
+                                        type="number"
+                                        className="ml-2 w-20 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-2"
+                                        value={minScore}
+                                        onChange={e => setMinScore(e.target.value)}
+                                        placeholder="0"
+                                    />
+                                </label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Max Score:
+                                    <input
+                                        type="number"
+                                        className="ml-2 w-20 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-2"
+                                        value={maxScore}
+                                        onChange={e => setMaxScore(e.target.value)}
+                                        placeholder="100"
+                                    />
+                                </label>
+                                {(qualificationFilter || minScore !== '' || maxScore !== '') && (
+                                    <button
+                                        type="button"
+                                        className="ml-2 px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-600"
+                                        onClick={() => { setQualificationFilter(''); setMinScore(''); setMaxScore(''); }}
+                                    >
+                                        Reset
+                                    </button>
+                                )}
+                            </div>
+
                             {/* Leads Table Container */}
                             <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
                                 <div className="overflow-x-auto">
@@ -108,6 +197,30 @@ export default function LeadsIndex({ user, leads }) {
                                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
                                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Company</th>
                                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                    onClick={() => handleSort('score')}
+                                                >
+                                                    <span className="inline-flex items-center">
+                                                        Score {sortField === 'score' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                        <Tippy content="Lead Score: Calculated based on email, phone, status, notes, and source. Higher score = more qualified.">
+                                                            <span><Info size={14} className="ml-1 text-gray-400" /></span>
+                                                        </Tippy>
+                                                    </span>
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                    onClick={() => handleSort('qualification')}
+                                                >
+                                                    <span className="inline-flex items-center">
+                                                        Qualification {sortField === 'qualification' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                        <Tippy content="Qualification: Hot (score ≥ 70), Warm (score ≥ 40), Cold (score < 40).">
+                                                            <span><Info size={14} className="ml-1 text-gray-400" /></span>
+                                                        </Tippy>
+                                                    </span>
+                                                </th>
                                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Added On</th>
                                                 <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                             </tr>
@@ -115,8 +228,8 @@ export default function LeadsIndex({ user, leads }) {
                                         {/* Table Body */}
                                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                             {/* Check if leads.data exists and has items */}
-                                            {leads && leads.data && leads.data.length > 0 ? (
-                                                leads.data.map((lead) => ( // Map over the leads data array
+                                            {filteredLeads.length > 0 ? (
+                                                filteredLeads.map((lead) => ( // Map over the leads data array
                                                     <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
                                                         {/* Name & Email Cell */}
                                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -139,6 +252,30 @@ export default function LeadsIndex({ user, leads }) {
                                                                 {/* Display the label corresponding to the status value */}
                                                                 {leadStatusOptions.find(s => s.value === lead.status)?.label || lead.status}
                                                             </span>
+                                                        </td>
+                                                        {/* Score Cell */}
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{lead.score ?? '-'}</td>
+                                                        {/* Qualification Cell */}
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <Tippy
+                                                                content={
+                                                                    lead.qualification === 'Hot'
+                                                                        ? 'Hot: Highly qualified lead (score ≥ 70)'
+                                                                        : lead.qualification === 'Warm'
+                                                                        ? 'Warm: Moderately qualified lead (score ≥ 40)'
+                                                                        : 'Cold: Low qualification (score < 40)'
+                                                                }
+                                                            >
+                                                                <span
+                                                                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                                        lead.qualification === 'Hot' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                                                        lead.qualification === 'Warm' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                                        'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                                                    }`}
+                                                                >
+                                                                    {lead.qualification || '-'}
+                                                                </span>
+                                                            </Tippy>
                                                         </td>
                                                         {/* Added On Cell */}
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">

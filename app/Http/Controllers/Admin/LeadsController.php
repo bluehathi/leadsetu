@@ -20,7 +20,7 @@ class LeadsController extends Controller
 
         $leads = Lead::query()
         ->latest() // Order by latest first (optional)
-        ->where('user_id', auth()->id()) // Example: Filter by logged-in user (if applicable)
+        ->where('user_id', \Illuminate\Support\Facades\Auth::id()) // Example: Filter by logged-in user (if applicable)
         ->paginate(15) // Use pagination (adjust count as needed)
         ->withQueryString();
 
@@ -63,6 +63,8 @@ class LeadsController extends Controller
             'organization_id' => Auth::user()->organization_id ?? null,
         ]); 
 
+        $lead->calculateScoreAndQualification();
+
         $this->logActivity('lead_created', $lead, 'Lead created', ['data' => $data]);
 
         // Redirect back to the leads index page with a success message
@@ -77,10 +79,11 @@ class LeadsController extends Controller
     public function show(string $id)
     {
         $lead = Lead::findOrFail($id); // Find the lead by ID or fail
-
+        $activityLogs = $lead->activityLogs()->with('user')->get();
         return Inertia::render('Leads/Show', [
             'user' => Auth::user(), 
             'lead' => $lead,
+            'activityLogs' => $activityLogs,
         ]);
     }
 
@@ -89,7 +92,11 @@ class LeadsController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $lead = Lead::findOrFail($id);
+        return Inertia::render('Leads/Edit', [
+            'user' => Auth::user(),
+            'lead' => $lead,
+        ]);
     }
 
     /**
@@ -119,6 +126,8 @@ class LeadsController extends Controller
             'source' => $request->source,
             'organization_id' => Auth::user()->organization_id ?? null,
         ]);
+
+        $lead->calculateScoreAndQualification();
 
         $this->logActivity('lead_updated', $lead, 'Lead updated', ['data' => $data]);
 

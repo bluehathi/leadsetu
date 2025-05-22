@@ -15,8 +15,11 @@
     },
     "dependencies": {
         "@inertiajs/react": "^2.0.8",
+        "@tippyjs/react": "^4.2.6",
         "@vitejs/plugin-react": "^4.4.1",
+        "chart.js": "^4.4.9",
         "lucide-react": "^0.507.0",
+        "react-chartjs-2": "^5.3.0",
         "react-dom": "^19.1.0",
         "tailwindcss-animate": "^1.0.7",
         "ziggy-js": "^2.5.2"

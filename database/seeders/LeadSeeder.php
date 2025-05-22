@@ -6,6 +6,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Lead; // Import your Lead model
 use Faker\Factory as Faker; // Import Faker library
+use App\Models\ActivityLog;
 
 class LeadSeeder extends Seeder
 {
@@ -26,7 +27,7 @@ class LeadSeeder extends Seeder
  
          // Loop to create multiple leads
          for ($i = 0; $i < $numberOfLeads; $i++) {
-             Lead::create([
+             $lead = Lead::create([
                  'name'      => $faker->name(), // Generate a fake name
                  'email'     => $faker->unique()->safeEmail(), // Generate a unique fake email
                  'phone'     => $faker->optional(0.8)->phoneNumber(), // 80% chance of having a phone number
@@ -37,7 +38,22 @@ class LeadSeeder extends Seeder
                  'notes'     => $faker->paragraph(2), 
                  'user_id' => 1,
                  'created_at'=> $faker->dateTimeBetween('-1 year', 'now'), // Random creation date within the last year
-                 'updated_at'=> now()
+                 'updated_at'=> now(),
+                 'organization_id' => 1, // Default org for demo
+             ]);
+             $lead->calculateScoreAndQualification();
+             ActivityLog::create([
+                 'user_id' => 1,
+                 'action' => 'lead_created',
+                 'subject_type' => Lead::class,
+                 'subject_id' => $lead->id,
+                 'description' => 'Lead created via seeder',
+                 'properties' => [
+                     'seeded' => true,
+                     'lead_name' => $lead->name,
+                 ],
+                 'created_at' => $lead->created_at,
+                 'updated_at' => $lead->updated_at,
              ]);
          }
  

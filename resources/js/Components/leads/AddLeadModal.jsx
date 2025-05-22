@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
-import { X, Loader2 } from 'lucide-react'; // Import X for close, Loader2 for processing state
+import { X, Loader2, Mail, Phone, Building2, Globe } from 'lucide-react'; // Import X for close, Loader2 for processing state, Mail, Phone, Building2, Globe for input icons
 
 /**
  * Default status options as objects.
@@ -97,17 +97,17 @@ export default function AddLeadModal({
     return (
         // Modal Overlay
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6 sm:px-0 bg-[rgba(0,0,0,0.6)]"
+            className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-2 py-6 sm:px-0 bg-[rgba(0,0,0,0.6)]"
         >
             {/* Modal Panel */}
             <div
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden w-full max-w-2xl transform transition-all"
+                className="w-full sm:w-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 p-0 max-w-4xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header */}
-                <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Add New Lead
+                <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        Add Lead
                     </h3>
                     <button
                         onClick={handleClose}
@@ -120,179 +120,166 @@ export default function AddLeadModal({
                 </div>
 
                 {/* Modal Body - Form */}
-                <form onSubmit={submit}>
-                    <div className="p-6 max-h-[70vh] overflow-y-auto">
-                        {/* Grid container */}
-                        {/* Changed to 3 columns on medium+ screens */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                            {/* Name - Span 3 cols on small, 2 on medium+ */}
-                            <div className="md:col-span-4">
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name <span className="text-red-500">*</span></label>
+                <form onSubmit={submit} className="w-full p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        {/* Name */}
+                        <div>
+                            <label htmlFor="name" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Name <span className="text-red-500">*</span></label>
+                            <div className="relative">
                                 <input
                                     id="name"
                                     type="text"
                                     value={data.name}
                                     onChange={(e) => setData('name', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-2 ${errors.name ? 'focus:ring-red-500' : 'focus:ring-blue-500 dark:focus:ring-blue-400'} focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition duration-150`}
+                                    className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-10 py-2`}
                                     required
                                     disabled={processing}
                                 />
-                                {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <Mail size={16} />
+                                </span>
                             </div>
-
-                             {/* Phone */}
-                             <div className="md:col-span-2">
-                                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
-                                <input
-                                    id="phone"
-                                    type="tel"
-                                    value={data.phone}
-                                    onChange={(e) => setData('phone', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-2 ${errors.phone ? 'focus:ring-red-500' : 'focus:ring-blue-500 dark:focus:ring-blue-400'} focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition duration-150`}
-                                    disabled={processing}
-                                />
-                                {errors.phone && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.phone}</p>}
-                            </div>
-
-                            {/* Email */}
-                            <div className="md:col-span-2">
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                            {errors.name && <div className="text-xs text-red-500 mt-1">{errors.name}</div>}
+                        </div>
+                        {/* Email */}
+                        <div>
+                            <label htmlFor="email" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Email</label>
+                            <div className="relative">
                                 <input
                                     id="email"
                                     type="email"
                                     value={data.email}
                                     onChange={(e) => setData('email', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-2 ${errors.email ? 'focus:ring-red-500' : 'focus:ring-blue-500 dark:focus:ring-blue-400'} focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition duration-150`}
+                                    className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-10 py-2`}
                                     disabled={processing}
                                 />
-                                {errors.email && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.email}</p>}
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <Mail size={16} />
+                                </span>
                             </div>
-
-                            {/* Company */}
-                            <div className="md:col-span-4">
-                                <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+                            {errors.email && <div className="text-xs text-red-500 mt-1">{errors.email}</div>}
+                        </div>
+                        {/* Phone */}
+                        <div>
+                            <label htmlFor="phone" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Phone</label>
+                            <div className="relative">
+                                <input
+                                    id="phone"
+                                    type="text"
+                                    value={data.phone}
+                                    onChange={(e) => setData('phone', e.target.value)}
+                                    className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-10 py-2`}
+                                    disabled={processing}
+                                />
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <Phone size={16} />
+                                </span>
+                            </div>
+                            {errors.phone && <div className="text-xs text-red-500 mt-1">{errors.phone}</div>}
+                        </div>
+                        {/* Company */}
+                        <div>
+                            <label htmlFor="company" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Company</label>
+                            <div className="relative">
                                 <input
                                     id="company"
                                     type="text"
                                     value={data.company}
                                     onChange={(e) => setData('company', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${errors.company ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-2 ${errors.company ? 'focus:ring-red-500' : 'focus:ring-blue-500 dark:focus:ring-blue-400'} focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition duration-150`}
+                                    className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-10 py-2`}
                                     disabled={processing}
                                 />
-                                {errors.company && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.company}</p>}
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <Building2 size={16} />
+                                </span>
                             </div>
-
-                            {/* Website */}
-                            <div className="md:col-span-2">
-                                <label htmlFor="website" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website</label>
+                            {errors.company && <div className="text-xs text-red-500 mt-1">{errors.company}</div>}
+                        </div>
+                        {/* Website */}
+                        <div>
+                            <label htmlFor="website" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Website</label>
+                            <div className="relative">
                                 <input
                                     id="website"
-                                    type="url" // Use 'url' type for better semantics/validation
+                                    type="url"
                                     value={data.website}
                                     onChange={(e) => setData('website', e.target.value)}
-                                    placeholder="https://example.com"
-                                    className={`w-full px-3 py-2 border ${errors.website ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-2 ${errors.website ? 'focus:ring-red-500' : 'focus:ring-blue-500 dark:focus:ring-blue-400'} focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition duration-150`}
+                                    className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-10 py-2`}
                                     disabled={processing}
                                 />
-                                {errors.website && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.website}</p>}
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <Globe size={16} />
+                                </span>
                             </div>
-
-                             {/* Status */}
-                             <div className="md:col-span-1">
-                                <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status <span className="text-red-500">*</span></label>
-                                <select
-                                    id="status"
-                                    value={data.status}
-                                    onChange={(e) => setData('status', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${errors.status ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-2 ${errors.status ? 'focus:ring-red-500' : 'focus:ring-blue-500 dark:focus:ring-blue-400'} focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition duration-150 appearance-none`}
-                                    required
-                                    disabled={processing}
-                                >
-                                    {statuses && statuses.map((statusOption, index) => {
-                                        if (!statusOption || typeof statusOption.value === 'undefined' || typeof statusOption.label === 'undefined') {
-                                             console.warn('Invalid status option found at index:', index, statusOption);
-                                             return null;
-                                        }
-                                        const key = `status-${String(statusOption.value)}`; // Prefix key for potential conflicts
-                                        return (
-                                            <option key={key} value={statusOption.value}>
-                                                {statusOption.label}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                                {errors.status && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.status}</p>}
-                            </div>
-
-                             {/* source */}
-                             <div className="md:col-span-1">
-                                <label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source</label>
-                                <select
-                                    id="source"
-                                    value={data.source}
-                                    onChange={(e) => setData('source', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${errors.source ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-2 ${errors.source ? 'focus:ring-red-500' : 'focus:ring-blue-500 dark:focus:ring-blue-400'} focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition duration-150 appearance-none`}
-                                    disabled={processing}
-                                    // Removed 'required' assuming source might be optional
-                                >
-                                     {/* Add a default placeholder option if source is optional */}
-                                     <option value="">-- Select Source --</option>
-                                     {sources && sources.map((sourceOption, index) => {
-                                        if (!sourceOption || typeof sourceOption.value === 'undefined' || typeof sourceOption.label === 'undefined') {
-                                             console.warn('Invalid source option found at index:', index, sourceOption);
-                                             return null;
-                                        }
-                                        const key = `source-${String(sourceOption.value)}`; // Prefix key
-                                        return (
-                                            <option key={key} value={sourceOption.value}>
-                                                {sourceOption.label}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                                {errors.source && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.source}</p>}
-                            </div>
-
-                        </div> {/* End of grid container */}
-
-                         {/* Notes (Below the grid) */}
+                            {errors.website && <div className="text-xs text-red-500 mt-1">{errors.website}</div>}
+                        </div>
+                        {/* Status */}
                         <div>
-                            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
-                            <textarea
-                                id="notes"
-                                rows="4"
-                                value={data.notes}
-                                onChange={(e) => setData('notes', e.target.value)}
-                                className={`w-full px-3 py-2 border ${errors.notes ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-2 ${errors.notes ? 'focus:ring-red-500' : 'focus:ring-blue-500 dark:focus:ring-blue-400'} focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition duration-150 resize-vertical`}
+                            <label htmlFor="status" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Status <span className="text-red-500">*</span></label>
+                            <select
+                                id="status"
+                                value={data.status}
+                                onChange={(e) => setData('status', e.target.value)}
+                                className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2`}
+                                required
                                 disabled={processing}
-                            ></textarea>
-                            {errors.notes && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.notes}</p>}
+                            >
+                                {statuses && statuses.map((statusOption, index) => (
+                                    <option key={statusOption.value} value={statusOption.value}>{statusOption.label}</option>
+                                ))}
+                            </select>
+                            {errors.status && <div className="text-xs text-red-500 mt-1">{errors.status}</div>}
+                        </div>
+                        {/* Source */}
+                        <div>
+                            <label htmlFor="source" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Source</label>
+                            <select
+                                id="source"
+                                value={data.source}
+                                onChange={(e) => setData('source', e.target.value)}
+                                className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2`}
+                                disabled={processing}
+                            >
+                                <option value="">-- Select Source --</option>
+                                {sources && sources.map((sourceOption, index) => (
+                                    <option key={sourceOption.value} value={sourceOption.value}>{sourceOption.label}</option>
+                                ))}
+                            </select>
+                            {errors.source && <div className="text-xs text-red-500 mt-1">{errors.source}</div>}
                         </div>
                     </div>
-
-                    {/* Modal Footer - Actions */}
-                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 rounded-b-lg space-x-3">
+                    {/* Notes */}
+                    <div className="mb-4">
+                        <label htmlFor="notes" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Notes</label>
+                        <textarea
+                            id="notes"
+                            rows="4"
+                            value={data.notes}
+                            onChange={(e) => setData('notes', e.target.value)}
+                            className={`w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2 min-h-[80px]`}
+                            disabled={processing}
+                        ></textarea>
+                        {errors.notes && <div className="text-xs text-red-500 mt-1">{errors.notes}</div>}
+                    </div>
+                    {/* Footer */}
+                    <div className="flex justify-end gap-2 mt-6">
                         <button
                             type="button"
                             onClick={handleClose}
                             disabled={processing}
-                            className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 transition ease-in-out duration-150"
+                            className="inline-flex items-center px-5 py-2 bg-gray-200 text-gray-800 rounded-md text-sm font-semibold hover:bg-gray-300 transition shadow disabled:opacity-60"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={processing}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 transition ease-in-out duration-150"
+                            className="inline-flex items-center px-5 py-2 bg-blue-600 text-white rounded-md text-sm font-semibold hover:bg-blue-700 transition shadow disabled:opacity-60"
                         >
                             {processing ? (
-                                <>
-                                    <Loader2 size={18} className="animate-spin mr-2" />
-                                    Saving...
-                                </>
-                            ) : (
-                                'Save Lead'
-                            )}
+                                <Loader2 size={18} className="animate-spin mr-2" />
+                            ) : null}
+                            {processing ? 'Saving...' : 'Save Lead'}
                         </button>
                     </div>
                 </form>

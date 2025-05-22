@@ -24,56 +24,86 @@ export default function ActivityLogsIndex({ logs, filters, users, actions, entit
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
                     <main className="flex-1 relative overflow-y-auto focus:outline-none">
                         <div className="py-8 px-4 sm:px-6 lg:px-8">
-                            <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="mb-6 flex flex-col gap-4">
                                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
                                     Activity Logs
                                 </h1>
-
                                 {/* Filters Section */}
-                                <div className="flex flex-wrap gap-4 items-center">
+                                <div className="w-full sm:w-auto bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm px-6 py-4 flex flex-col sm:flex-row gap-4 items-center">
                                     {/* User Filter */}
-                                    <select
-                                        value={filters.user_id || ''}
-                                        onChange={e => window.location.href = getFilterUrl({ user_id: e.target.value || null })}
-                                        className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
-                                    >
-                                        <option value="">All Users</option>
-                                        {users?.map(user => (
-                                            <option key={user.id} value={user.id}>{user.name}</option>
-                                        ))}
-                                    </select>
+                                    <div className="flex flex-col min-w-[160px]">
+                                        <label className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                                            <span>👤</span> User
+                                        </label>
+                                        <select
+                                            value={filters.user_id || ''}
+                                            onChange={e => window.location.href = getFilterUrl({ user_id: e.target.value || null })}
+                                            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2"
+                                        >
+                                            <option value="">All Users</option>
+                                            {users?.map(user => (
+                                                <option key={user.id} value={user.id}>{user.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
 
                                     {/* Action Filter */}
-                                    <select
-                                        value={filters.action || ''}
-                                        onChange={e => window.location.href = getFilterUrl({ action: e.target.value || null })}
-                                        className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
-                                    >
-                                        <option value="">All Actions</option>
-                                        {actions?.map(action => (
-                                            <option key={action} value={action}>{action.replace('_', ' ').toUpperCase()}</option>
-                                        ))}
-                                    </select>
+                                    <div className="flex flex-col min-w-[160px]">
+                                        <label className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                                            <span>⚡</span> Action
+                                        </label>
+                                        <select
+                                            value={filters.action || ''}
+                                            onChange={e => window.location.href = getFilterUrl({ action: e.target.value || null })}
+                                            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2"
+                                        >
+                                            <option value="">All Actions</option>
+                                            {actions?.map(action => (
+                                                <option key={action} value={action}>{action.replace('_', ' ').toUpperCase()}</option>
+                                            ))}
+                                        </select>
+                                    </div>
 
                                     {/* Entity Filter */}
-                                    <select
-                                        value={filters.entity || ''}
-                                        onChange={e => window.location.href = getFilterUrl({ entity: e.target.value || null })}
-                                        className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
-                                    >
-                                        <option value="">All Entities</option>
-                                        {entities?.map(entity => (
-                                            <option key={entity} value={entity}>{entity.split('\\').pop()}</option>
-                                        ))}
-                                    </select>
+                                    <div className="flex flex-col min-w-[160px]">
+                                        <label className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                                            <span>📦</span> Entity
+                                        </label>
+                                        <select
+                                            value={filters.entity || ''}
+                                            onChange={e => window.location.href = getFilterUrl({ entity: e.target.value || null })}
+                                            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2"
+                                        >
+                                            <option value="">All Entities</option>
+                                            {entities?.map(entity => (
+                                                <option key={entity} value={entity}>{entity.split('\\').pop()}</option>
+                                            ))}
+                                        </select>
+                                    </div>
 
                                     {/* Date Filter */}
-                                    <input
-                                        type="date"
-                                        value={filters.date || ''}
-                                        onChange={e => window.location.href = getFilterUrl({ date: e.target.value || null })}
-                                        className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
-                                    />
+                                    <div className="flex flex-col min-w-[160px]">
+                                        <label className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                                            <span>📅</span> Date
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={filters.date || ''}
+                                            onChange={e => window.location.href = getFilterUrl({ date: e.target.value || null })}
+                                            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2"
+                                        />
+                                    </div>
+
+                                    {/* Reset Filters Button */}
+                                    <div className="flex flex-col justify-end min-w-[120px]">
+                                        <button
+                                            type="button"
+                                            onClick={() => window.location.href = window.location.pathname}
+                                            className="mt-5 sm:mt-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-md px-4 py-2 text-xs font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition"
+                                        >
+                                            Reset Filters
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-x-auto">
