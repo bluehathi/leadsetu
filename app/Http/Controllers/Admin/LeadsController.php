@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Lead; // Import the Lead model
 use Illuminate\Support\Facades\Route as LaravelRoute; // Alias to avoid naming conflicts
+use App\Models\ActivityLog;
 
 class LeadsController extends Controller
 {
@@ -37,7 +38,7 @@ class LeadsController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $data = $request->validate([
             'name' => 'required|string|max:180',
             'email' => 'string|email',
             'phone' => 'string|max:20',
@@ -59,7 +60,10 @@ class LeadsController extends Controller
             'status' => $request->status,
             'source' => $request->source,
             'user_id' => Auth::id(), // Associate the lead with the authenticated user
+            'organization_id' => Auth::user()->organization_id ?? null,
         ]); 
+
+        $this->logActivity('lead_created', $lead, 'Lead created', ['data' => $data]);
 
         // Redirect back to the leads index page with a success message
         return to_route('leads.index')->with('success', 'Lead created successfully.');
@@ -91,21 +95,65 @@ class LeadsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Lead $lead)
     {
-        //
+        $data = $request->validate([
+            'name' => 'required|string|max:180',
+            'email' => 'string|email',
+            'phone' => 'string|max:20',
+            'company' => 'required|string|max:180',
+            'website' => 'string|max:180',
+            'notes' => 'required|string|max:180',
+            'status' => 'required|string|max:180',
+            'source' => 'required|string|max:180',
+        ]);
+
+        $lead->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'company' => $request->company,
+            'website' => $request->website,
+            'notes' => $request->notes,
+            'status' => $request->status,
+            'source' => $request->source,
+            'organization_id' => Auth::user()->organization_id ?? null,
+        ]);
+
+        $this->logActivity('lead_updated', $lead, 'Lead updated', ['data' => $data]);
+
+        return to_route('leads.index')->with('success', 'Lead updated successfully.');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Lead $lead)
     {
-        // Find the lead by ID or fail
-        $lead = Lead::findOrFail($id);
-        // Delete the lead
         $lead->delete();
+        $this->logActivity('lead_deleted', $lead, 'Lead deleted');
         // Redirect back to the leads index page with a success message
         return to_route('leads.index')->with('success', 'Lead deleted successfully.');
+    }
+
+    /**
+     * Log an activity.
+     *
+     * @param  string  $action
+     * @param  mixed  $subject
+     * @param  string|null  $description
+     * @param  array  $properties
+     * @return void
+     */
+    protected function logActivity($action, $subject = null, $description = null, $properties = [])
+    {
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'action' => $action,
+            'subject_type' => $subject ? get_class($subject) : null,
+            'subject_id' => $subject->id ?? null,
+            'description' => $description,
+            'properties' => $properties,
+        ]);
     }
 }

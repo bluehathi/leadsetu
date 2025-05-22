@@ -1,11 +1,14 @@
 <?php
 
-use App\Http\Controllers\Admin\LeadsController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use App\Http\Controllers\Admin\LeadsController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\AuthController;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\UserController;
 
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -31,4 +34,21 @@ Route::get('/dashboard', function () {
 
 
 Route::resource('/leads', LeadsController::class)->middleware(['auth', 'verified'])->except(['create']);
- 
+Route::resource('/organizations', \App\Http\Controllers\OrganizationController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'update', 'destroy']);
+Route::resource('/roles', RoleController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'create']);
+Route::resource('/permissions', PermissionController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'create']);
+Route::resource('/users', UserController::class)->middleware(['auth', 'verified']);
+
+// User profile view
+Route::get('/profile', [UserController::class, 'profile'])->name('profile')->middleware(['auth', 'verified']);
+// Update user profile
+Route::post('/profile', [UserController::class, 'updateProfile'])->name('profile.update')->middleware(['auth', 'verified']);
+// Change password
+Route::post('/profile/password', [UserController::class, 'changePassword'])->name('profile.password')->middleware(['auth', 'verified']);
+// Organization settings view
+Route::get('/organization/settings', [UserController::class, 'organizationSettings'])->name('organization.settings')->middleware(['auth', 'verified']);
+// Update organization settings
+Route::post('/organization/settings', [UserController::class, 'updateOrganizationSettings'])->name('organization.settings.update')->middleware(['auth', 'verified']);
+// Activity Logs
+Route::get('/activity-logs', [UserController::class, 'activityLogs'])->name('activity.logs')->middleware(['auth', 'verified']);
+

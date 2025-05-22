@@ -16,6 +16,7 @@ class Lead extends Model
         'status',
         'source',
         'user_id',
+        'organization_id', // Add organization_id
     ];
     protected $casts = [
         'created_at' => 'datetime',
@@ -23,4 +24,9 @@ class Lead extends Model
     ];
     protected $table = 'leads';
     protected $primaryKey = 'id';
+
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
 }

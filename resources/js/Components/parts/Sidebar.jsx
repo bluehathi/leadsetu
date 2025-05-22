@@ -71,6 +71,18 @@ const Sidebar = ({ user}) => {
                                 Leads
                             </Link>
 
+                            {/* Organizations Link */}
+                            <Link
+                                href={route('organizations.index')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('organizations.index')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <span className="mr-3 flex-shrink-0 h-5 w-5">🏢</span>
+                                Organizations
+                            </Link>
+
                             {/* Placeholder: Settings Link */}
                             <Link
                                 href="#" // Replace with actual route like route('settings.index')
@@ -82,25 +94,132 @@ const Sidebar = ({ user}) => {
                                 <SettingsIcon className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('settings.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
                                 Settings
                             </Link>
+
+                            {/* Roles Link */}
+                            <Link
+                                href={route('roles.index')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('roles.index')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <span className="mr-3 flex-shrink-0 h-5 w-5">🛡️</span>
+                                Roles
+                            </Link>
+
+                            {/* Permissions Link */}
+                            <Link
+                                href={route('permissions.index')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('permissions.index')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <span className="mr-3 flex-shrink-0 h-5 w-5">🔑</span>
+                                Permissions
+                            </Link>
+
+                            {/* Users Link */}
+                            <Link
+                                href={route('users.index')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('users.index')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <span className="mr-3 flex-shrink-0 h-5 w-5">👤</span>
+                                Users
+                            </Link>
+
+                            {/* Profile Link */}
+                            <Link
+                                href={route('profile')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('profile')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <span className="mr-3 flex-shrink-0 h-5 w-5">🙍‍♂️</span>
+                                My Profile
+                            </Link>
+
+                            {/* Organization Settings Link */}
+                            <Link
+                                href={route('organization.settings')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('organization.settings')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <span className="mr-3 flex-shrink-0 h-5 w-5">🏢</span>
+                                Organization Settings
+                            </Link>
+
+                            {/* Activity Logs Link */}
+                            <Link
+                                href={route('activity.logs')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('activity.logs')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <span className="mr-3 flex-shrink-0 h-5 w-5">📜</span>
+                                Activity Logs
+                            </Link>
                         </nav>
                     </div>
                     {/* Optional: User info at bottom of sidebar */}
                     <div className="flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4">
-                        <a href="#" className="flex-shrink-0 w-full group block"> {/* Link to profile page? */}
+                        <div className="flex-shrink-0 w-full group block">
                             <div className="flex items-center">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold">
-                                    {getUserInitials(user?.name)}
-                                </div>
+                                {user?.avatar ? (
+                                    <img
+                                        src={user.avatar}
+                                        alt={user.name}
+                                        className="w-9 h-9 rounded-full object-cover border border-gray-300 dark:border-gray-600"
+                                    />
+                                ) : (
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold">
+                                        {getUserInitials(user?.name)}
+                                    </div>
+                                )}
                                 <div className="ml-3">
                                     <p className="text-sm font-medium text-gray-700 dark:text-white group-hover:text-gray-900 dark:group-hover:text-gray-200">
                                         {user?.name ?? 'User'}
                                     </p>
-                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300">
-                                        View profile {/* Or user role */}
-                                    </p>
+                                    <div className="flex flex-col gap-1">
+                                        <Link href={route('profile')} className="text-xs font-medium text-blue-600 dark:text-blue-400 group-hover:underline">
+                                            View profile
+                                        </Link>
+                                        <form method="POST" action={route('logout')} onSubmit={e => {
+                                            e.preventDefault();
+                                            if (window.Inertia && window.Inertia.post) {
+                                                window.Inertia.post(route('logout'), {}, {
+                                                    headers: {
+                                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''
+                                                    }
+                                                });
+                                            } else {
+                                                // fallback: create a form and submit it
+                                                const form = document.createElement('form');
+                                                form.method = 'POST';
+                                                form.action = route('logout');
+                                                const csrf = document.createElement('input');
+                                                csrf.type = 'hidden';
+                                                csrf.name = '_token';
+                                                csrf.value = document.querySelector('meta[name=csrf-token]')?.content || '';
+                                                form.appendChild(csrf);
+                                                document.body.appendChild(form);
+                                                form.submit();
+                                            }
+                                        }}>
+                                            <input type="hidden" name="_token" value={document.querySelector('meta[name=csrf-token]')?.content || ''} />
+                                            <button type="submit" className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline mt-1">Logout</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
-                        </a>
+                        </div>
                     </div>
                 </div>
             </div>

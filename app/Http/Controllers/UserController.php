@@ -1,0 +1,209 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use App\Models\Organization;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use App\Models\ActivityLog;
+
+class UserController extends Controller
+{
+    public function index()
+    {
+        $users = User::with('organization', 'roles')->get();
+        return Inertia::render('Users/Index', [
+            'users' => $users,
+        ]);
+    }
+
+    public function create()
+    {
+        $roles = Role::all();
+        return Inertia::render('Users/Create', [
+            'roles' => $roles,
+        ]);
+    }
+
+    protected function logActivity($action, $subject = null, $description = null, $properties = [])
+    {
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'action' => $action,
+            'subject_type' => $subject ? get_class($subject) : null,
+            'subject_id' => $subject->id ?? null,
+            'description' => $description,
+            'properties' => $properties,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'roles' => 'array',
+            'roles.*' => 'exists:roles,id',
+        ]);
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => bcrypt($data['password']),
+            'organization_id' => auth()->user()->organization_id ?? null,
+        ]);
+        if (!empty($data['roles'])) {
+            $user->syncRoles($data['roles']);
+        }
+        $this->logActivity('user_created', $user, 'User created', ['data' => $data]);
+        return redirect()->route('users.index')->with('success', 'User created.');
+    }
+
+    public function edit(User $user)
+    {
+        $roles = Role::all();
+        $user->load('roles');
+        return Inertia::render('Users/Edit', [
+            'user' => $user,
+            'roles' => $roles,
+        ]);
+    }
+
+    public function update(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:6',
+            'roles' => 'array',
+            'roles.*' => 'exists:roles,id',
+        ]);
+        $user->update([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'organization_id' => auth()->user()->organization_id ?? null,
+        ]);
+        if (!empty($data['password'])) {
+            $user->update(['password' => bcrypt($data['password'])]);
+        }
+        $user->syncRoles($data['roles'] ?? []);
+        $this->logActivity('user_updated', $user, 'User updated', ['data' => $data]);
+        return redirect()->route('users.index')->with('success', 'User updated.');
+    }
+
+    public function destroy(User $user)
+    {
+        $user->delete();
+        $this->logActivity('user_deleted', $user, 'User deleted');
+        return redirect()->route('users.index')->with('success', 'User deleted.');
+    }
+
+    // User profile view
+    public function profile()
+    {
+        $user = Auth::user();
+        return Inertia::render('Profile/Index', [
+            'user' => $user,
+        ]);
+    }
+
+    // Update user profile info
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+        ]);
+        $user->update($data);
+        $this->logActivity('profile_updated', $user, 'Profile updated', ['data' => $data]);
+        return back()->with('success', 'Profile updated successfully.');
+    }
+
+    // Change user password
+    public function changePassword(Request $request)
+    {
+        $user = Auth::user();
+        $data = $request->validate([
+            'current_password' => 'required',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return back()->withErrors(['current_password' => 'Current password is incorrect.']);
+        }
+        $user->update(['password' => Hash::make($data['password'])]);
+        $this->logActivity('password_changed', $user, 'Password changed');
+        return back()->with('success', 'Password changed successfully.');
+    }
+
+    // Organization settings view
+    public function organizationSettings()
+    {
+        $organization = Auth::user()->organization;
+        return Inertia::render('Organization/Settings', [
+            'organization' => $organization,
+        ]);
+    }
+
+    // Update organization settings (logo, contact info, etc.)
+    public function updateOrganizationSettings(Request $request)
+    {
+        $organization = Auth::user()->organization;
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'contact_email' => 'nullable|email',
+            'contact_phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:255',
+            'logo' => 'nullable|image|max:2048',
+        ]);
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('logos', 'public');
+            $data['logo'] = $logoPath;
+        }
+        $organization->update($data);
+        return back()->with('success', 'Organization settings updated.');
+    }
+
+    public function activityLogs(Request $request)
+    {
+        $query = ActivityLog::with('user');
+
+        // Filters
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+        if ($request->filled('action')) {
+            $query->where('action', $request->action);
+        }
+        if ($request->filled('entity')) {
+            $query->where('subject_type', $request->entity);
+        }
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        $logs = $query->latest()->paginate(20)->appends($request->all());
+
+        // For filter dropdowns
+        $users = User::select('id', 'name')->orderBy('name')->get();
+        $actions = ActivityLog::select('action')->distinct()->pluck('action');
+        $entities = ActivityLog::select('subject_type')->distinct()->pluck('subject_type');
+
+        return Inertia::render('ActivityLogs/Index', [
+            'logs' => $logs,
+            'filters' => [
+                'user_id' => $request->user_id,
+                'action' => $request->action,
+                'entity' => $request->entity,
+                'date' => $request->date,
+            ],
+            'users' => $users,
+            'actions' => $actions,
+            'entities' => $entities,
+        ]);
+    }
+}

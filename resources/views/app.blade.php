@@ -13,6 +13,8 @@
         @viteReactRefresh
         @vite(['resources/js/app.jsx', "resources/js/pages/{$page['component']}.jsx"])
         @inertiaHead
+
+        <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
     <body class="font-sans antialiased">
         @inertia {{-- Inertia page content --}}
