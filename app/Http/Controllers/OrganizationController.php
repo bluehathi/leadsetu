@@ -10,6 +10,14 @@ use Inertia\Inertia;
 
 class OrganizationController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:view organizations')->only(['index']);
+        $this->middleware('permission:create organizations')->only(['store']);
+        $this->middleware('permission:edit organizations')->only(['update']);
+        $this->middleware('permission:delete organizations')->only(['destroy']);
+    }
+
     public function index()
     {
         $organizations = Organization::all();

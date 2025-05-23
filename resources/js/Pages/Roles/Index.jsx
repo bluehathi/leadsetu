@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import Sidebar from '@/Components/parts/Sidebar';
 import { Plus, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+
+const DEFAULT_ROLE_NAMES = ["Admin", "Manager", "Sales", "Viewer"];
 
 export default function RolesIndex({ user, roles }) {
     const { data, setData, post, processing, errors, reset } = useForm({ name: '' });
@@ -85,13 +87,29 @@ export default function RolesIndex({ user, roles }) {
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                                             <div className="flex items-center justify-center space-x-2">
-                                                                {/* Edit and Delete actions can be implemented here */}
-                                                                <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" title="Edit" disabled>
-                                                                    <Pencil size={16} />
-                                                                </button>
-                                                                <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Delete" disabled>
-                                                                    <Trash2 size={16} />
-                                                                </button>
+                                                                {/* Edit Action - hide for Admin role */}
+                                                                {role.name !== "Admin" && (
+                                                                    <a
+                                                                        href={route('roles.edit', role.id)}
+                                                                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                                        title="Edit"
+                                                                    >
+                                                                        <Pencil size={16} />
+                                                                    </a>
+                                                                )}
+                                                                {/* Delete Action (SPA style) - hide for default roles */}
+                                                                {!DEFAULT_ROLE_NAMES.includes(role.name) && (
+                                                                    <Link
+                                                                        href={route('roles.destroy', role.id)}
+                                                                        method="delete"
+                                                                        as="button"
+                                                                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                                                        title="Delete"
+                                                                        onBefore={() => confirm('Are you sure you want to delete this role?')}
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </Link>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>

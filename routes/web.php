@@ -36,7 +36,7 @@ Route::get('/dashboard', function () {
 Route::resource('/leads', LeadsController::class)->middleware(['auth', 'verified']);
 //Route::get('/leads/create', [LeadsController::class, 'create'])->middleware(['auth', 'verified'])->name('leads.create');
 Route::resource('/organizations', \App\Http\Controllers\OrganizationController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'update', 'destroy']);
-Route::resource('/roles', RoleController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'create']);
+Route::resource('/roles', RoleController::class)->middleware(['auth', 'verified'])->except(['show', 'create']);
 Route::resource('/permissions', PermissionController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'create']);
 Route::resource('/users', UserController::class)->middleware(['auth', 'verified']);
 
@@ -58,4 +58,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/user/settings', [UserController::class, 'getSettings'])->name('user.settings.get');
     Route::post('/user/settings', [UserController::class, 'setSettings'])->name('user.settings.set');
 });
+
+Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create')->middleware(['auth', 'verified']);
 
