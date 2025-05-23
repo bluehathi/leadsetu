@@ -206,4 +206,39 @@ class UserController extends Controller
             'entities' => $entities,
         ]);
     }
+
+    // Get current user's settings
+    public function getSettings(Request $request)
+    {
+        $user = Auth::user();
+        $settings = $user->settings ?? [];
+
+        // Set default if not present
+        if (!isset($settings['leads_table_columns'])) {
+            $settings['leads_table_columns'] = [
+                'title', 'positions', 'tags', 'company', 'status', 'score', 'qualification', 'added_on'
+            ];
+            $user->settings = $settings;
+            $user->save();
+        }
+
+        return response()->json([
+            'settings' => $settings,
+        ]);
+    }
+
+    // Update current user's settings (merge with existing)
+    public function setSettings(Request $request)
+    {
+        $user = Auth::user();
+        $data = $request->validate([
+            'settings' => 'required|array',
+        ]);
+        $user->settings = array_merge($user->settings ?? [], $data['settings']);
+        $user->save();
+        return response()->json([
+            'success' => true,
+            'settings' => $user->settings,
+        ]);
+    }
 }

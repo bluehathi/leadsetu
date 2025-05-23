@@ -1,19 +1,57 @@
-import React from 'react';
-import { Head, usePage, Link } from '@inertiajs/react';
+import React, { useState, useMemo } from 'react';
+import { Head, usePage, Link, router } from '@inertiajs/react';
 import Sidebar from '@/Components/parts/Sidebar';
 import Pagination from '@/Components/Pagination';
+import Select from 'react-select';
 
 export default function ActivityLogsIndex({ logs, filters, users, actions, entities }) {
     const { props } = usePage();
 
-    // Helper function to generate filter URLs
-    const getFilterUrl = (newFilters) => {
-        const params = new URLSearchParams();
-        const finalFilters = { ...filters, ...newFilters };
-        Object.entries(finalFilters).forEach(([key, value]) => {
-            if (value) params.append(key, value);
-        });
-        return `${window.location.pathname}?${params.toString()}`;
+    // --- Filter State ---
+    const [userMulti, setUserMulti] = useState(
+        filters.user_id
+            ? users.filter(u => String(u.id) === String(filters.user_id)).map(u => ({ value: String(u.id), label: u.name }))
+            : []
+    );
+    const [actionMulti, setActionMulti] = useState(
+        filters.action
+            ? actions.filter(a => a === filters.action).map(a => ({ value: a, label: a.replace('_', ' ').toUpperCase() }))
+            : []
+    );
+    const [entityMulti, setEntityMulti] = useState(
+        filters.entity
+            ? entities.filter(e => e === filters.entity).map(e => ({ value: e, label: e.split('\\').pop() }))
+            : []
+    );
+    const [dateFrom, setDateFrom] = useState(filters.date_from || '');
+    const [dateTo, setDateTo] = useState(filters.date_to || '');
+    const [searchText, setSearchText] = useState(filters.search || '');
+    const [showFilters, setShowFilters] = useState(false);
+
+    // --- Filter Options ---
+    const userOptions = users.map(u => ({ value: String(u.id), label: u.name }));
+    const actionOptions = actions.map(a => ({ value: a, label: a.replace('_', ' ').toUpperCase() }));
+    const entityOptions = entities.map(e => ({ value: e, label: e.split('\\').pop() }));
+
+    // --- Filter Handler ---
+    const applyFilters = () => {
+        const params = {};
+        if (userMulti.length > 0) params.user_id = userMulti[0].value;
+        if (actionMulti.length > 0) params.action = actionMulti[0].value;
+        if (entityMulti.length > 0) params.entity = entityMulti[0].value;
+        if (dateFrom) params.date_from = dateFrom;
+        if (dateTo) params.date_to = dateTo;
+        if (searchText) params.search = searchText;
+        router.get(window.location.pathname, params, { preserveState: true });
+    };
+    const resetFilters = () => {
+        setUserMulti([]);
+        setActionMulti([]);
+        setEntityMulti([]);
+        setDateFrom('');
+        setDateTo('');
+        setSearchText('');
+        router.get(window.location.pathname, {}, { preserveState: true });
     };
 
     return (
@@ -24,88 +62,95 @@ export default function ActivityLogsIndex({ logs, filters, users, actions, entit
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
                     <main className="flex-1 relative overflow-y-auto focus:outline-none">
                         <div className="py-8 px-4 sm:px-6 lg:px-8">
-                            <div className="mb-6 flex flex-col gap-4">
+                            <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
                                     Activity Logs
                                 </h1>
-                                {/* Filters Section */}
-                                <div className="w-full sm:w-auto bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm px-6 py-4 flex flex-col sm:flex-row gap-4 items-center">
-                                    {/* User Filter */}
-                                    <div className="flex flex-col min-w-[160px]">
-                                        <label className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                                            <span>👤</span> User
-                                        </label>
-                                        <select
-                                            value={filters.user_id || ''}
-                                            onChange={e => window.location.href = getFilterUrl({ user_id: e.target.value || null })}
-                                            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2"
-                                        >
-                                            <option value="">All Users</option>
-                                            {users?.map(user => (
-                                                <option key={user.id} value={user.id}>{user.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Action Filter */}
-                                    <div className="flex flex-col min-w-[160px]">
-                                        <label className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                                            <span>⚡</span> Action
-                                        </label>
-                                        <select
-                                            value={filters.action || ''}
-                                            onChange={e => window.location.href = getFilterUrl({ action: e.target.value || null })}
-                                            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2"
-                                        >
-                                            <option value="">All Actions</option>
-                                            {actions?.map(action => (
-                                                <option key={action} value={action}>{action.replace('_', ' ').toUpperCase()}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Entity Filter */}
-                                    <div className="flex flex-col min-w-[160px]">
-                                        <label className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                                            <span>📦</span> Entity
-                                        </label>
-                                        <select
-                                            value={filters.entity || ''}
-                                            onChange={e => window.location.href = getFilterUrl({ entity: e.target.value || null })}
-                                            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2"
-                                        >
-                                            <option value="">All Entities</option>
-                                            {entities?.map(entity => (
-                                                <option key={entity} value={entity}>{entity.split('\\').pop()}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Date Filter */}
-                                    <div className="flex flex-col min-w-[160px]">
-                                        <label className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                                            <span>📅</span> Date
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={filters.date || ''}
-                                            onChange={e => window.location.href = getFilterUrl({ date: e.target.value || null })}
-                                            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2"
-                                        />
-                                    </div>
-
-                                    {/* Reset Filters Button */}
-                                    <div className="flex flex-col justify-end min-w-[120px]">
-                                        <button
-                                            type="button"
-                                            onClick={() => window.location.href = window.location.pathname}
-                                            className="mt-5 sm:mt-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-md px-4 py-2 text-xs font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition"
-                                        >
-                                            Reset Filters
-                                        </button>
-                                    </div>
+                                <div className="flex gap-2 items-center">
+                                    <button
+                                        type="button"
+                                        className="w-auto inline-block px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow"
+                                        onClick={() => setShowFilters(v => !v)}
+                                    >
+                                        {showFilters ? 'Hide Filters' : 'Show Filters'}
+                                    </button>
                                 </div>
                             </div>
+                            {/* Filter Bar (toggleable) */}
+                            {showFilters && (
+                                <div className="mb-6 bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex flex-wrap gap-4 items-center">
+                                    <div className="min-w-[180px]">
+                                        <Select
+                                            isMulti={false}
+                                            options={userOptions}
+                                            value={userMulti}
+                                            onChange={v => setUserMulti(v ? [v] : [])}
+                                            placeholder="User"
+                                            classNamePrefix="react-select"
+                                        />
+                                    </div>
+                                    <div className="min-w-[180px]">
+                                        <Select
+                                            isMulti={false}
+                                            options={actionOptions}
+                                            value={actionMulti}
+                                            onChange={v => setActionMulti(v ? [v] : [])}
+                                            placeholder="Action"
+                                            classNamePrefix="react-select"
+                                        />
+                                    </div>
+                                    <div className="min-w-[180px]">
+                                        <Select
+                                            isMulti={false}
+                                            options={entityOptions}
+                                            value={entityMulti}
+                                            onChange={v => setEntityMulti(v ? [v] : [])}
+                                            placeholder="Entity"
+                                            classNamePrefix="react-select"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2"
+                                            value={dateFrom}
+                                            onChange={e => setDateFrom(e.target.value)}
+                                            placeholder="From"
+                                        />
+                                        <span>-</span>
+                                        <input
+                                            type="date"
+                                            className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2"
+                                            value={dateTo}
+                                            onChange={e => setDateTo(e.target.value)}
+                                            placeholder="To"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[180px]"
+                                            placeholder="Search description..."
+                                            value={searchText}
+                                            onChange={e => setSearchText(e.target.value)}
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="ml-2 px-4 py-2 rounded-full border border-blue-500 text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 text-xs font-semibold hover:bg-blue-50 dark:hover:bg-blue-800 transition"
+                                        onClick={applyFilters}
+                                    >
+                                        Apply
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="ml-2 px-4 py-2 rounded-full border border-gray-400 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                        onClick={resetFilters}
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            )}
                             <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead className="bg-gray-50 dark:bg-gray-700">

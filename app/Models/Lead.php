@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Lead extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'email',
@@ -19,10 +22,14 @@ class Lead extends Model
         'qualification',
         'user_id',
         'organization_id', // Add organization_id
+        'title',
+        'positions',
+        'tags',
     ];
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'tags' => 'array',
     ];
     protected $table = 'leads';
     protected $primaryKey = 'id';

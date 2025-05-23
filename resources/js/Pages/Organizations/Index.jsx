@@ -36,6 +36,7 @@ export default function OrganizationsIndex({ user, organizations }) {
                                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
                                     Manage Organizations
                                 </h1>
+                                {/*
                                 <button
                                     onClick={openModal}
                                     className="inline-flex cursor-pointer items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
@@ -43,6 +44,7 @@ export default function OrganizationsIndex({ user, organizations }) {
                                     <Plus size={18} className="mr-2 -ml-1" />
                                     Add Organization
                                 </button>
+                                */}
                             </div>
                             {flash.success && (
                                 <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md flex items-center justify-between" role="alert">

@@ -17,13 +17,13 @@ class DashboardController extends Controller
     {
         // Total leads
         $totalLeads = Lead::count();
-        // Conversion rate: leads with status 'converted' / total leads
-        $convertedLeads = Lead::where('status', 'converted')->count();
+        // Conversion rate: leads with status 'won' / total leads
+        $convertedLeads = Lead::where('status', 'won')->count();
         $conversionRate = $totalLeads > 0 ? round(($convertedLeads / $totalLeads) * 100, 2) : 0;
-        // Active deals: leads with status 'active'
-        $activeDeals = Lead::where('status', 'active')->count();
-        // Value of active deals (if you have a value field, otherwise just count)
-        $activeDealsValue = Lead::where('status', 'active')->sum('value'); // If 'value' column exists
+        // Active deals: leads with status 'qualified'
+        $activeDeals = Lead::where('status', 'qualified')->count();
+        // Value of active deals (deal_value)
+        $activeDealsValue = Lead::where('status', 'qualified')->sum('deal_value');
         // Recent activity (last 7 days)
         $recentActivity = ActivityLog::with('user')->latest()->take(10)->get();
 
@@ -42,7 +42,7 @@ class DashboardController extends Controller
                 ->count();
             $converted = Lead::whereYear('created_at', substr($month, 0, 4))
                 ->whereMonth('created_at', substr($month, 5, 2))
-                ->where('status', 'converted')
+                ->where('status', 'won')
                 ->count();
             $conversionPerMonth[] = $total > 0 ? round(($converted / $total) * 100, 2) : 0;
         }

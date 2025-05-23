@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 // Import desired icons from lucide-react
-import { Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Info } from 'lucide-react'; // Added CheckCircle2, XCircle for flash
+import { Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Info, Flame, TrendingUp, ChevronDown, Calendar, User, Tag, DollarSign, Search } from 'lucide-react'; // Added CheckCircle2, XCircle for flash
 import Sidebar from '@/Components/parts/Sidebar'; // Adjust path if needed
-import AddLeadModal from '@/Components/leads/AddLeadModal'; // Import the modal component
 import Pagination from '@/Components/Pagination'; // Import the Pagination component
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
+import axios from 'axios';
+import Select from 'react-select';
 
 // Assuming you might refactor Dashboard into a layout component:
 // import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout'; // Example import
@@ -20,11 +21,6 @@ export default function LeadsIndex({ user, leads }) {
     // Use the usePage hook to access shared props, including flash messages
     const { props } = usePage();
     const flash = props.flash || {}; // Get flash object, default to empty object if not present
-
-    // --- Modal State ---
-    const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
-    const openModal = () => setIsModalOpen(true);        // Function to open the modal
-    const closeModal = () => setIsModalOpen(false);       // Function to close the modal
 
     // --- Status/Method Options (These should ideally come from props passed by the controller) ---
     const leadStatusOptions = props.statusOptions || [ // Example fallback
@@ -45,23 +41,63 @@ export default function LeadsIndex({ user, leads }) {
     // --- End Status/Method Options ---
 
     // --- Filtering and Sorting State ---
-    const [qualificationFilter, setQualificationFilter] = useState('');
-    const [minScore, setMinScore] = useState('');
-    const [maxScore, setMaxScore] = useState('');
+    const [statusMulti, setStatusMulti] = useState([]);
+    const [qualificationMulti, setQualificationMulti] = useState([]);
+    const [ownerMulti, setOwnerMulti] = useState([]);
     const [sortField, setSortField] = useState('');
     const [sortDir, setSortDir] = useState('asc');
+
+    // Advanced filter state
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [searchText, setSearchText] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [ownerFilter, setOwnerFilter] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [dealMin, setDealMin] = useState('');
+    const [dealMax, setDealMax] = useState('');
+    const [tagsFilter, setTagsFilter] = useState('');
 
     // --- Filtered and Sorted Leads ---
     const filteredLeads = useMemo(() => {
         let data = leads && leads.data ? [...leads.data] : [];
-        if (qualificationFilter) {
-            data = data.filter(l => l.qualification === qualificationFilter);
+        // Advanced filters
+        if (searchText) {
+            const s = searchText.toLowerCase();
+            data = data.filter(l =>
+                (l.name && l.name.toLowerCase().includes(s)) ||
+                (l.email && l.email.toLowerCase().includes(s)) ||
+                (l.company && l.company.toLowerCase().includes(s)) ||
+                (l.tags && Array.isArray(l.tags) && l.tags.join(',').toLowerCase().includes(s))
+            );
         }
-        if (minScore !== '') {
-            data = data.filter(l => l.score >= parseInt(minScore, 10));
+        if (statusMulti.length > 0) {
+            const vals = statusMulti.map(s => s.value);
+            data = data.filter(l => vals.includes(l.status));
         }
-        if (maxScore !== '') {
-            data = data.filter(l => l.score <= parseInt(maxScore, 10));
+        if (qualificationMulti.length > 0) {
+            const vals = qualificationMulti.map(q => q.value);
+            data = data.filter(l => vals.includes(l.qualification));
+        }
+        if (ownerMulti.length > 0) {
+            const vals = ownerMulti.map(o => o.value);
+            data = data.filter(l => vals.includes(String(l.lead_owner)));
+        }
+        if (dateFrom) {
+            data = data.filter(l => new Date(l.created_at) >= new Date(dateFrom));
+        }
+        if (dateTo) {
+            data = data.filter(l => new Date(l.created_at) <= new Date(dateTo));
+        }
+        if (dealMin !== '') {
+            data = data.filter(l => Number(l.deal_value) >= Number(dealMin));
+        }
+        if (dealMax !== '') {
+            data = data.filter(l => Number(l.deal_value) <= Number(dealMax));
+        }
+        if (tagsFilter) {
+            const tag = tagsFilter.toLowerCase();
+            data = data.filter(l => Array.isArray(l.tags) && l.tags.some(t => t.toLowerCase().includes(tag)));
         }
         if (sortField) {
             data = data.sort((a, b) => {
@@ -72,11 +108,26 @@ export default function LeadsIndex({ user, leads }) {
                     const order = { Hot: 3, Warm: 2, Cold: 1 };
                     return sortDir === 'asc' ? (order[a.qualification] || 0) - (order[b.qualification] || 0) : (order[b.qualification] || 0) - (order[a.qualification] || 0);
                 }
+                if (sortField === 'added_on') {
+                    return sortDir === 'asc'
+                        ? new Date(a.created_at) - new Date(b.created_at)
+                        : new Date(b.created_at) - new Date(a.created_at);
+                }
+                // Generic string/array sort for other fields
+                let aVal = a[sortField];
+                let bVal = b[sortField];
+                if (Array.isArray(aVal)) aVal = aVal.join(', ');
+                if (Array.isArray(bVal)) bVal = bVal.join(', ');
+                if (aVal === undefined) aVal = '';
+                if (bVal === undefined) bVal = '';
+                if (typeof aVal === 'string' && typeof bVal === 'string') {
+                    return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                }
                 return 0;
             });
         }
         return data;
-    }, [leads, qualificationFilter, minScore, maxScore, sortField, sortDir]);
+    }, [leads, searchText, statusMulti, qualificationMulti, ownerMulti, dateFrom, dateTo, dealMin, dealMax, tagsFilter, sortField, sortDir]);
 
     // --- Sorting Handlers ---
     const handleSort = (field) => {
@@ -86,6 +137,50 @@ export default function LeadsIndex({ user, leads }) {
             setSortField(field);
             setSortDir('asc');
         }
+    };
+
+    // --- Column Visibility State ---
+    const allColumns = [
+        { key: 'title', label: 'Title' },
+        { key: 'positions', label: 'Positions' },
+        { key: 'tags', label: 'Tags' },
+        { key: 'company', label: 'Company' },
+        { key: 'status', label: 'Status' },
+        { key: 'score', label: 'Score' },
+        { key: 'qualification', label: 'Qualification' },
+        { key: 'added_on', label: 'Added On' },
+    ];
+    const [showColumns, setShowColumns] = useState(allColumns.map(col => col.key));
+    const [showColDropdown, setShowColDropdown] = useState(false);
+    const [settingsLoading, setSettingsLoading] = useState(true);
+
+    // Fetch user settings on mount
+    React.useEffect(() => {
+        let mounted = true;
+        axios.get('/user/settings')
+            .then(res => {
+                if (mounted && res.data.settings && res.data.settings.leads_table_columns) {
+                    setShowColumns(res.data.settings.leads_table_columns);
+                }
+            })
+            .catch(() => {})
+            .finally(() => { if (mounted) setSettingsLoading(false); });
+        return () => { mounted = false; };
+    }, []);
+
+    // Persist column settings when changed
+    React.useEffect(() => {
+        if (!settingsLoading) {
+            axios.post('/user/settings', { settings: { leads_table_columns: showColumns } });
+        }
+    }, [showColumns, settingsLoading]);
+
+    const toggleColumn = (key) => {
+        setShowColumns(cols =>
+            cols.includes(key)
+                ? cols.filter(c => c !== key)
+                : [...cols, key]
+        );
     };
 
     return (
@@ -109,238 +204,455 @@ export default function LeadsIndex({ user, leads }) {
                     {/* Scrollable Content Area */}
                     <main className="flex-1 relative overflow-y-auto focus:outline-none">
                         <div className="py-8 px-4 sm:px-6 lg:px-8">
-
-                            {/* Page Header */}
-                            <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
-                                    Manage Leads
-                                </h1>
-                                <button
-                                    onClick={openModal} // Opens the AddLeadModal
-                                    className="inline-flex cursor-pointer items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
-                                >
-                                    <Plus size={18} className="mr-2 -ml-1" />
-                                    Add New Lead
-                                </button>
-                            </div>
-
-                             {/* Flash Message Display */}
-                            {flash.success && (
-                                <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md flex items-center justify-between" role="alert">
-                                   <div className="flex items-center">
-                                     <CheckCircle2 size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
-                                     <span>{flash.success}</span>
-                                   </div>
-                                
+                            {settingsLoading ? (
+                                <div className="flex justify-center items-center py-12">
+                                    <span className="text-gray-500 dark:text-gray-400 text-sm">Loading your preferences...</span>
                                 </div>
-                            )}
-                             {/* Display error flash messages if they exist */}
-                             {flash.error && (
-                                <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md flex items-center justify-between" role="alert">
-                                   <div className="flex items-center">
-                                     <XCircle size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
-                                     <span>{flash.error}</span>
-                                   </div>
-                                </div>
-                            )}
+                            ) : (
+                                <>
+                                    {/* Page Header */}
+                                    <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
+                                            Manage Leads
+                                        </h1>
+                                        <div className="flex gap-2 items-center">
+                                            <div className="relative">
+                                                <button
+                                                    type="button"
+                                                    className="inline-flex items-center px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow"
+                                                    onClick={() => setShowColDropdown(v => !v)}
+                                                    data-dusk="show-hide-columns-button"
+                                                >
+                                                    <ChevronDown size={16} className="mr-1" /> Show/Hide Columns
+                                                </button>
+                                                {showColDropdown && (
+                                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-2">
+                                                        {allColumns.map(col => (
+                                                            <label key={col.key} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={showColumns.includes(col.key)}
+                                                                    onChange={() => toggleColumn(col.key)}
+                                                                    className="accent-blue-600 rounded"
+                                                                    {...(col.key === 'title' ? { 'data-dusk': 'column-title-checkbox' } : {})}
+                                                                />
+                                                                <span className="text-sm text-gray-700 dark:text-gray-200">{col.label}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <Link
+                                                href={route('leads.create')}
+                                                className="inline-flex cursor-pointer items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
+                                            >
+                                                <Plus size={18} className="mr-2 -ml-1" />
+                                                Add New Lead
+                                            </Link>
+                                        </div>
+                                    </div>
 
-                            {/* Filter Bar */}
-                            <div className="mb-4 flex flex-wrap gap-4 items-center">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Qualification:
-                                    <select
-                                        className="ml-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800"
-                                        value={qualificationFilter}
-                                        onChange={e => setQualificationFilter(e.target.value)}
-                                    >
-                                        <option value="">All</option>
-                                        <option value="Hot">Hot</option>
-                                        <option value="Warm">Warm</option>
-                                        <option value="Cold">Cold</option>
-                                    </select>
-                                </label>
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Min Score:
-                                    <input
-                                        type="number"
-                                        className="ml-2 w-20 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-2"
-                                        value={minScore}
-                                        onChange={e => setMinScore(e.target.value)}
-                                        placeholder="0"
-                                    />
-                                </label>
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Max Score:
-                                    <input
-                                        type="number"
-                                        className="ml-2 w-20 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-2"
-                                        value={maxScore}
-                                        onChange={e => setMaxScore(e.target.value)}
-                                        placeholder="100"
-                                    />
-                                </label>
-                                {(qualificationFilter || minScore !== '' || maxScore !== '') && (
+                                     {/* Flash Message Display */}
+                                    {flash.success && (
+                                        <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md flex items-center justify-between" role="alert">
+                                           <div className="flex items-center">
+                                             <CheckCircle2 size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
+                                             <span>{flash.success}</span>
+                                           </div>
+                                        
+                                        </div>
+                                    )}
+                                     {/* Display error flash messages if they exist */}
+                                     {flash.error && (
+                                        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md flex items-center justify-between" role="alert">
+                                           <div className="flex items-center">
+                                             <XCircle size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
+                                             <span>{flash.error}</span>
+                                           </div>
+                                        </div>
+                                    )}
+
+                                    {/* Advanced Filter Toggle */}
                                     <button
-                                        type="button"
-                                        className="ml-2 px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-600"
-                                        onClick={() => { setQualificationFilter(''); setMinScore(''); setMaxScore(''); }}
+                                        className="mb-4 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow"
+                                        onClick={() => setShowAdvanced(v => !v)}
                                     >
-                                        Reset
+                                        {showAdvanced ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
                                     </button>
-                                )}
-                            </div>
+                                    {showAdvanced && (
+                                        <div className="mb-6 bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex flex-wrap gap-4 items-center">
+                                            <div className="flex items-center gap-2">
+                                                <Search size={16} />
+                                                <input
+                                                    type="text"
+                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[180px]"
+                                                    placeholder="Search name, email, company, tags..."
+                                                    value={searchText}
+                                                    onChange={e => setSearchText(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Tag size={16} />
+                                                <input
+                                                    type="text"
+                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[120px]"
+                                                    placeholder="Tag"
+                                                    value={tagsFilter}
+                                                    onChange={e => setTagsFilter(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <DollarSign size={16} />
+                                                <input
+                                                    type="number"
+                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 w-20"
+                                                    placeholder="Min Value"
+                                                    value={dealMin}
+                                                    onChange={e => setDealMin(e.target.value)}
+                                                />
+                                                <span>-</span>
+                                                <input
+                                                    type="number"
+                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 w-20"
+                                                    placeholder="Max Value"
+                                                    value={dealMax}
+                                                    onChange={e => setDealMax(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Calendar size={16} />
+                                                <input
+                                                    type="date"
+                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2"
+                                                    value={dateFrom}
+                                                    onChange={e => setDateFrom(e.target.value)}
+                                                />
+                                                <span>-</span>
+                                                <input
+                                                    type="date"
+                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2"
+                                                    value={dateTo}
+                                                    onChange={e => setDateTo(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <User size={16} />
+                                                <input
+                                                    type="text"
+                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[100px]"
+                                                    placeholder="Owner ID"
+                                                    value={ownerFilter}
+                                                    onChange={e => setOwnerFilter(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[110px]"
+                                                    value={statusFilter}
+                                                    onChange={e => setStatusFilter(e.target.value)}
+                                                >
+                                                    <option value="">All Statuses</option>
+                                                    {leadStatusOptions.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="ml-2 px-4 py-2 rounded border border-blue-500 text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 text-xs font-semibold hover:bg-blue-50 dark:hover:bg-blue-800 transition"
+                                                onClick={() => {
+                                                    setSearchText('');
+                                                    setStatusFilter('');
+                                                    setOwnerFilter('');
+                                                    setDateFrom('');
+                                                    setDateTo('');
+                                                    setDealMin('');
+                                                    setDealMax('');
+                                                    setTagsFilter('');
+                                                }}
+                                            >
+                                                Reset All
+                                            </button>
+                                        </div>
+                                    )}
 
-                            {/* Leads Table Container */}
-                            <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                        {/* Table Head */}
-                                        <thead className="bg-gray-50 dark:bg-gray-700">
-                                            <tr>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Company</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                                <th
-                                                    scope="col"
-                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                    onClick={() => handleSort('score')}
-                                                >
-                                                    <span className="inline-flex items-center">
-                                                        Score {sortField === 'score' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                        <Tippy content="Lead Score: Calculated based on email, phone, status, notes, and source. Higher score = more qualified.">
-                                                            <span><Info size={14} className="ml-1 text-gray-400" /></span>
-                                                        </Tippy>
-                                                    </span>
-                                                </th>
-                                                <th
-                                                    scope="col"
-                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                    onClick={() => handleSort('qualification')}
-                                                >
-                                                    <span className="inline-flex items-center">
-                                                        Qualification {sortField === 'qualification' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                        <Tippy content="Qualification: Hot (score ≥ 70), Warm (score ≥ 40), Cold (score < 40).">
-                                                            <span><Info size={14} className="ml-1 text-gray-400" /></span>
-                                                        </Tippy>
-                                                    </span>
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Added On</th>
-                                                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        {/* Table Body */}
-                                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                            {/* Check if leads.data exists and has items */}
-                                            {filteredLeads.length > 0 ? (
-                                                filteredLeads.map((lead) => ( // Map over the leads data array
-                                                    <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
-                                                        {/* Name & Email Cell */}
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{lead.name}</div>
-                                                            <div className="text-xs text-gray-500 dark:text-gray-400">{lead.email || '-'}</div>
-                                                        </td>
-                                                        {/* Company Cell */}
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{lead.company || '-'}</td>
-                                                        {/* Status Cell */}
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                                // Dynamically set background and text color based on status value
-                                                                lead.status === 'new' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                                                                lead.status === 'contacted' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                                                lead.status === 'qualified' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                                                lead.status === 'won' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                                                                lead.status === 'lost' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                                                                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' // Default style
-                                                            }`}>
-                                                                {/* Display the label corresponding to the status value */}
-                                                                {leadStatusOptions.find(s => s.value === lead.status)?.label || lead.status}
+                                    {/* Useful Filter Bar */}
+                                    <div className="mb-6 bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex flex-wrap gap-4 items-center">
+                                        <div className="min-w-[180px]">
+                                            <Select
+                                                isMulti
+                                                options={leadStatusOptions}
+                                                value={statusMulti}
+                                                onChange={setStatusMulti}
+                                                placeholder="Status"
+                                                classNamePrefix="react-select"
+                                            />
+                                        </div>
+                                        <div className="min-w-[180px]">
+                                            <Select
+                                                isMulti
+                                                options={[{ value: 'Hot', label: 'Hot' }, { value: 'Warm', label: 'Warm' }, { value: 'Cold', label: 'Cold' }]}
+                                                value={qualificationMulti}
+                                                onChange={setQualificationMulti}
+                                                placeholder="Qualification"
+                                                classNamePrefix="react-select"
+                                            />
+                                        </div>
+                                        <div className="min-w-[180px]">
+                                            <Select
+                                                isMulti
+                                                options={props.owners ? props.owners.map(u => ({ value: String(u.id), label: u.name })) : []}
+                                                value={ownerMulti}
+                                                onChange={setOwnerMulti}
+                                                placeholder="Owner"
+                                                classNamePrefix="react-select"
+                                            />
+                                        </div>
+                                        {(statusMulti.length > 0 || qualificationMulti.length > 0 || ownerMulti.length > 0) && (
+                                            <button
+                                                type="button"
+                                                className="ml-2 px-4 py-2 rounded-full border border-blue-500 text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 text-xs font-semibold hover:bg-blue-50 dark:hover:bg-blue-800 transition"
+                                                onClick={() => { setStatusMulti([]); setQualificationMulti([]); setOwnerMulti([]); }}
+                                            >
+                                                Reset
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Leads Table Container */}
+                                    <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+                                        <div className="overflow-x-auto" style={{ minWidth: 900 }}>
+                                            <table className="min-w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
+                                                {/* Table Head */}
+                                                <thead className="bg-gray-50 dark:bg-gray-700">
+                                                    <tr>
+                                                        <th
+                                                            scope="col"
+                                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                            onClick={() => handleSort('name')}
+                                                        >
+                                                            <span className="inline-flex items-center">
+                                                                Name {sortField === 'name' && (sortDir === 'asc' ? '▲' : '▼')}
                                                             </span>
-                                                        </td>
-                                                        {/* Score Cell */}
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{lead.score ?? '-'}</td>
-                                                        {/* Qualification Cell */}
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <Tippy
-                                                                content={
-                                                                    lead.qualification === 'Hot'
-                                                                        ? 'Hot: Highly qualified lead (score ≥ 70)'
-                                                                        : lead.qualification === 'Warm'
-                                                                        ? 'Warm: Moderately qualified lead (score ≥ 40)'
-                                                                        : 'Cold: Low qualification (score < 40)'
-                                                                }
+                                                        </th>
+                                                        {showColumns.includes('title') && (
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                                onClick={() => handleSort('title')}
                                                             >
-                                                                <span
-                                                                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                                        lead.qualification === 'Hot' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                                                        lead.qualification === 'Warm' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                                                        'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                                                    }`}
-                                                                >
-                                                                    {lead.qualification || '-'}
+                                                                <span className="inline-flex items-center">
+                                                                    Title {sortField === 'title' && (sortDir === 'asc' ? '▲' : '▼')}
                                                                 </span>
-                                                            </Tippy>
-                                                        </td>
-                                                        {/* Added On Cell */}
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                            {/* Format the date */}
-                                                            {new Date(lead.created_at).toLocaleDateString()}
-                                                        </td>
-                                                        {/* Actions Cell */}
-                                                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                                            <div className="flex items-center justify-center space-x-2">
-                                                                {/* View Action */}
-                                                                <Link href={route('leads.show', lead.id)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="View">
-                                                                    <Eye size={16} />
-                                                                </Link>
-                                                                {/* Edit Action */}
-                                                                <Link href={route('leads.edit', lead.id)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" title="Edit">
-                                                                    <Pencil size={16} />
-                                                                </Link>
-                                                                {/* Delete Action */}
-                                                                <Link
-                                                                    href={route('leads.destroy', lead.id)}
-                                                                    method="delete"
-                                                                    as="button"
-                                                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                                                    title="Delete"
-                                                                    // Add confirmation dialog before deleting
-                                                                    onBefore={() => confirm('Are you sure you want to delete this lead?')}
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </Link>
-                                                            </div>
-                                                        </td>
+                                                            </th>
+                                                        )}
+                                                        {showColumns.includes('positions') && (
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                                onClick={() => handleSort('positions')}
+                                                            >
+                                                                <span className="inline-flex items-center">
+                                                                    Positions {sortField === 'positions' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                                </span>
+                                                            </th>
+                                                        )}
+                                                        {showColumns.includes('tags') && (
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                                onClick={() => handleSort('tags')}
+                                                            >
+                                                                <span className="inline-flex items-center">
+                                                                    Tags {sortField === 'tags' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                                </span>
+                                                            </th>
+                                                        )}
+                                                        {showColumns.includes('company') && (
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                                onClick={() => handleSort('company')}
+                                                            >
+                                                                <span className="inline-flex items-center">
+                                                                    Company {sortField === 'company' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                                </span>
+                                                            </th>
+                                                        )}
+                                                        {showColumns.includes('status') && (
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                                onClick={() => handleSort('status')}
+                                                            >
+                                                                <span className="inline-flex items-center">
+                                                                    Status {sortField === 'status' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                                </span>
+                                                            </th>
+                                                        )}
+                                                        {showColumns.includes('score') && (
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                                onClick={() => handleSort('score')}
+                                                            >
+                                                                <span className="inline-flex items-center">
+                                                                    Score {sortField === 'score' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                                    <Tippy content="Lead Score: Calculated based on email, phone, status, notes, and source. Higher score = more qualified.">
+                                                                        <span><Info size={14} className="ml-1 text-gray-400" /></span>
+                                                                    </Tippy>
+                                                                </span>
+                                                            </th>
+                                                        )}
+                                                        {showColumns.includes('qualification') && (
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                                onClick={() => handleSort('qualification')}
+                                                            >
+                                                                <span className="inline-flex items-center">
+                                                                    Qualification {sortField === 'qualification' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                                    <Tippy content="Qualification: Hot (score ≥ 70), Warm (score ≥ 40), Cold (score < 40).">
+                                                                        <span><Info size={14} className="ml-1 text-gray-400" /></span>
+                                                                    </Tippy>
+                                                                </span>
+                                                            </th>
+                                                        )}
+                                                        {showColumns.includes('added_on') && (
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                                                                onClick={() => handleSort('added_on')}
+                                                            >
+                                                                <span className="inline-flex items-center">
+                                                                    Added On {sortField === 'added_on' && (sortDir === 'asc' ? '▲' : '▼')}
+                                                                </span>
+                                                            </th>
+                                                        )}
+                                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                                     </tr>
-                                                ))
-                                            ) : (
-                                                // Row shown if no leads are found
-                                                <tr>
-                                                    <td colSpan="5" className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                                                        No leads found.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                 {/* --- Pagination --- */}
-                                 {/* Render pagination links if leads data exists and has links */}
-                                 {leads && leads.links && leads.data.length > 0 && (
-                                     <Pagination links={leads.links} /> // Pass the links array
-                                 )}
-                                 {/* --- End Pagination --- */}
-                            </div>
+                                                </thead>
+                                                {/* Table Body */}
+                                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                                    {/* Check if leads.data exists and has items */}
+                                                    {filteredLeads.length > 0 ? (
+                                                        filteredLeads.map((lead) => (
+                                                            <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
+                                                                {/* Name & Email Cell */}
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{lead.name}</div>
+                                                                    <div className="text-xs text-gray-500 dark:text-gray-400">{lead.email || '-'}</div>
+                                                                </td>
+                                                                {showColumns.includes('title') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{lead.title || '-'}</td>}
+                                                                {showColumns.includes('positions') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{lead.positions || '-'}</td>}
+                                                                {showColumns.includes('tags') && (
+                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                        {Array.isArray(lead.tags) && lead.tags.length > 0 ? (
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {lead.tags.map((tag, idx) => (
+                                                                                    <span key={idx} className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full px-2 py-0.5 text-xs font-semibold">{tag}</span>
+                                                                                ))}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-xs text-gray-400">-</span>
+                                                                        )}
+                                                                    </td>
+                                                                )}
+                                                                {showColumns.includes('company') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{lead.company || '-'}</td>}
+                                                                {showColumns.includes('status') && (
+                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                                            lead.status === 'new' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                                                                            lead.status === 'contacted' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                                            lead.status === 'qualified' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                                                            lead.status === 'won' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                                                                            lead.status === 'lost' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                                                                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                                                                        }`}>
+                                                                            {leadStatusOptions.find(s => s.value === lead.status)?.label || lead.status}
+                                                                        </span>
+                                                                    </td>
+                                                                )}
+                                                                {showColumns.includes('score') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{lead.score ?? '-'}</td>}
+                                                                {showColumns.includes('qualification') && (
+                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                        <Tippy
+                                                                            content={
+                                                                                lead.qualification === 'Hot'
+                                                                                    ? 'Hot: Highly qualified lead (score ≥ 70)'
+                                                                                    : lead.qualification === 'Warm'
+                                                                                    ? 'Warm: Moderately qualified lead (score ≥ 40)'
+                                                                                    : 'Cold: Low qualification (score < 40)'
+                                                                            }
+                                                                        >
+                                                                            <span
+                                                                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                                                    lead.qualification === 'Hot' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                                                                    lead.qualification === 'Warm' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                                                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                                                                }`}
+                                                                            >
+                                                                                {lead.qualification || '-'}
+                                                                            </span>
+                                                                        </Tippy>
+                                                                    </td>
+                                                                )}
+                                                                {showColumns.includes('added_on') && (
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                                        {new Date(lead.created_at).toLocaleDateString()}
+                                                                    </td>
+                                                                )}
+                                                                {/* Actions Cell */}
+                                                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                                                    <div className="flex items-center justify-center space-x-2">
+                                                                        {/* View Action */}
+                                                                        <Link href={route('leads.show', lead.id)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="View">
+                                                                            <Eye size={16} />
+                                                                        </Link>
+                                                                        {/* Edit Action */}
+                                                                        <Link href={route('leads.edit', lead.id)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" title="Edit">
+                                                                            <Pencil size={16} />
+                                                                        </Link>
+                                                                        {/* Delete Action */}
+                                                                        <Link
+                                                                            href={route('leads.destroy', lead.id)}
+                                                                            method="delete"
+                                                                            as="button"
+                                                                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                                                            title="Delete"
+                                                                            onBefore={() => confirm('Are you sure you want to delete this lead?')}
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </Link>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        // Row shown if no leads are found
+                                                        <tr>
+                                                            <td colSpan="5" className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                                                                No leads found.
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                         {/* --- Pagination --- */}
+                                         {leads && leads.links && leads.data.length > 0 && (
+                                             <Pagination links={leads.links} /> // Pass the links array
+                                         )}
+                                         {/* --- End Pagination --- */}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </main>
                      {/* Optional Footer (if not handled by layout) */}
                     {/* <footer className="..."> ... </footer> */}
                 </div>
             </div>
-
-             {/* Render the modal conditionally */}
-             <AddLeadModal
-                show={isModalOpen}
-                onClose={closeModal}
-                statuses={leadStatusOptions} // Pass status options
-                methods={leadMethodOptions} // Pass method options
-            />
         </>
         // </AuthenticatedLayout> // Close layout component if used
     );

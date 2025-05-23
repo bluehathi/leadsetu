@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import Logo, { LogoLS } from '@/Components/Logo';
 import {
@@ -16,7 +16,14 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ user }) => {
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('sidebar-collapsed');
+            return stored === 'true';
+        }
+        return false;
+    });
+
     const isActive = (routeName) => route().current(routeName);
     const getUserInitials = (name) => {
         if (!name) return '?';
@@ -35,7 +42,10 @@ const Sidebar = ({ user }) => {
                             {collapsed ? <LogoLS className="w-8 h-8" /> : <Logo />}
                         </Link>
                         <button
-                            onClick={() => setCollapsed((c) => !c)}
+                            onClick={() => setCollapsed((c) => {
+                                localStorage.setItem('sidebar-collapsed', !c);
+                                return !c;
+                            })}
                             className="ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                         >

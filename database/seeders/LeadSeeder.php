@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Lead; // Import your Lead model
 use Faker\Factory as Faker; // Import Faker library
 use App\Models\ActivityLog;
+use App\Models\Organization;
 
 class LeadSeeder extends Seeder
 {
@@ -25,6 +26,10 @@ class LeadSeeder extends Seeder
          // Number of leads to create
          $numberOfLeads = 50; // Adjust as needed
  
+         // Get the first organization
+         $organization = Organization::first();
+         $organizationId = $organization ? $organization->id : null;
+ 
          // Loop to create multiple leads
          for ($i = 0; $i < $numberOfLeads; $i++) {
              $lead = Lead::create([
@@ -36,10 +41,19 @@ class LeadSeeder extends Seeder
                  'status'    => $faker->randomElement($statuses), // Pick a random status
                  'source'    => $faker->randomElement($methods), // Pick a random method
                  'notes'     => $faker->paragraph(2), 
+                 'title'     => $faker->jobTitle(), // New field
+                 'positions' => $faker->words(2, true), // New field (comma separated string)
+                 'tags'      => json_encode($faker->words(rand(1, 4))), // New field (array as JSON)
+                 'deal_value' => $faker->numberBetween(1000, 99999),
+                 'expected_close' => $faker->dateTimeBetween('now', '+3 months')->format('Y-m-d'),
+                 'lead_score' => $faker->numberBetween(0, 100),
+                 'lead_owner' => $faker->randomElement(['user1', 'user2']),
+                 'priority' => $faker->randomElement(['Low', 'Medium', 'High']),
+                 'attachments' => json_encode([]),
                  'user_id' => 1,
                  'created_at'=> $faker->dateTimeBetween('-1 year', 'now'), // Random creation date within the last year
                  'updated_at'=> now(),
-                 'organization_id' => 1, // Default org for demo
+                 'organization_id' => $organizationId, // Use seeded org
              ]);
              $lead->calculateScoreAndQualification();
              ActivityLog::create([

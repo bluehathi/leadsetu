@@ -48,6 +48,9 @@ export default function AddLeadModal({
         email: '',
         phone: '',
         company: '',
+        title: '',
+        positions: '',
+        tags: [],
         website: '', // Added website field
         status: statuses.length > 0 ? statuses[0].value : '',
         source: sources.length > 0 ? sources[0].value : '', // Added source field, initialized
@@ -194,6 +197,47 @@ export default function AddLeadModal({
                                 </span>
                             </div>
                             {errors.company && <div className="text-xs text-red-500 mt-1">{errors.company}</div>}
+                        </div>
+                        {/* Title */}
+                        <div>
+                            <label htmlFor="title" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Title</label>
+                            <input
+                                id="title"
+                                type="text"
+                                value={data.title}
+                                onChange={e => setData('title', e.target.value)}
+                                className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-4 py-2"
+                                disabled={processing}
+                            />
+                            {errors.title && <div className="text-xs text-red-500 mt-1">{errors.title}</div>}
+                        </div>
+                        {/* Positions */}
+                        <div>
+                            <label htmlFor="positions" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Positions</label>
+                            <input
+                                id="positions"
+                                type="text"
+                                value={data.positions}
+                                onChange={e => setData('positions', e.target.value)}
+                                className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-4 py-2"
+                                placeholder="e.g. CEO, Founder"
+                                disabled={processing}
+                            />
+                            {errors.positions && <div className="text-xs text-red-500 mt-1">{errors.positions}</div>}
+                        </div>
+                        {/* Tags */}
+                        <div>
+                            <label htmlFor="tags" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Tags</label>
+                            <input
+                                id="tags"
+                                type="text"
+                                value={data.tags.join(', ')}
+                                onChange={e => setData('tags', e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                                className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-4 py-2"
+                                placeholder="e.g. SaaS, B2B, Hot Lead"
+                                disabled={processing}
+                            />
+                            {errors.tags && <div className="text-xs text-red-500 mt-1">{errors.tags}</div>}
                         </div>
                         {/* Website */}
                         <div>

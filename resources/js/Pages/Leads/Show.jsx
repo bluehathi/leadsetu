@@ -14,6 +14,12 @@ const actionMeta = {
 };
 
 export default function LeadShow({ user, lead, activityLogs }) {
+    const attachments = Array.isArray(lead.attachments)
+        ? lead.attachments
+        : lead.attachments
+            ? (typeof lead.attachments === 'string' ? JSON.parse(lead.attachments) : [])
+            : [];
+
     return (
         <>
             <Head title={`Lead: ${lead.name}`} />
@@ -28,13 +34,16 @@ export default function LeadShow({ user, lead, activityLogs }) {
                                     <div className="flex items-center gap-3">
                                         <User size={36} className="text-blue-500 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 rounded-full p-2" />
                                         <div>
-                                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-1">{lead.name}</h1>
-                                            <div className="flex flex-wrap gap-2 text-sm text-gray-500 dark:text-gray-300">
-                                                {lead.email && <span className="flex items-center gap-1"><Mail size={14} />{lead.email}</span>}
-                                                {lead.phone && <span className="flex items-center gap-1"><Phone size={14} />{lead.phone}</span>}
-                                                {lead.company && <span className="flex items-center gap-1"><Building2 size={14} />{lead.company}</span>}
-                                                {lead.website && <span className="flex items-center gap-1"><Globe size={14} />{lead.website}</span>}
+                                            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{lead.name}</div>
+                                            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">{lead.email || '-'}</div>
+                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                {lead.title && <span className="inline-block bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full px-2 py-0.5 text-xs font-semibold">{lead.title}</span>}
+                                                {lead.positions && <span className="inline-block bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full px-2 py-0.5 text-xs font-semibold">{lead.positions}</span>}
+                                                {Array.isArray(lead.tags) && lead.tags.length > 0 && lead.tags.map((tag, idx) => (
+                                                    <span key={idx} className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full px-2 py-0.5 text-xs font-semibold">{tag}</span>
+                                                ))}
                                             </div>
+                                            <div className="text-sm text-gray-700 dark:text-gray-300">{lead.company || '-'}</div>
                                         </div>
                                     </div>
                                     <div className="flex gap-2 flex-shrink-0">
@@ -56,6 +65,40 @@ export default function LeadShow({ user, lead, activityLogs }) {
                                         <span className="font-semibold text-gray-600 dark:text-gray-300">Notes:</span> {lead.notes}
                                     </div>
                                 )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Deal Value</span>
+                                        <span className="block text-base text-gray-900 dark:text-gray-100">{lead.deal_value ? `₹${lead.deal_value}` : '-'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Expected Close</span>
+                                        <span className="block text-base text-gray-900 dark:text-gray-100">{lead.expected_close || '-'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Lead Score</span>
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{lead.lead_score ?? '-'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Lead Owner</span>
+                                        <span className="block text-base text-gray-900 dark:text-gray-100">{lead.lead_owner || '-'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Priority</span>
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${lead.priority === 'High' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : lead.priority === 'Low' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>{lead.priority || '-'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Attachments</span>
+                                        {attachments && attachments.length > 0 ? (
+                                            <ul className="text-xs text-gray-700 dark:text-gray-200">
+                                                {attachments.map((file, idx) => (
+                                                    <li key={idx} className="truncate">{file.name || file}</li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <span className="block text-base text-gray-900 dark:text-gray-100">-</span>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Timeline / Activity Feed */}

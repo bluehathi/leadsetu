@@ -21,6 +21,15 @@ return new class extends Migration
             $table->text('notes');
             $table->string('status', 180);
             $table->string('source', 180);
+            $table->string('title', 180)->nullable();
+            $table->string('positions', 180)->nullable();
+            $table->json('tags')->nullable();
+            $table->integer('deal_value')->nullable();
+            $table->date('expected_close')->nullable();
+            $table->integer('lead_score')->nullable();
+            $table->string('lead_owner', 180)->nullable();
+            $table->string('priority', 20)->nullable();
+            $table->json('attachments')->nullable();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });

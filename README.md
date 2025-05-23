@@ -1,76 +1,67 @@
-# LeadSetu
+# LeadSetu CRM
 
-A modern SaaS application for managing organizations, leads, and sales activities. Built with **Laravel** (PHP) and **React** (Inertia.js), LeadSetu offers a beautiful, user-friendly interface and powerful features for sales teams and organizations.
+A modern SaaS CRM built with Laravel (PHP) and React (Inertia.js).
 
----
+## Features
+- Leads management with advanced filtering, sorting, and user preferences
+- User authentication, roles, and permissions
+- Organization management (Add Organization button currently commented out)
+- Dashboard with stats and charts
+- User settings persisted in the database
+- Modern UI/UX with Inertia.js and Tailwind CSS
 
-## 🚀 Features
-
-- **Modern Dashboard** with real statistics and charts
-- **Organizations** management
-- **Leads**
-  - Add, edit, and view leads with full-width, visually consistent forms
-  - Lead scoring and automatic qualification (Hot/Warm/Cold)
-  - Enhanced lead detail page with activity timeline (all actions, color-coded, icons)
-  - Sort, filter, and search leads by score, qualification, and more
-- **Activity Logs**
-  - System-wide and per-lead activity feed
-  - Modern filters and timeline UI
-- **Roles & Permissions** for access control
-- **User Management**
-- **Settings**
-  - Organization, billing, team, integrations, user preferences, security
-- **Responsive, modern UI**
-  - Sidebar with logical grouping, collapsible, and logo switching
-  - Consistent design across all forms and pages
-
----
-
-## 🛠️ Setup & Installation
+## Setup
 
 1. **Clone the repository**
-2. **Install dependencies**
-   - Backend: `composer install`
-   - Frontend: `npm install`
-3. **Copy and configure your environment**
-   - `cp .env.example .env`
-   - Set up your database and other environment variables
-4. **Run migrations and seeders**
-   - `php artisan migrate --seed`
-   - This will seed demo users, organizations, leads, and activity logs
-5. **Build assets**
-   - `npm run dev` (for development)
-   - `npm run build` (for production)
-6. **Start the server**
-   - `php artisan serve`
+2. **Install PHP dependencies**
+   ```bash
+   composer install
+   ```
+3. **Install JS dependencies**
+   ```bash
+   npm install
+   ```
+4. **Copy and configure your .env**
+   ```bash
+   cp .env.example .env
+   # Edit .env for your DB and mail settings
+   ```
+5. **Generate app key**
+   ```bash
+   php artisan key:generate
+   ```
+6. **Run migrations and seeders**
+   ```bash
+   php artisan migrate:fresh --seed
+   ```
+7. **Start the dev servers**
+   ```bash
+   php artisan serve
+   npm run dev
+   ```
 
----
+## Testing
 
-## 📝 Usage Notes
+- **PHPUnit** is used for all feature and unit tests.
+- Run all tests:
+  ```bash
+  ./vendor/bin/phpunit
+  ```
+- Dusk browser tests are available for end-to-end UI testing:
+  ```bash
+  php artisan dusk
+  ```
+- Pest is **not** used due to version conflicts with current dependencies.
 
-- **Leads**: Add and edit leads with a modern, full-width form. All fields are validated. Lead scoring and qualification are automatic.
-- **Lead Detail**: View all lead info and a chronological, color-coded activity timeline with icons for each action.
-- **Add/Edit Lead**: Both forms are visually consistent, use Lucide icons, and are easy to use on all devices.
-- **Activity Logs**: Filter by user, action, entity, and date. See all actions in a modern timeline.
-- **Settings**: Manage your organization, team, billing, integrations, and more.
+## Notes
+- The "Add Organization" button is currently commented out in the UI for temporary reasons. To re-enable, uncomment it in `resources/js/Pages/Organizations/Index.jsx`.
+- If you add new required fields to leads or organizations, update the factories and tests accordingly.
+- User settings (such as visible columns) are persisted in the database and loaded on login.
 
----
+## Troubleshooting
+- If you see errors about missing factories, ensure your models use the `HasFactory` trait and you have the appropriate factory files in `database/factories/`.
+- If you see validation errors in tests, make sure all required fields are provided in the test data.
+- For Dusk, make sure ChromeDriver is installed and running.
 
-## 💡 Customization & Extensibility
-
-- Add more lead fields (job title, tags, value, etc.) as needed
-- Integrate with external CRMs, email, or analytics tools
-- Extend activity logging for more granular tracking
-- Add custom roles, permissions, or notification systems
-
----
-
-## 🤝 Contributing
-
-Pull requests and suggestions are welcome! Please open an issue or PR for any improvements or bug fixes.
-
----
-
-## 📄 License
-
+## License
 MIT

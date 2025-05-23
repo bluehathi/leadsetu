@@ -33,7 +33,8 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
-Route::resource('/leads', LeadsController::class)->middleware(['auth', 'verified'])->except(['create']);
+Route::resource('/leads', LeadsController::class)->middleware(['auth', 'verified']);
+//Route::get('/leads/create', [LeadsController::class, 'create'])->middleware(['auth', 'verified'])->name('leads.create');
 Route::resource('/organizations', \App\Http\Controllers\OrganizationController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'update', 'destroy']);
 Route::resource('/roles', RoleController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'create']);
 Route::resource('/permissions', PermissionController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'create']);
@@ -51,4 +52,10 @@ Route::get('/organization/settings', [UserController::class, 'organizationSettin
 Route::post('/organization/settings', [UserController::class, 'updateOrganizationSettings'])->name('organization.settings.update')->middleware(['auth', 'verified']);
 // Activity Logs
 Route::get('/activity-logs', [UserController::class, 'activityLogs'])->name('activity.logs')->middleware(['auth', 'verified']);
+
+// User settings API
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/user/settings', [UserController::class, 'getSettings'])->name('user.settings.get');
+    Route::post('/user/settings', [UserController::class, 'setSettings'])->name('user.settings.set');
+});
 
