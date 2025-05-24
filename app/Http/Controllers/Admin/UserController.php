@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -215,7 +216,12 @@ class UserController extends Controller
 
     public function workspaceSettings()
     {
-        $workspace = auth()->user()->workspace;
+        $user = auth()->user();
+        $workspace = $user->workspace;
+        $isOwner = $workspace && $workspace->owners()->where('user_id', $user->id)->exists();
+        if (!$isOwner || !$user->can('workspace_owner')) {
+            abort(403, 'You are not allowed to manage this workspace.');
+        }
         return Inertia::render('Workspaces/Settings', [
             'workspace' => $workspace,
         ]);
@@ -225,6 +231,10 @@ class UserController extends Controller
     {
         $user = auth()->user();
         $workspace = $user->workspace;
+        $isOwner = $workspace && $workspace->owners()->where('user_id', $user->id)->exists();
+        if (!$isOwner || !$user->can('workspace_owner')) {
+            abort(403, 'You are not allowed to manage this workspace.');
+        }
         $data = $request->validate([
             'name' => 'required|string|max:180',
             'description' => 'nullable|string',

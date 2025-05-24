@@ -16,4 +16,9 @@ class Workspace extends Model
     ];
     protected $table = 'workspaces';
     protected $primaryKey = 'id';
+
+    public function owners()
+    {
+        return $this->belongsToMany(User::class, 'workspace_owners');
+    }
 }

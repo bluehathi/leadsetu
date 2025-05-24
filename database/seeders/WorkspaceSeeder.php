@@ -9,6 +9,6 @@ class WorkspaceSeeder extends Seeder
 {
     public function run()
     {
-        Workspace::factory()->count(5)->create();
+        Workspace::factory()->count(1)->create();
     }
 }

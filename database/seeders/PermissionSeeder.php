@@ -23,7 +23,7 @@ class PermissionSeeder extends Seeder
             // Activity Logs
             'view activity logs',
             // Dashboard
-            'view dashboard',
+            'view dashboard','workspace_owner',
         ];
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
