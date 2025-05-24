@@ -25,6 +25,8 @@ class Lead extends Model
         'title',
         'positions',
         'tags',
+        'company_id', // Add company_id
+        'contact_id', // Add contact_id
     ];
     protected $casts = [
         'created_at' => 'datetime',
@@ -37,6 +39,16 @@ class Lead extends Model
     public function workspace()
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function contact()
+    {
+        return $this->belongsTo(Contact::class);
     }
 
     public function calculateScoreAndQualification()

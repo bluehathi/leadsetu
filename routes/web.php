@@ -48,6 +48,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::get('/user/settings', [App\Http\Controllers\Admin\UserController::class, 'getSettings'])->name('user.settings.get');
     Route::post('/user/settings', [App\Http\Controllers\Admin\UserController::class, 'setSettings'])->name('user.settings.set');
     Route::get('/roles/create', [App\Http\Controllers\Admin\RoleController::class, 'create'])->name('roles.create');
+    Route::get('/leads/kanban', [\App\Http\Controllers\Admin\LeadsController::class, 'kanban'])->name('leads.kanban');
 });
 
 // Home route

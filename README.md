@@ -92,6 +92,19 @@ A modern SaaS lead management application built with Laravel (PHP) and React (In
 - Each contact can be assigned to a company (unique per company).
 - UI and backend enforce the one-to-one company-contact relationship.
 
+## Lead Creation: Inline Company & Contact
+- The lead creation form supports both selecting an existing company/contact or adding a new one inline.
+- If you choose "Add New Company" or "Add New Contact" in the lead form, the backend will automatically create the company/contact and associate them with the new lead.
+- The backend logic ensures:
+  - If `company_id` is not provided but `company_name` is, a new company is created and linked to the lead.
+  - If `contact_id` is not provided but `contact_name` is, a new contact is created (and linked to the company if available) and associated with the lead.
+  - All relationships are workspace-scoped.
+- The lead form supports all main lead fields, and tags can be entered as a comma-separated list.
+
+## Database Schema Updates
+- The `leads` table now includes `company_id` and `contact_id` (nullable, foreign keys).
+- These fields are used to associate leads with companies and contacts, whether selected or created inline.
+
 ## Testing
 - **PHPUnit** is used for all feature and unit tests.
 - Run all tests:

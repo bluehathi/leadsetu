@@ -212,29 +212,26 @@ export default function LeadsIndex({ user, leads }) {
                                 <>
                                     {/* Page Header */}
                                     <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
-                                            Manage Leads
-                                        </h1>
-                                        <div className="flex gap-2 items-center">
+                                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Leads</h1>
+                                        <div className="flex flex-row gap-2 w-full sm:w-auto justify-end items-center">
+                                            {/* Toggle Columns Button */}
                                             <div className="relative">
                                                 <button
                                                     type="button"
-                                                    className="inline-flex items-center px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow"
+                                                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                                                     onClick={() => setShowColDropdown(v => !v)}
-                                                    data-dusk="show-hide-columns-button"
                                                 >
-                                                    <ChevronDown size={16} className="mr-1" /> Show/Hide Columns
+                                                    Toggle Columns
                                                 </button>
                                                 {showColDropdown && (
-                                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-2">
+                                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow z-50 p-2">
                                                         {allColumns.map(col => (
-                                                            <label key={col.key} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                                                            <label key={col.key} className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={showColumns.includes(col.key)}
                                                                     onChange={() => toggleColumn(col.key)}
-                                                                    className="accent-blue-600 rounded"
-                                                                    {...(col.key === 'title' ? { 'data-dusk': 'column-title-checkbox' } : {})}
+                                                                    className="form-checkbox h-4 w-4 text-blue-600"
                                                                 />
                                                                 <span className="text-sm text-gray-700 dark:text-gray-200">{col.label}</span>
                                                             </label>
@@ -242,12 +239,14 @@ export default function LeadsIndex({ user, leads }) {
                                                     </div>
                                                 )}
                                             </div>
+                                            {/* Use absolute path for Kanban View to avoid route helper issues */}
+                                            <Link href="/admin/leads/kanban" className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition">Kanban View</Link>
                                             <Link
                                                 href={route('leads.create')}
-                                                className="inline-flex cursor-pointer items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm text-sm font-medium hover:bg-blue-700 transition"
                                             >
                                                 <Plus size={18} className="mr-2 -ml-1" />
-                                                Add New Lead
+                                                Add Lead
                                             </Link>
                                         </div>
                                     </div>

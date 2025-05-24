@@ -1,7 +1,6 @@
-import React, { useRef, useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, useForm, Link, usePage } from '@inertiajs/react';
 import Sidebar from '@/Components/parts/Sidebar';
-import { Mail, Phone, Building2, Globe, ArrowLeft, Save, BadgeInfo, Briefcase, Tag, StickyNote, Share2, CircleDot, X } from 'lucide-react';
 
 const statusOptions = [
     { value: 'new', label: 'New' },
@@ -19,29 +18,33 @@ const sourceOptions = [
     { value: 'other', label: 'Other' },
 ];
 
-export default function LeadCreate({ user }) {
+export default function LeadCreate({ companies = [], contacts = [], user }) {
+    const [tab, setTab] = useState('lead');
+    const [showNewCompany, setShowNewCompany] = useState(false);
+    const [showNewContact, setShowNewContact] = useState(false);
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
         phone: '',
-        company: '',
-        website: '',
-        notes: '',
+        company_id: '',
+        company_name: '',
+        company_website: '',
+        contact_id: '',
+        contact_name: '',
+        contact_email: '',
+        contact_phone: '',
         status: 'new',
         source: 'website',
-        title: '',
-        positions: '',
-        tags: [],
+        notes: '',
         deal_value: '',
         expected_close: '',
         lead_score: '',
         lead_owner: '',
         priority: 'Medium',
-        attachments: [],
+        title: '',
+        positions: '',
+        tags: '',
     });
-
-    const tagInputRef = useRef();
-    const [tagInput, setTagInput] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -55,234 +58,156 @@ export default function LeadCreate({ user }) {
                 <Sidebar user={user} />
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
                     <main className="flex-1 relative overflow-y-auto focus:outline-none">
-                        <div className="py-8 px-2 sm:px-4 lg:px-8 w-full">
-                            <form onSubmit={handleSubmit} className="w-full bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-200 dark:border-gray-700">
-                                <div className="flex items-center justify-between mb-8 border-b border-gray-200 dark:border-gray-700 pb-4">
-                                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-                                        <svg xmlns='http://www.w3.org/2000/svg' className='h-8 w-8 text-blue-600' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M12 4v16m8-8H4' /></svg>
-                                        Add Lead
-                                    </h1>
-                                    <Link href={route('leads.index')} className="inline-flex items-center px-3 py-2 bg-gray-200 text-gray-800 rounded-md text-xs font-semibold hover:bg-gray-300 transition">
-                                        <ArrowLeft size={16} className="mr-1" /> Cancel
-                                    </Link>
-                                </div>
-                                {/* Contact Info */}
-                                <div className="mb-8 bg-white dark:bg-gray-800 shadow rounded-xl p-6">
-                                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Contact Info</h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Name</label>
-                                            <input type="text" className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2" value={data.name} onChange={e => setData('name', e.target.value)} />
-                                            {errors.name && <div className="text-xs text-red-500 mt-1">{errors.name}</div>}
+                        <div className="py-8 px-4 sm:px-6 lg:px-8 mx-auto w-full">
+                            <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Add Lead</h1>
+                                <Link href={route('leads.index')} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">Back</Link>
+                            </div>
+                            <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+                                <nav className="-mb-px flex space-x-8">
+                                    <button type="button" className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${tab === 'lead' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 dark:text-gray-400'}`} onClick={() => setTab('lead')}>Lead</button>
+                                    <button type="button" className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${tab === 'company' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 dark:text-gray-400'}`} onClick={() => setTab('company')}>Company</button>
+                                    <button type="button" className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${tab === 'contact' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 dark:text-gray-400'}`} onClick={() => setTab('contact')}>Contact</button>
+                                </nav>
+                            </div>
+                            <form onSubmit={handleSubmit} className="space-y-6 bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+                                {tab === 'lead' && (
+                                    <>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Lead Name</label>
+                                            <input type="text" className="w-full border px-3 py-2 rounded" value={data.name} onChange={e => setData('name', e.target.value)} required />
+                                            {errors.name && <div className="text-red-500 text-xs mt-1">{errors.name}</div>}
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1"><Mail size={14}/> Email</label>
-                                            <input type="email" className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2" value={data.email} onChange={e => setData('email', e.target.value)} />
-                                            {errors.email && <div className="text-xs text-red-500 mt-1">{errors.email}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1"><Phone size={14}/> Phone</label>
-                                            <input type="text" className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2" value={data.phone} onChange={e => setData('phone', e.target.value)} />
-                                            {errors.phone && <div className="text-xs text-red-500 mt-1">{errors.phone}</div>}
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Company Info */}
-                                <div className="mb-8 bg-white dark:bg-gray-800 shadow rounded-xl p-6">
-                                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Company Info</h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1"><Building2 size={14}/> Company</label>
-                                            <input type="text" className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2" value={data.company} onChange={e => setData('company', e.target.value)} />
-                                            {errors.company && <div className="text-xs text-red-500 mt-1">{errors.company}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1"><Globe size={14}/> Website</label>
-                                            <input type="text" className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2" value={data.website} onChange={e => setData('website', e.target.value)} />
-                                            {errors.website && <div className="text-xs text-red-500 mt-1">{errors.website}</div>}
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Lead Details */}
-                                <div className="mb-8 bg-white dark:bg-gray-800 shadow rounded-xl p-6">
-                                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Lead Details</h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1"><CircleDot size={14}/> Status</label>
-                                            <select className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2" value={data.status} onChange={e => setData('status', e.target.value)}>
-                                                {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                                            </select>
-                                            {errors.status && <div className="text-xs text-red-500 mt-1">{errors.status}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1"><Share2 size={14}/> Source</label>
-                                            <select className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2" value={data.source} onChange={e => setData('source', e.target.value)}>
-                                                {sourceOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                                            </select>
-                                            {errors.source && <div className="text-xs text-red-500 mt-1">{errors.source}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Deal Value</label>
-                                            <input
-                                                type="number"
-                                                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2 dark:text-white"
-                                                value={data.deal_value}
-                                                onChange={e => setData('deal_value', e.target.value)}
-                                                placeholder="e.g. 10000"
-                                                min="0"
-                                            />
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">Potential deal value in your currency</span>
-                                            {errors.deal_value && <div className="text-red-500 text-xs mt-1">{errors.deal_value}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Expected Close Date</label>
-                                            <input
-                                                type="date"
-                                                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2 dark:text-white"
-                                                value={data.expected_close}
-                                                onChange={e => setData('expected_close', e.target.value)}
-                                            />
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">When do you expect to close this lead?</span>
-                                            {errors.expected_close && <div className="text-red-500 text-xs mt-1">{errors.expected_close}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Lead Score</label>
-                                            <input
-                                                type="number"
-                                                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2 dark:text-white"
-                                                value={data.lead_score}
-                                                onChange={e => setData('lead_score', e.target.value)}
-                                                placeholder="e.g. 80"
-                                                min="0"
-                                                max="100"
-                                            />
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">How qualified is this lead? (0-100)</span>
-                                            {errors.lead_score && <div className="text-red-500 text-xs mt-1">{errors.lead_score}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Lead Owner</label>
-                                            <select
-                                                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2 dark:text-white"
-                                                value={data.lead_owner}
-                                                onChange={e => setData('lead_owner', e.target.value)}
-                                            >
-                                                <option value="">Select owner</option>
-                                                <option value="user1">User 1</option>
-                                                <option value="user2">User 2</option>
-                                            </select>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">Who is responsible for this lead?</span>
-                                            {errors.lead_owner && <div className="text-red-500 text-xs mt-1">{errors.lead_owner}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
-                                            <select
-                                                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2 dark:text-white"
-                                                value={data.priority}
-                                                onChange={e => setData('priority', e.target.value)}
-                                            >
-                                                <option value="Low">Low</option>
-                                                <option value="Medium">Medium</option>
-                                                <option value="High">High</option>
-                                            </select>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">How urgent is this lead?</span>
-                                            {errors.priority && <div className="text-red-500 text-xs mt-1">{errors.priority}</div>}
-                                        </div>
-                                        <div className="sm:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Attachments</label>
-                                            <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-700 transition shadow mb-2">
-                                                <input
-                                                    type="file"
-                                                    className="hidden"
-                                                    multiple
-                                                    onChange={e => setData('attachments', Array.from(e.target.files))}
-                                                />
-                                                Choose Files
-                                            </label>
-                                            {data.attachments && data.attachments.length > 0 && (
-                                                <ul className="text-xs text-gray-700 dark:text-gray-200 mb-1">
-                                                    {data.attachments.map((file, idx) => (
-                                                        <li key={idx} className="truncate">{file.name}</li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">Upload related files (optional)</span>
-                                            {errors.attachments && <div className="text-red-500 text-xs mt-1">{errors.attachments}</div>}
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Lead Profile */}
-                                <div className="mb-8 bg-white dark:bg-gray-800 shadow rounded-xl p-6">
-                                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                        Lead Profile
-                                    </h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1"><BadgeInfo size={16}/> Title</label>
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50 px-3 py-2 dark:text-white"
-                                                value={data.title}
-                                                onChange={e => setData('title', e.target.value)}
-                                            />
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+                                            <input type="text" className="w-full border px-3 py-2 rounded" value={data.title} onChange={e => setData('title', e.target.value)} />
                                             {errors.title && <div className="text-red-500 text-xs mt-1">{errors.title}</div>}
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1"><Briefcase size={16}/> Positions</label>
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50 px-3 py-2 dark:text-white"
-                                                value={data.positions}
-                                                onChange={e => setData('positions', e.target.value)}
-                                                placeholder="e.g. CEO, Founder"
-                                            />
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Positions</label>
+                                            <input type="text" className="w-full border px-3 py-2 rounded" value={data.positions} onChange={e => setData('positions', e.target.value)} />
                                             {errors.positions && <div className="text-red-500 text-xs mt-1">{errors.positions}</div>}
                                         </div>
-                                    </div>
-                                    <div className="mt-4">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1"><Tag size={16}/> Tags</label>
-                                        <div className="flex flex-wrap gap-2 mt-1 mb-2">
-                                            {data.tags.map((tag, idx) => (
-                                                <span key={idx} className="inline-flex items-center bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full text-xs font-medium">
-                                                    {tag}
-                                                    <button type="button" className="ml-1 focus:outline-none" onClick={() => setData('tags', data.tags.filter((_, i) => i !== idx))}>
-                                                        <X size={14} />
-                                                    </button>
-                                                </span>
-                                            ))}
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Tags (comma separated)</label>
+                                            <input type="text" className="w-full border px-3 py-2 rounded" value={data.tags} onChange={e => setData('tags', e.target.value)} />
+                                            {errors.tags && <div className="text-red-500 text-xs mt-1">{errors.tags}</div>}
                                         </div>
-                                        <input
-                                            ref={tagInputRef}
-                                            type="text"
-                                            className="block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50 px-3 py-2 dark:text-white"
-                                            value={tagInput}
-                                            onChange={e => setTagInput(e.target.value)}
-                                            onKeyDown={e => {
-                                                if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
-                                                    e.preventDefault();
-                                                    if (!data.tags.includes(tagInput.trim())) {
-                                                        setData('tags', [...data.tags, tagInput.trim()]);
-                                                    }
-                                                    setTagInput('');
-                                                } else if (e.key === 'Backspace' && !tagInput && data.tags.length) {
-                                                    setData('tags', data.tags.slice(0, -1));
-                                                }
-                                            }}
-                                            placeholder="Type and press Enter or comma..."
-                                        />
-                                        {errors.tags && <div className="text-red-500 text-xs mt-1">{errors.tags}</div>}
-                                    </div>
-                                </div>
-                                {/* Notes */}
-                                <div className="mb-8 bg-white dark:bg-gray-800 shadow rounded-xl p-6">
-                                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2"><StickyNote size={18}/> Notes</h2>
-                                    <textarea className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 px-3 py-2 min-h-[80px] transition" value={data.notes} onChange={e => setData('notes', e.target.value)} placeholder="Add any notes about this lead..." />
-                                    {errors.notes && <div className="text-xs text-red-500 mt-1">{errors.notes}</div>}
-                                </div>
-                                <div className="flex justify-end gap-2 mt-6">
-                                    <button type="submit" disabled={processing} className="inline-flex items-center px-5 py-2 bg-blue-600 text-white rounded-md text-sm font-semibold hover:bg-blue-700 transition shadow disabled:opacity-60">
-                                        <Save size={16} className="mr-2" /> Save Lead
-                                    </button>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                                            <select className="w-full border px-3 py-2 rounded" value={data.status} onChange={e => setData('status', e.target.value)}>
+                                                {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                            </select>
+                                            {errors.status && <div className="text-red-500 text-xs mt-1">{errors.status}</div>}
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Source</label>
+                                            <select className="w-full border px-3 py-2 rounded" value={data.source} onChange={e => setData('source', e.target.value)}>
+                                                {sourceOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                            </select>
+                                            {errors.source && <div className="text-red-500 text-xs mt-1">{errors.source}</div>}
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Deal Value</label>
+                                            <input type="number" className="w-full border px-3 py-2 rounded" value={data.deal_value} onChange={e => setData('deal_value', e.target.value)} min="0" />
+                                            {errors.deal_value && <div className="text-red-500 text-xs mt-1">{errors.deal_value}</div>}
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Expected Close Date</label>
+                                            <input type="date" className="w-full border px-3 py-2 rounded" value={data.expected_close} onChange={e => setData('expected_close', e.target.value)} />
+                                            {errors.expected_close && <div className="text-red-500 text-xs mt-1">{errors.expected_close}</div>}
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Lead Score</label>
+                                            <input type="number" className="w-full border px-3 py-2 rounded" value={data.lead_score} onChange={e => setData('lead_score', e.target.value)} min="0" max="100" />
+                                            {errors.lead_score && <div className="text-red-500 text-xs mt-1">{errors.lead_score}</div>}
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Lead Owner</label>
+                                            <input type="text" className="w-full border px-3 py-2 rounded" value={data.lead_owner} onChange={e => setData('lead_owner', e.target.value)} />
+                                            {errors.lead_owner && <div className="text-red-500 text-xs mt-1">{errors.lead_owner}</div>}
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
+                                            <select className="w-full border px-3 py-2 rounded" value={data.priority} onChange={e => setData('priority', e.target.value)}>
+                                                <option value="High">High</option>
+                                                <option value="Medium">Medium</option>
+                                                <option value="Low">Low</option>
+                                            </select>
+                                            {errors.priority && <div className="text-red-500 text-xs mt-1">{errors.priority}</div>}
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+                                            <textarea className="w-full border px-3 py-2 rounded" value={data.notes} onChange={e => setData('notes', e.target.value)} />
+                                            {errors.notes && <div className="text-red-500 text-xs mt-1">{errors.notes}</div>}
+                                        </div>
+                                    </>
+                                )}
+                                {tab === 'company' && (
+                                    <>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Select Existing Company</label>
+                                            <select className="w-full border px-3 py-2 rounded" value={data.company_id} onChange={e => setData('company_id', e.target.value)}>
+                                                <option value="">Select a company</option>
+                                                {companies.map(company => (
+                                                    <option key={company.id} value={company.id}>{company.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center my-2">
+                                            <span className="text-xs text-gray-500 mr-2">or</span>
+                                            <button type="button" className="text-blue-600 underline text-xs" onClick={() => setShowNewCompany(v => !v)}>{showNewCompany ? 'Cancel' : 'Add New Company'}</button>
+                                        </div>
+                                        {showNewCompany && (
+                                            <>
+                                                <div className="mb-4">
+                                                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Company Name</label>
+                                                    <input type="text" className="w-full border px-3 py-2 rounded" value={data.company_name} onChange={e => setData('company_name', e.target.value)} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Website</label>
+                                                    <input type="text" className="w-full border px-3 py-2 rounded" value={data.company_website} onChange={e => setData('company_website', e.target.value)} />
+                                                </div>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                                {tab === 'contact' && (
+                                    <>
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Select Existing Contact</label>
+                                            <select className="w-full border px-3 py-2 rounded" value={data.contact_id} onChange={e => setData('contact_id', e.target.value)}>
+                                                <option value="">Select a contact</option>
+                                                {contacts.map(contact => (
+                                                    <option key={contact.id} value={contact.id}>{contact.name} ({contact.email})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center my-2">
+                                            <span className="text-xs text-gray-500 mr-2">or</span>
+                                            <button type="button" className="text-blue-600 underline text-xs" onClick={() => setShowNewContact(v => !v)}>{showNewContact ? 'Cancel' : 'Add New Contact'}</button>
+                                        </div>
+                                        {showNewContact && (
+                                            <>
+                                                <div className="mb-4">
+                                                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Contact Name</label>
+                                                    <input type="text" className="w-full border px-3 py-2 rounded" value={data.contact_name} onChange={e => setData('contact_name', e.target.value)} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                                                    <input type="email" className="w-full border px-3 py-2 rounded" value={data.contact_email} onChange={e => setData('contact_email', e.target.value)} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                                                    <input type="text" className="w-full border px-3 py-2 rounded" value={data.contact_phone} onChange={e => setData('contact_phone', e.target.value)} />
+                                                </div>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                                <div className="flex justify-end space-x-2 mt-6">
+                                    <Link href={route('leads.index')} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</Link>
+                                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled={processing}>{processing ? 'Saving...' : 'Save Lead'}</button>
                                 </div>
                             </form>
                         </div>
@@ -291,4 +216,4 @@ export default function LeadCreate({ user }) {
             </div>
         </>
     );
-} 
+}
