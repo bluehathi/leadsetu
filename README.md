@@ -53,6 +53,12 @@ A modern SaaS lead management application built with Laravel (PHP) and React (In
    ```
 5. Access the app at `http://localhost:8000`.
 
+## Authentication & Registration
+- Users can register via `/register` (modern React UI).
+- Upon registration, a new workspace is automatically created for the user. The user is assigned as the owner and linked to the workspace via `workspace_id`.
+- Registration form requires name, email, password, and password confirmation.
+- After registration, the user is logged in and redirected to their dashboard.
+
 ## Workspace Model
 - Only includes: `id`, `name`, `description`, timestamps.
 - No contact info fields (email, phone, address, logo).
