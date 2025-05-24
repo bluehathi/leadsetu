@@ -23,7 +23,7 @@ class LeadFactory extends Factory
             'score' => 50,
             'qualification' => 'Warm',
             'user_id' => 1,
-            'organization_id' => 1,
+            'workspace_id' => 1,
             'title' => $this->faker->jobTitle(),
             'positions' => $this->faker->word(),
             'tags' => ['demo'],
@@ -35,4 +35,4 @@ class LeadFactory extends Factory
             'attachments' => [],
         ];
     }
-} 
+}

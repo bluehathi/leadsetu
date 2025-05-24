@@ -3,7 +3,7 @@ import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import Sidebar from '@/Components/parts/Sidebar';
 import { Plus, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
-export default function OrganizationsIndex({ user, organizations }) {
+export default function WorkspacesIndex({ user, workspaces }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         description: '',
@@ -16,7 +16,7 @@ export default function OrganizationsIndex({ user, organizations }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('organizations.store'), {
+        post(route('workspaces.store'), {
             onSuccess: () => {
                 reset();
                 closeModal();
@@ -26,7 +26,7 @@ export default function OrganizationsIndex({ user, organizations }) {
 
     return (
         <>
-            <Head title="Organizations" />
+            <Head title="Workspaces" />
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
                 <Sidebar user={user} />
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
@@ -34,14 +34,14 @@ export default function OrganizationsIndex({ user, organizations }) {
                         <div className="py-8 px-4 sm:px-6 lg:px-8">
                             <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
-                                    Manage Organizations
+                                    Manage Workspaces
                                 </h1>
                                 <button
                                     onClick={openModal}
                                     className="inline-flex cursor-pointer items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
                                 >
                                     <Plus size={18} className="mr-2 -ml-1" />
-                                    Add Organization
+                                    Add Workspace
                                 </button>
                             </div>
                             {flash.success && (
@@ -71,11 +71,11 @@ export default function OrganizationsIndex({ user, organizations }) {
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                            {organizations && organizations.length > 0 ? (
-                                                organizations.map(org => (
-                                                    <tr key={org.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{org.name}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{org.description || '-'}</td>
+                                            {workspaces && workspaces.length > 0 ? (
+                                                workspaces.map(ws => (
+                                                    <tr key={ws.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{ws.name}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{ws.description || '-'}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                                             <div className="flex items-center justify-center space-x-2">
                                                                 {/* Edit and Delete actions can be implemented here */}
@@ -92,7 +92,7 @@ export default function OrganizationsIndex({ user, organizations }) {
                                             ) : (
                                                 <tr>
                                                     <td colSpan="3" className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                                                        No organizations found.
+                                                        No workspaces found.
                                                     </td>
                                                 </tr>
                                             )}
@@ -104,12 +104,12 @@ export default function OrganizationsIndex({ user, organizations }) {
                     </main>
                 </div>
             </div>
-            {/* Modal for adding organization */}
+            {/* Modal for adding workspace */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6 sm:px-0 bg-[rgba(0,0,0,0.6)]">
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden w-full max-w-md transform transition-all" onClick={e => e.stopPropagation()}>
                         <form onSubmit={submit} className="p-6">
-                            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Add Organization</h2>
+                            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Add Workspace</h2>
                             <div className="mb-4">
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
                                 <input

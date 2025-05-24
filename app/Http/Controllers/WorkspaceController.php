@@ -12,10 +12,10 @@ class WorkspaceController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:view workspaces')->only(['index']);
-        $this->middleware('permission:create workspaces')->only(['store']);
-        $this->middleware('permission:edit workspaces')->only(['update']);
-        $this->middleware('permission:delete workspaces')->only(['destroy']);
+        // $this->middleware('permission:view workspaces')->only(['index']);
+        // $this->middleware('permission:create workspaces')->only(['store']);
+        // $this->middleware('permission:edit workspaces')->only(['update']);
+        // $this->middleware('permission:delete workspaces')->only(['destroy']);
     }
 
     public function index()

@@ -77,14 +77,14 @@ const Sidebar = ({ user }) => {
                                 {!collapsed && 'Leads'}
                             </Link>
                             <Link
-                                href={route('organizations.index')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('organizations.index')
+                                href={route('workspaces.index')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('workspaces.index')
                                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
                                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                                     }`}
                             >
-                                <Building className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('organizations.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Organizations'}
+                                <Building className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('workspaces.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
+                                {!collapsed && 'Workspaces'}
                             </Link>
 
                             {/* Access Control Section */}
@@ -123,14 +123,14 @@ const Sidebar = ({ user }) => {
                             {/* Settings Section */}
                             {!collapsed && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-5 mb-1">Settings</div>}
                             <Link
-                                href={route('organization.settings')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('organization.settings')
+                                href={route('workspace.settings')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('workspace.settings')
                                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
                                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                                     }`}
                             >
-                                <Building className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('organization.settings') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Organization Settings'}
+                                <Building className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('workspace.settings') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
+                                {!collapsed && 'Workspace Settings'}
                             </Link>
                             <Link
                                 href={route('profile')}
@@ -142,7 +142,7 @@ const Sidebar = ({ user }) => {
                                 <UserCog className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('profile') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
                                 {!collapsed && 'My Profile'}
                             </Link>
-                            <Link
+                            {/* <Link
                                 href="#"
                                 className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('settings.index')
                                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
@@ -151,7 +151,7 @@ const Sidebar = ({ user }) => {
                             >
                                 <Settings className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('settings.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
                                 {!collapsed && 'Settings'}
-                            </Link>
+                            </Link> */}
 
                             {/* Logs Section */}
                             {!collapsed && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-5 mb-1">Logs</div>}

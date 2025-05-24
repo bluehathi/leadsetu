@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Organization;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -15,7 +14,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('organization', 'roles')->get();
+        $users = User::with('workspace', 'roles')->get();
         return Inertia::render('Users/Index', [
             'users' => $users,
         ]);
@@ -54,7 +53,7 @@ class UserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => bcrypt($data['password']),
-            'organization_id' => auth()->user()->organization_id ?? null,
+            'workspace_id' => auth()->user()->workspace_id ?? null,
         ]);
         if (!empty($data['roles'])) {
             $user->syncRoles($data['roles']);
@@ -85,7 +84,7 @@ class UserController extends Controller
         $user->update([
             'name' => $data['name'],
             'email' => $data['email'],
-            'organization_id' => auth()->user()->organization_id ?? null,
+            'workspace_id' => auth()->user()->workspace_id ?? null,
         ]);
         if (!empty($data['password'])) {
             $user->update(['password' => bcrypt($data['password'])]);
@@ -138,34 +137,6 @@ class UserController extends Controller
         $user->update(['password' => Hash::make($data['password'])]);
         $this->logActivity('password_changed', $user, 'Password changed');
         return back()->with('success', 'Password changed successfully.');
-    }
-
-    // Organization settings view
-    public function organizationSettings()
-    {
-        $organization = Auth::user()->organization;
-        return Inertia::render('Organization/Settings', [
-            'organization' => $organization,
-        ]);
-    }
-
-    // Update organization settings (logo, contact info, etc.)
-    public function updateOrganizationSettings(Request $request)
-    {
-        $organization = Auth::user()->organization;
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'contact_email' => 'nullable|email',
-            'contact_phone' => 'nullable|string|max:50',
-            'address' => 'nullable|string|max:255',
-            'logo' => 'nullable|image|max:2048',
-        ]);
-        if ($request->hasFile('logo')) {
-            $logoPath = $request->file('logo')->store('logos', 'public');
-            $data['logo'] = $logoPath;
-        }
-        $organization->update($data);
-        return back()->with('success', 'Organization settings updated.');
     }
 
     public function activityLogs(Request $request)
@@ -240,5 +211,25 @@ class UserController extends Controller
             'success' => true,
             'settings' => $user->settings,
         ]);
+    }
+
+    public function workspaceSettings()
+    {
+        $workspace = auth()->user()->workspace;
+        return Inertia::render('Workspaces/Settings', [
+            'workspace' => $workspace,
+        ]);
+    }
+
+    public function updateWorkspaceSettings(Request $request)
+    {
+        $user = auth()->user();
+        $workspace = $user->workspace;
+        $data = $request->validate([
+            'name' => 'required|string|max:180',
+            'description' => 'nullable|string',
+        ]);
+        $workspace->update($data);
+        return redirect()->route('workspace.settings')->with('success', 'Workspace updated.');
     }
 }

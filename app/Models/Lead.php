@@ -21,7 +21,7 @@ class Lead extends Model
         'score',
         'qualification',
         'user_id',
-        'organization_id', // Add organization_id
+        'workspace_id', // Add workspace_id
         'title',
         'positions',
         'tags',
@@ -34,9 +34,9 @@ class Lead extends Model
     protected $table = 'leads';
     protected $primaryKey = 'id';
 
-    public function organization()
+    public function workspace()
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Workspace::class);
     }
 
     public function calculateScoreAndQualification()

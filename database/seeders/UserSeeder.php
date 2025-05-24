@@ -36,7 +36,7 @@ class UserSeeder extends Seeder
             ],
         ];
 
-        $organization = \App\Models\Organization::first();
+        $workspace = \App\Models\Workspace::first();
         foreach ($usersData as $userData) {
             $user = User::create([
                 'name' => $userData['name'],
@@ -46,7 +46,7 @@ class UserSeeder extends Seeder
                 'remember_token' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
-                'organization_id' => $organization ? $organization->id : null,
+                'workspace_id' => $workspace ? $workspace->id : null,
             ]);
             $user->syncRoles([$userData['role']]);
         }

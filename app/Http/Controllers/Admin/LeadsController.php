@@ -93,6 +93,16 @@ class LeadsController extends Controller
     }
 
     /**
+     * Show the form for creating a new lead.
+     */
+    public function create()
+    {
+        return Inertia::render('Leads/Create', [
+            'user' => Auth::user(),
+        ]);
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit(string $id)

@@ -14,8 +14,8 @@ class PermissionSeeder extends Seeder
             'view leads', 'create leads', 'edit leads', 'delete leads',
             // Users
             'view users', 'create users', 'edit users', 'delete users',
-            // Organizations
-            'view organizations', 'create organizations', 'edit organizations', 'delete organizations',
+            // Workspaces
+            'view workspaces', 'create workspaces', 'edit workspaces', 'delete workspaces',
             // Roles
             'view roles', 'create roles', 'edit roles', 'delete roles',
             // Permissions
@@ -29,4 +29,4 @@ class PermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
     }
-} 
+}

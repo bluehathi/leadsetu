@@ -7,7 +7,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Lead; // Import your Lead model
 use Faker\Factory as Faker; // Import Faker library
 use App\Models\ActivityLog;
-use App\Models\Organization;
+use App\Models\Workspace;
 
 class LeadSeeder extends Seeder
 {
@@ -26,9 +26,9 @@ class LeadSeeder extends Seeder
          // Number of leads to create
          $numberOfLeads = 50; // Adjust as needed
  
-         // Get the first organization
-         $organization = Organization::first();
-         $organizationId = $organization ? $organization->id : null;
+         // Get the first workspace
+         $workspace = Workspace::first();
+         $workspaceId = $workspace ? $workspace->id : null;
  
          // Loop to create multiple leads
          for ($i = 0; $i < $numberOfLeads; $i++) {
@@ -52,8 +52,8 @@ class LeadSeeder extends Seeder
                  'attachments' => json_encode([]),
                  'user_id' => 1,
                  'created_at'=> $faker->dateTimeBetween('-1 year', 'now'), // Random creation date within the last year
-                 'updated_at'=> now(),
-                 'organization_id' => $organizationId, // Use seeded org
+                 'updated_at' => now(),
+                 'workspace_id' => $workspaceId, // Use seeded workspace
              ]);
              $lead->calculateScoreAndQualification();
              ActivityLog::create([

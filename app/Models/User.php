@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
-use App\Models\Organization;
+use App\Models\Workspace;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -22,7 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'organization_id',
+        'workspace_id',
     ];
 
     /**
@@ -46,8 +46,8 @@ class User extends Authenticatable
         'settings' => 'array',
     ];
 
-    public function organization()
+    public function workspace()
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Workspace::class);
     }
 }

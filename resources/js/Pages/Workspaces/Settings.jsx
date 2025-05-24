@@ -1,20 +1,15 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import Sidebar from '@/Components/parts/Sidebar';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
-export default function OrganizationSettings({ organization }) {
-    // Defensive: fallback to empty object if organization is null/undefined
-    organization = organization || {};
-    const logoInput = useRef();
+export default function WorkspaceSettings({ workspace }) {
+    workspace = workspace || {};
     const { props } = usePage();
     const flash = props.flash || {};
     const [data, setData] = React.useState({
-        name: organization.name || '',
-        contact_email: organization.contact_email || '',
-        contact_phone: organization.contact_phone || '',
-        address: organization.address || '',
-        logo: null,
+        name: workspace.name || '',
+        description: workspace.description || '',
     });
     const [processing, setProcessing] = React.useState(false);
     const [errors, setErrors] = React.useState({});
@@ -28,13 +23,10 @@ export default function OrganizationSettings({ organization }) {
         e.preventDefault();
         setProcessing(true);
         setErrors({});
-        const formData = new FormData();
-        formData.append('name', data.name);
-        formData.append('contact_email', data.contact_email);
-        formData.append('contact_phone', data.contact_phone);
-        formData.append('address', data.address);
-        if (data.logo) formData.append('logo', data.logo);
-        await window.axios.post(route('organization.settings.update'), formData)
+        await window.axios.post(route('workspace.settings.update'), {
+            name: data.name,
+            description: data.description,
+        })
             .then(() => window.Inertia.visit(window.location.href, { only: ['flash'] }))
             .catch(err => setErrors(err.response?.data?.errors || {}))
             .finally(() => setProcessing(false));
@@ -42,15 +34,15 @@ export default function OrganizationSettings({ organization }) {
 
     return (
         <>
-            <Head title="Organization Settings" />
+            <Head title="Workspace Settings" />
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
-                <Sidebar user={organization.user} />
+                <Sidebar user={workspace.user} />
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
                     <main className="flex-1 relative overflow-y-auto focus:outline-none">
                         <div className="py-8 px-4 sm:px-6 lg:px-8">
                             <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
-                                    Organization Settings
+                                    Workspace Settings
                                 </h1>
                             </div>
                             {flash.success && (
@@ -70,9 +62,9 @@ export default function OrganizationSettings({ organization }) {
                                 </div>
                             )}
                             <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden p-6">
-                                <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
+                                <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
-                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Organization Name</label>
+                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Workspace Name</label>
                                         <input
                                             type="text"
                                             className={inputClass}
@@ -82,50 +74,13 @@ export default function OrganizationSettings({ organization }) {
                                         {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
                                     </div>
                                     <div>
-                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Contact Email</label>
-                                        <input
-                                            type="email"
+                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Description</label>
+                                        <textarea
                                             className={inputClass}
-                                            value={data.contact_email}
-                                            onChange={e => setData({ ...data, contact_email: e.target.value })}
+                                            value={data.description}
+                                            onChange={e => setData({ ...data, description: e.target.value })}
                                         />
-                                        {errors.contact_email && <div className="text-red-500 text-sm mt-1">{errors.contact_email}</div>}
-                                    </div>
-                                    <div>
-                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Contact Phone</label>
-                                        <input
-                                            type="text"
-                                            className={inputClass}
-                                            value={data.contact_phone}
-                                            onChange={e => setData({ ...data, contact_phone: e.target.value })}
-                                        />
-                                        {errors.contact_phone && <div className="text-red-500 text-sm mt-1">{errors.contact_phone}</div>}
-                                    </div>
-                                    <div>
-                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Address</label>
-                                        <input
-                                            type="text"
-                                            className={inputClass}
-                                            value={data.address}
-                                            onChange={e => setData({ ...data, address: e.target.value })}
-                                        />
-                                        {errors.address && <div className="text-red-500 text-sm mt-1">{errors.address}</div>}
-                                    </div>
-                                    <div>
-                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Logo</label>
-                                        <input
-                                            type="file"
-                                            className={inputClass}
-                                            ref={logoInput}
-                                            onChange={e => setData({ ...data, logo: e.target.files[0] })}
-                                            accept="image/*"
-                                        />
-                                        {organization.logo && (
-                                            <div className="mt-2">
-                                                <img src={organization.logo.startsWith('http') ? organization.logo : `/storage/${organization.logo}`} alt="Logo" className="h-16" />
-                                            </div>
-                                        )}
-                                        {errors.logo && <div className="text-red-500 text-sm mt-1">{errors.logo}</div>}
+                                        {errors.description && <div className="text-red-500 text-sm mt-1">{errors.description}</div>}
                                     </div>
                                     <button type="submit" className={buttonClass} disabled={processing}>Update Settings</button>
                                 </form>

@@ -9,6 +9,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\WorkspaceController;
 
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -35,7 +37,7 @@ Route::get('/dashboard', function () {
 
 Route::resource('/leads', LeadsController::class)->middleware(['auth', 'verified']);
 //Route::get('/leads/create', [LeadsController::class, 'create'])->middleware(['auth', 'verified'])->name('leads.create');
-Route::resource('/organizations', \App\Http\Controllers\OrganizationController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'update', 'destroy']);
+Route::resource('/workspaces', WorkspaceController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'update', 'destroy']);
 Route::resource('/roles', RoleController::class)->middleware(['auth', 'verified'])->except(['show', 'create']);
 Route::resource('/permissions', PermissionController::class)->middleware(['auth', 'verified'])->except(['show', 'edit', 'create']);
 Route::resource('/users', UserController::class)->middleware(['auth', 'verified']);
@@ -46,10 +48,10 @@ Route::get('/profile', [UserController::class, 'profile'])->name('profile')->mid
 Route::post('/profile', [UserController::class, 'updateProfile'])->name('profile.update')->middleware(['auth', 'verified']);
 // Change password
 Route::post('/profile/password', [UserController::class, 'changePassword'])->name('profile.password')->middleware(['auth', 'verified']);
-// Organization settings view
-Route::get('/organization/settings', [UserController::class, 'organizationSettings'])->name('organization.settings')->middleware(['auth', 'verified']);
-// Update organization settings
-Route::post('/organization/settings', [UserController::class, 'updateOrganizationSettings'])->name('organization.settings.update')->middleware(['auth', 'verified']);
+// Workspace settings view
+Route::get('/workspace/settings', [UserController::class, 'workspaceSettings'])->name('workspace.settings')->middleware(['auth', 'verified']);
+// Update workspace settings
+Route::post('/workspace/settings', [UserController::class, 'updateWorkspaceSettings'])->name('workspace.settings.update')->middleware(['auth', 'verified']);
 // Activity Logs
 Route::get('/activity-logs', [UserController::class, 'activityLogs'])->name('activity.logs')->middleware(['auth', 'verified']);
 
@@ -61,3 +63,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create')->middleware(['auth', 'verified']);
 
+Route::resource('contacts', ContactController::class);

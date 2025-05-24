@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Lead;
 use App\Models\ActivityLog;
 use App\Models\User;
-use App\Models\Organization;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Http\Request;

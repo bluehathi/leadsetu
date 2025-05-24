@@ -3,21 +3,21 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Models\Organization;
+use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class OrganizationTest extends TestCase
+class WorkspaceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_create_and_update_organization()
+    public function test_user_can_create_and_update_workspace()
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $org = Organization::factory()->create(['name' => 'Org1']);
-        $this->put("/organizations/{$org->id}", ['name' => 'Org1 Updated'])
+        $workspace = Workspace::factory()->create(['name' => 'Workspace1']);
+        $this->put("/workspaces/{$workspace->id}", ['name' => 'Workspace1 Updated'])
             ->assertRedirect();
-        $this->assertDatabaseHas('organizations', ['id' => $org->id, 'name' => 'Org1 Updated']);
+        $this->assertDatabaseHas('workspaces', ['id' => $workspace->id, 'name' => 'Workspace1 Updated']);
     }
-} 
+}

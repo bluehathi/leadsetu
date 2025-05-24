@@ -12,10 +12,7 @@ class Workspace extends Model
     protected $fillable = [
         'name',
         'description',
-        'contact_email',
-        'contact_phone',
-        'address',
-        'logo',
+        
     ];
     protected $table = 'workspaces';
     protected $primaryKey = 'id';

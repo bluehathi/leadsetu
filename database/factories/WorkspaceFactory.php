@@ -14,10 +14,6 @@ class WorkspaceFactory extends Factory
         return [
             'name' => $this->faker->company(),
             'description' => $this->faker->catchPhrase(),
-            'contact_email' => $this->faker->unique()->safeEmail(),
-            'contact_phone' => $this->faker->phoneNumber(),
-            'address' => $this->faker->address(),
-            'logo' => null,
         ];
     }
 }

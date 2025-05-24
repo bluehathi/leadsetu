@@ -25,7 +25,7 @@ class LeadFeatureTest extends TestCase
             'score' => 50,
             'qualification' => 'Warm',
             'user_id' => $user->id,
-            'organization_id' => 1,
+            'workspace_id' => 1,
             'title' => 'Manager',
             'positions' => 'Sales',
             'tags' => ['demo'],
@@ -43,4 +43,4 @@ class LeadFeatureTest extends TestCase
             'email' => 'pestlead@example.com',
         ]);
     }
-} 
+}

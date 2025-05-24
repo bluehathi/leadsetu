@@ -1,47 +1,63 @@
-# LeadSetu CRM
+# LeadSetu SaaS Lead Management Platform
 
-A modern SaaS CRM built with Laravel (PHP) and React (Inertia.js).
+A modern SaaS lead management application built with Laravel (PHP) and React (Inertia.js).
 
 ## Features
-- Leads management with advanced filtering, sorting, and user preferences
-- User authentication, roles, and permissions
-- Organization management (Add Organization button currently commented out)
-- Dashboard with stats and charts
-- User settings persisted in the database
-- Modern UI/UX with Inertia.js and Tailwind CSS
+- **Workspace-based Multi-Tenancy:**
+  - All data is scoped to "workspaces" (formerly "organizations").
+  - Users, leads, and permissions are managed per workspace.
+- **Role & Permission Management:**
+  - Uses Spatie Laravel Permission for roles/permissions.
+  - UI and backend enforce access control everywhere.
+- **Leads Management:**
+  - Create, view, edit, and delete leads scoped to your workspace.
+  - Lead fields: name, email, phone, company, website, notes, status, source, etc.
+- **User Management:**
+  - Invite, edit, and remove users from your workspace.
+  - Assign roles and permissions per user.
+- **Workspace Management:**
+  - Create and manage workspaces.
+  - Edit workspace name and description (no contact info fields).
+- **Activity Logs:**
+  - Track key actions (user created, lead created, etc.)
+- **Modern React UI:**
+  - Sidebar navigation with permission-aware links.
+  - Responsive, dark mode support.
+- **Authentication:**
+  - Laravel Breeze/Jetstream style auth (login, register, password reset).
 
-## Setup
+## Tech Stack
+- **Backend:** Laravel 10+, Spatie Permission
+- **Frontend:** React (via Inertia.js), Tailwind CSS
+- **Database:** MySQL or PostgreSQL
 
-1. **Clone the repository**
-2. **Install PHP dependencies**
-   ```bash
+## Setup & Development
+1. Clone the repo and install dependencies:
+   ```sh
    composer install
-   ```
-3. **Install JS dependencies**
-   ```bash
    npm install
    ```
-4. **Copy and configure your .env**
-   ```bash
-   cp .env.example .env
-   # Edit .env for your DB and mail settings
-   ```
-5. **Generate app key**
-   ```bash
-   php artisan key:generate
-   ```
-6. **Run migrations and seeders**
-   ```bash
+2. Copy `.env.example` to `.env` and set your DB credentials.
+3. Run migrations and seeders:
+   ```sh
    php artisan migrate:fresh --seed
    ```
-7. **Start the dev servers**
-   ```bash
+4. Start the dev servers:
+   ```sh
    php artisan serve
    npm run dev
    ```
+5. Access the app at `http://localhost:8000`.
+
+## Workspace Model
+- Only includes: `id`, `name`, `description`, timestamps.
+- No contact info fields (email, phone, address, logo).
+
+## Permissions & Roles
+- All main entities (Leads, Users, Roles, Permissions, Workspaces) are protected by role/permission middleware.
+- UI elements are shown/hidden based on user permissions.
 
 ## Testing
-
 - **PHPUnit** is used for all feature and unit tests.
 - Run all tests:
   ```bash
@@ -51,17 +67,14 @@ A modern SaaS CRM built with Laravel (PHP) and React (Inertia.js).
   ```bash
   php artisan dusk
   ```
-- Pest is **not** used due to version conflicts with current dependencies.
-
-## Notes
-- The "Add Organization" button is currently commented out in the UI for temporary reasons. To re-enable, uncomment it in `resources/js/Pages/Organizations/Index.jsx`.
-- If you add new required fields to leads or organizations, update the factories and tests accordingly.
-- User settings (such as visible columns) are persisted in the database and loaded on login.
 
 ## Troubleshooting
 - If you see errors about missing factories, ensure your models use the `HasFactory` trait and you have the appropriate factory files in `database/factories/`.
 - If you see validation errors in tests, make sure all required fields are provided in the test data.
 - For Dusk, make sure ChromeDriver is installed and running.
+
+## Contributing
+PRs are welcome! Please follow PSR-12 and standard React best practices.
 
 ## License
 MIT

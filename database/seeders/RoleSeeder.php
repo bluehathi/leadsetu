@@ -15,17 +15,17 @@ class RoleSeeder extends Seeder
             'Admin' => Permission::pluck('name')->toArray(), // All permissions
             'Manager' => [
                 'view leads', 'create leads', 'edit leads', 'delete leads',
-                'view users', 'view organizations',
+                'view users', 'view workspaces',
                 'view roles', 'view permissions',
                 'view activity logs', 'view dashboard',
             ],
             'Sales' => [
                 'view leads', 'create leads', 'edit leads',
-                'view organizations',
+                'view workspaces',
                 'view dashboard',
             ],
             'Viewer' => [
-                'view leads', 'view users', 'view organizations', 'view roles', 'view permissions', 'view activity logs', 'view dashboard',
+                'view leads', 'view users', 'view workspaces', 'view roles', 'view permissions', 'view activity logs', 'view dashboard',
             ],
         ];
 
@@ -34,4 +34,4 @@ class RoleSeeder extends Seeder
             $role->syncPermissions($perms);
         }
     }
-} 
+}
