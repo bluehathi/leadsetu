@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ContactController;
 use App\Http\Controllers\Admin\WorkspaceController;
+use App\Http\Controllers\Admin\CompanyController;
 
 
 // Auth routes
@@ -29,6 +30,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::resource('/permissions', App\Http\Controllers\Admin\PermissionController::class)->except(['show', 'edit', 'create']);
     Route::resource('/users', App\Http\Controllers\Admin\UserController::class);
     Route::resource('/contacts', App\Http\Controllers\Admin\ContactController::class);
+    Route::resource('/companies', App\Http\Controllers\Admin\CompanyController::class);
 
     // User profile view
     Route::get('/profile', [App\Http\Controllers\Admin\UserController::class, 'profile'])->name('profile');

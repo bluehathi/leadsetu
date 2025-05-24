@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             WorkspaceOwnerSeeder::class,
             LeadSeeder::class,
+            CompanySeeder::class,
         ]);
     }
 }

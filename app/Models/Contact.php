@@ -17,11 +17,17 @@ class Contact extends Model
         'workspace_id',
         'title',
         'notes',
+        'company_id',
     ];
 
     // If you have workspaces and want to link contacts to them:
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 }

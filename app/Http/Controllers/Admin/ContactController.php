@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 
 use App\Models\Contact;
-use App\Models\Organization; // If using organization association
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -13,8 +13,7 @@ class ContactController extends Controller
 {
     public function index()
     {
-        $contacts = Contact::with('organization') // Load organization if needed
-            ->paginate(10); // Adjust pagination as needed
+        $contacts = Contact::with('company')->paginate(10);
 
         return Inertia::render('Contacts/Index', [
             'contacts' => $contacts,
@@ -23,10 +22,10 @@ class ContactController extends Controller
 
     public function create()
     {
-        $organizations = Organization::all(); // If using organization association
+        $companies = Company::all();
 
         return Inertia::render('Contacts/Create', [
-            'organizations' => $organizations, // Pass to the create view
+            'companies' => $companies,
         ]);
     }
 
@@ -36,7 +35,7 @@ class ContactController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'organization_id' => 'nullable|exists:organizations,id', // Validate if needed
+            'company_id' => 'nullable|exists:companies,id|unique:contacts,company_id',
             'title' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
@@ -56,11 +55,11 @@ class ContactController extends Controller
 
     public function edit(Contact $contact)
     {
-        $organizations = Organization::all(); // If using organization association
+        $companies = Company::all();
 
         return Inertia::render('Contacts/Edit', [
             'contact' => $contact,
-            'organizations' => $organizations, // Pass to the edit view
+            'companies' => $companies,
         ]);
     }
 
@@ -70,7 +69,7 @@ class ContactController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'organization_id' => 'nullable|exists:organizations,id', // Validate if needed
+            'company_id' => 'nullable|exists:companies,id|unique:contacts,company_id,' . $contact->id,
             'title' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);

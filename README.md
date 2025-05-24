@@ -73,6 +73,25 @@ A modern SaaS lead management application built with Laravel (PHP) and React (In
 - UI elements are shown/hidden based on user permissions.
 - `workspace_owner` permission is required for workspace management.
 
+## Company Management
+- Companies are managed per workspace.
+- Each company has: name, description, website, workspace_id.
+- Companies can be created, edited, and deleted from the Companies section (admin only).
+- Companies will be used for associating leads in the future.
+- Includes model, migration, factory, seeder, controller, and React CRUD UI.
+
+## Contacts & Companies Relationship
+- Each contact can be linked to exactly one company (one-to-one).
+- Each company can have at most one contact associated.
+- The contact creation and edit forms allow selecting a company from the list.
+- Backend enforces uniqueness of company_id in contacts.
+- Companies are managed per workspace and can be created/edited from the Companies section.
+
+## Contacts Management
+- Create, view, edit, and delete contacts.
+- Each contact can be assigned to a company (unique per company).
+- UI and backend enforce the one-to-one company-contact relationship.
+
 ## Testing
 - **PHPUnit** is used for all feature and unit tests.
 - Run all tests:

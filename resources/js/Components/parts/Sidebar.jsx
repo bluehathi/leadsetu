@@ -77,6 +77,16 @@ const Sidebar = ({ user }) => {
                                 {!collapsed && 'Leads'}
                             </Link>
                             <Link
+                                href={route('contacts.index')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('contacts.index')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <Users className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('contacts.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
+                                {!collapsed && 'Contacts'}
+                            </Link>
+                            <Link
                                 href={route('workspaces.index')}
                                 className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('workspaces.index')
                                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
@@ -85,6 +95,16 @@ const Sidebar = ({ user }) => {
                             >
                                 <Building className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('workspaces.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
                                 {!collapsed && 'Workspaces'}
+                            </Link>
+                            <Link
+                                href={route('companies.index')}
+                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('companies.index')
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <Building className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('companies.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
+                                {!collapsed && 'Companies'}
                             </Link>
 
                             {/* Access Control Section */}
