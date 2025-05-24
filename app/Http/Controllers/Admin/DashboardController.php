@@ -33,7 +33,7 @@ class DashboardController extends Controller
         $conversionPerMonth = [];
         $months = collect(range(0, 5))->map(function ($i) {
             return now()->subMonths($i)->format('Y-m');
-        })->reverse();
+        })->reverse()->toArray();
         foreach ($months as $month) {
             $leadsPerMonth[] = Lead::whereYear('created_at', substr($month, 0, 4))
                 ->whereMonth('created_at', substr($month, 5, 2))

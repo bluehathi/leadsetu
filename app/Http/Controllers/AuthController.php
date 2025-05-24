@@ -9,6 +9,7 @@ use Illuminate\Validation\ValidationException; // For handling validation errors
 use Inertia\Inertia; // Inertia facade for rendering views
 use App\Http\Controllers\Controller; // Base controller
 use App\Models\User; // User model
+use App\Models\Workspace;
 
 class AuthController extends Controller
 {
@@ -120,10 +121,18 @@ class AuthController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
+        $workspace_data = [
+            'name' => $data['name'] . "'s Workspace",   // Default workspace name
+            'description' => 'Default workspace description', // Default description
+        ];
+
+        $workspace = Workspace::create($workspace_data); // Create a new workspace
+
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => bcrypt($data['password']),
+            'workspace_id' => $workspace->id, // Associate the user with the workspace
         ]);
 
         Auth::login($user);

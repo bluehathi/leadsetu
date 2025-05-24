@@ -157,7 +157,7 @@ export default function LeadsIndex({ user, leads }) {
     // Fetch user settings on mount
     React.useEffect(() => {
         let mounted = true;
-        axios.get('/user/settings')
+        axios.get('/admin/user/settings')
             .then(res => {
                 if (mounted && res.data.settings && res.data.settings.leads_table_columns) {
                     setShowColumns(res.data.settings.leads_table_columns);
@@ -171,7 +171,7 @@ export default function LeadsIndex({ user, leads }) {
     // Persist column settings when changed
     React.useEffect(() => {
         if (!settingsLoading) {
-            axios.post('/user/settings', { settings: { leads_table_columns: showColumns } });
+            axios.post('user/settings', { settings: { leads_table_columns: showColumns } });
         }
     }, [showColumns, settingsLoading]);
 

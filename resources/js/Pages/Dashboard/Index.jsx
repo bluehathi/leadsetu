@@ -29,10 +29,10 @@ ChartJS.register(
 // Dashboard Component
 export default function Dashboard({ user, stats = {}, charts = {}, recentActivity = [] }) {
     const [sidebarOpen, setSidebarOpen] = useState(false); // State for mobile sidebar toggle
-
+    console.log('Dashboard props:', { user, stats, charts, recentActivity });
     // Chart data
     const leadsBarData = {
-        labels: charts.months || [],
+        //labels: charts.months || [],
         datasets: [
             {
                 label: 'Leads per Month',
@@ -43,7 +43,7 @@ export default function Dashboard({ user, stats = {}, charts = {}, recentActivit
         ],
     };
     const conversionLineData = {
-        labels: charts.months || [],
+        //labels: charts.months || [],
         datasets: [
             {
                 label: 'Conversion Rate (%)',
@@ -133,11 +133,13 @@ export default function Dashboard({ user, stats = {}, charts = {}, recentActivit
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                                     <h4 className="text-md font-semibold text-gray-700 dark:text-gray-200 mb-4">Leads per Month</h4>
+                                    
                                     <Bar data={leadsBarData} options={{ responsive: true, plugins: { legend: { display: false } } }} height={220} />
-                                </div>
+                                    
+                                    </div>
                                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                                     <h4 className="text-md font-semibold text-gray-700 dark:text-gray-200 mb-4">Conversion Rate Trend</h4>
-                                    <Line data={conversionLineData} options={{ responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } }} height={220} />
+                                    <Line data={conversionLineData} options={{ responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } }} height={220} /> 
                                 </div>
                             </div>
 
