@@ -155,15 +155,10 @@ export default function Login({ canResetPassword, status, errors }) { // Receive
                     </form>
 
                     {/* Optional: Link to Sign Up Page */}
-                    {/* <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
                         Don't have an account?{' '}
-                        <Link
-                            href={route('register')} // Assuming you have a 'register' route
-                            className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            Sign up
-                        </Link>
-                    </p> */}
+                        <Link href={route('register')} className="text-blue-600 dark:text-blue-400 hover:underline">Create an account</Link>
+                    </p>
 
                 </div>
             </div>

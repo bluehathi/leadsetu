@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route as LaravelRoute; // Alias to avoid naming c
 use Illuminate\Validation\ValidationException; // For handling validation errors
 use Inertia\Inertia; // Inertia facade for rendering views
 use App\Http\Controllers\Controller; // Base controller
+use App\Models\User; // User model
 
 class AuthController extends Controller
 {
@@ -93,5 +94,41 @@ class AuthController extends Controller
 
         // Redirect the user to the home page (or login page)
         return redirect('/'); // Redirect to the root URL
+    }
+
+    /**
+     * Show the registration form (Inertia).
+     *
+     * @return \Inertia\Response
+     */
+    public function showRegistrationForm()
+    {
+        return Inertia::render('Auth/Register');
+    }
+
+    /**
+     * Handle registration request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function register(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => bcrypt($data['password']),
+        ]);
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard'));
     }
 }
