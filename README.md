@@ -5,7 +5,7 @@ LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, 
 ## Features
 - **Workspace-based Multi-Tenancy:**
   - All data is scoped to workspaces (formerly organizations).
-  - Users, leads, companies, contacts, and permissions are managed per workspace.
+  - Users, leads, contacts, companies, and permissions are managed per workspace.
 - **Leads Management:**
   - Create, view, edit, and delete leads scoped to your workspace.
   - Kanban and list views for leads.
@@ -29,7 +29,9 @@ LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, 
   - Sidebar, header, and dropdown menus with user/workspace info.
   - Built with Tailwind CSS and Lucide icons.
 - **Activity Logs:**
-  - Track key actions (user created, lead created, etc.)
+  - Track key actions (user created, lead created, contact created, company created, etc.)
+  - All activity logs are workspace-scoped and include workspace_id.
+  - Activity logs are recorded for all contact and company actions.
 - **Authentication:**
   - Modern registration, login, and password reset flows.
 
