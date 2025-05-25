@@ -13,6 +13,9 @@ class WorkSpaceScope implements Scope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $builder->where('workspace_id', auth()->user()->workspace_id);
+        // If the user is authenticated and has a workspace_id, apply the scope
+        if (auth()->check() && auth()->user()->workspace_id) {
+            $builder->where($model->getTable() . '.workspace_id', auth()->user()->workspace_id);
+        }
     }
 }

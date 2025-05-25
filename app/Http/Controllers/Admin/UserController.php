@@ -15,7 +15,9 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('workspace', 'roles')->get();
+        $users = User::with('workspace', 'roles')
+        ->where('workspace_id', auth()->user()->workspace_id)
+        ->get();
         return Inertia::render('Users/Index', [
             'users' => $users,
         ]);
