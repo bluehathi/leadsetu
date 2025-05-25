@@ -46,6 +46,11 @@ class User extends Authenticatable
         'settings' => 'array',
     ];
 
+    public function scopeRelatedToWorkspace($query)
+    {
+        return $query->where('workspace_id', auth()->user()->workspace_id);
+    }
+
     public function workspace()
     {
         return $this->belongsTo(Workspace::class);

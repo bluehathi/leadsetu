@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Scopes\WorkSpaceScope;
 
 class Company extends Model
 {
@@ -15,6 +16,11 @@ class Company extends Model
         'website',
         'workspace_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new WorkSpaceScope());
+    }
 
     public function workspace()
     {

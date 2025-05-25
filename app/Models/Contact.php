@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Scopes\WorkSpaceScope;
 
 class Contact extends Model
 {
@@ -19,6 +20,11 @@ class Contact extends Model
         'notes',
         'company_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new WorkSpaceScope());
+    }
 
     // If you have workspaces and want to link contacts to them:
     public function workspace(): BelongsTo

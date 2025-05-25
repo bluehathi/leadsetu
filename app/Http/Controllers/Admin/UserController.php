@@ -33,6 +33,7 @@ class UserController extends Controller
     {
         ActivityLog::create([
             'user_id' => Auth::id(),
+            'workspace_id' => Auth::user() ? Auth::user()->workspace_id : null,
             'action' => $action,
             'subject_type' => $subject ? get_class($subject) : null,
             'subject_id' => $subject->id ?? null,
