@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Head, usePage, Link, router } from '@inertiajs/react';
-import Sidebar from '@/Components/parts/Sidebar';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
 import Select from 'react-select';
 
@@ -55,10 +55,9 @@ export default function ActivityLogsIndex({ logs, filters, users, actions, entit
     };
 
     return (
-        <>
+        <AuthenticatedLayout user={props.auth?.user} title="Activity Logs">
             <Head title="Activity Logs" />
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
-                <Sidebar user={props.auth?.user} />
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
                     <main className="flex-1 relative overflow-y-auto focus:outline-none">
                         <div className="py-8 px-4 sm:px-6 lg:px-8">
@@ -191,6 +190,6 @@ export default function ActivityLogsIndex({ logs, filters, users, actions, entit
                     </main>
                 </div>
             </div>
-        </>
+        </AuthenticatedLayout>
     );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
-import Sidebar from '@/Components/parts/Sidebar';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
 export default function WorkspaceSettings({ workspace }) {
@@ -33,62 +33,57 @@ export default function WorkspaceSettings({ workspace }) {
     };
 
     return (
-        <>
+        <AuthenticatedLayout user={workspace.user || props.auth?.user} title="Workspace Settings">
             <Head title="Workspace Settings" />
-            <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
-                <Sidebar user={workspace.user} />
-                <div className="flex flex-col w-0 flex-1 overflow-hidden">
-                    <main className="flex-1 relative overflow-y-auto focus:outline-none">
-                        <div className="py-8 px-4 sm:px-6 lg:px-8">
-                            <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
-                                    Workspace Settings
-                                </h1>
-                            </div>
-                            {flash.success && (
-                                <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md flex items-center justify-between" role="alert">
-                                    <div className="flex items-center">
-                                        <CheckCircle2 size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
-                                        <span>{flash.success}</span>
-                                    </div>
-                                </div>
-                            )}
-                            {flash.error && (
-                                <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md flex items-center justify-between" role="alert">
-                                    <div className="flex items-center">
-                                        <XCircle size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
-                                        <span>{flash.error}</span>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden p-6">
-                                <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div>
-                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Workspace Name</label>
-                                        <input
-                                            type="text"
-                                            className={inputClass}
-                                            value={data.name}
-                                            onChange={e => setData({ ...data, name: e.target.value })}
-                                        />
-                                        {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
-                                    </div>
-                                    <div>
-                                        <label className="block font-medium text-gray-700 dark:text-gray-200">Description</label>
-                                        <textarea
-                                            className={inputClass}
-                                            value={data.description}
-                                            onChange={e => setData({ ...data, description: e.target.value })}
-                                        />
-                                        {errors.description && <div className="text-red-500 text-sm mt-1">{errors.description}</div>}
-                                    </div>
-                                    <button type="submit" className={buttonClass} disabled={processing}>Update Settings</button>
-                                </form>
+            <main className="flex-1 relative overflow-y-auto focus:outline-none">
+                <div className="py-8 px-4 sm:px-6 lg:px-8">
+                    <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
+                            Workspace Settings
+                        </h1>
+                    </div>
+                    {flash.success && (
+                        <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md flex items-center justify-between" role="alert">
+                            <div className="flex items-center">
+                                <CheckCircle2 size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
+                                <span>{flash.success}</span>
                             </div>
                         </div>
-                    </main>
+                    )}
+                    {flash.error && (
+                        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md flex items-center justify-between" role="alert">
+                            <div className="flex items-center">
+                                <XCircle size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
+                                <span>{flash.error}</span>
+                            </div>
+                        </div>
+                    )}
+                    <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden p-6">
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block font-medium text-gray-700 dark:text-gray-200">Workspace Name</label>
+                                <input
+                                    type="text"
+                                    className={inputClass}
+                                    value={data.name}
+                                    onChange={e => setData({ ...data, name: e.target.value })}
+                                />
+                                {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
+                            </div>
+                            <div>
+                                <label className="block font-medium text-gray-700 dark:text-gray-200">Description</label>
+                                <textarea
+                                    className={inputClass}
+                                    value={data.description}
+                                    onChange={e => setData({ ...data, description: e.target.value })}
+                                />
+                                {errors.description && <div className="text-red-500 text-sm mt-1">{errors.description}</div>}
+                            </div>
+                            <button type="submit" className={buttonClass} disabled={processing}>Update Settings</button>
+                        </form>
+                    </div>
                 </div>
-            </div>
-        </>
+            </main>
+        </AuthenticatedLayout>
     );
 }

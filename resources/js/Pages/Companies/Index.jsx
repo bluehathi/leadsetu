@@ -1,11 +1,14 @@
 import React from 'react';
 import { Link, Head, usePage } from '@inertiajs/react';
 import CompanyLayout from './_CompanyLayout';
+import AutheticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function CompaniesIndex({ companies = [] }) {
     const { props } = usePage();
     const user = props.auth?.user;
     return (
+        <>
+        <AutheticatedLayout user={user} title="Companies">
         <CompanyLayout user={user} title="Companies">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Companies</h1>
@@ -34,5 +37,7 @@ export default function CompaniesIndex({ companies = [] }) {
                 </table>
             </div>
         </CompanyLayout>
+        </AutheticatedLayout>
+        </>
     );
 }

@@ -161,7 +161,15 @@ class LeadsController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $lead = Lead::with(['company', 'contact'])->findOrFail($id);
+        $companies = Company::where('workspace_id', Auth::user()->workspace_id)->get();
+        $contacts = Contact::where('workspace_id', Auth::user()->workspace_id)->get();
+        return Inertia::render('Leads/Edit', [
+            'user' => Auth::user(),
+            'lead' => $lead,
+            'companies' => $companies,
+            'contacts' => $contacts,
+        ]);
     }
 
     /**
@@ -171,29 +179,85 @@ class LeadsController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:180',
-            'email' => 'string|email',
-            'phone' => 'string|max:20',
-            'company' => 'required|string|max:180',
-            'website' => 'string|max:180',
-            'notes' => 'required|string|max:180',
+            'email' => 'nullable|string|email',
+            'phone' => 'nullable|string|max:20',
+            'company_id' => 'nullable|exists:companies,id',
+            'company_name' => 'nullable|string|max:180',
+            'company_website' => 'nullable|string|max:255',
+            'contact_id' => 'nullable|exists:contacts,id',
+            'contact_name' => 'nullable|string|max:180',
+            'contact_email' => 'nullable|string|email|max:255',
+            'contact_phone' => 'nullable|string|max:20',
+            'website' => 'nullable|string|max:180',
+            'notes' => 'nullable|string|max:180',
             'status' => 'required|string|max:180',
             'source' => 'required|string|max:180',
+            'deal_value' => 'nullable|integer',
+            'expected_close' => 'nullable|date',
+            'lead_score' => 'nullable|integer',
+            'lead_owner' => 'nullable|string|max:180',
+            'priority' => 'nullable|string|max:20',
+            'title' => 'nullable|string|max:180',
+            'positions' => 'nullable|string|max:180',
+            'tags' => 'nullable|string',
         ]);
+
+        // Handle company
+        $companyId = $request->company_id;
+        if (!$companyId && $request->company_name) {
+            $company = Company::create([
+                'name' => $request->company_name,
+                'website' => $request->company_website,
+                'workspace_id' => Auth::user()->workspace_id,
+            ]);
+            $companyId = $company->id;
+        }
+
+        // Handle contact
+        $contactId = $request->contact_id;
+        if (!$contactId && $request->contact_name) {
+            $contact = Contact::create([
+                'name' => $request->contact_name,
+                'email' => $request->contact_email,
+                'phone' => $request->contact_phone,
+                'company_id' => $companyId,
+                'workspace_id' => Auth::user()->workspace_id,
+            ]);
+            $contactId = $contact->id;
+        }
+
+        // Parse tags if string (comma separated)
+        $tags = $request->tags;
+        if (is_string($tags)) {
+            $tags = collect(explode(',', $tags))->map(fn($t) => trim($t))->filter()->values()->all();
+        }
 
         $lead->update([
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
-            'company' => $request->company,
+            'company_id' => $companyId,
+            'contact_id' => $contactId,
             'website' => $request->website,
             'notes' => $request->notes,
             'status' => $request->status,
             'source' => $request->source,
-            'organization_id' => Auth::user()->organization_id ?? null,
+            'deal_value' => $request->deal_value,
+            'expected_close' => $request->expected_close,
+            'lead_score' => $request->lead_score,
+            'lead_owner' => $request->lead_owner,
+            'priority' => $request->priority,
+            'title' => $request->title,
+            'positions' => $request->positions,
+            'tags' => $tags,
         ]);
 
         $this->logActivity('lead_updated', $lead, 'Lead updated', ['data' => $data]);
 
+        if ($request->inertia()) {
+            // Return a minimal JSON response to satisfy Inertia
+            return response()->json(['success' => true, 'id' => $lead->id, 'status' => $lead->status]);
+        }
         return to_route('leads.index')->with('success', 'Lead updated successfully.');
     }
 
@@ -234,8 +298,7 @@ class LeadsController extends Controller
      */
     public function kanban()
     {
-        var_dump("i am here");
-        die();
+        
         $user = Auth::user();
         $leads = Lead::with('company')
             ->where('workspace_id', $user->workspace_id)

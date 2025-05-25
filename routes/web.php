@@ -24,6 +24,7 @@ Route::post('/register', [AuthController::class, 'register'])->middleware('guest
 // Admin-protected routes
 Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/leads/kanban', [\App\Http\Controllers\Admin\LeadsController::class, 'kanban'])->name('leads.kanban');
     Route::resource('/leads', App\Http\Controllers\Admin\LeadsController::class);
     Route::resource('/workspaces', App\Http\Controllers\Admin\WorkspaceController::class)->except(['show', 'edit', 'update', 'destroy']);
     Route::resource('/roles', App\Http\Controllers\Admin\RoleController::class)->except(['show', 'create']);
@@ -48,7 +49,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::get('/user/settings', [App\Http\Controllers\Admin\UserController::class, 'getSettings'])->name('user.settings.get');
     Route::post('/user/settings', [App\Http\Controllers\Admin\UserController::class, 'setSettings'])->name('user.settings.set');
     Route::get('/roles/create', [App\Http\Controllers\Admin\RoleController::class, 'create'])->name('roles.create');
-    Route::get('/leads/kanban', [\App\Http\Controllers\Admin\LeadsController::class, 'kanban'])->name('leads.kanban');
+    
 });
 
 // Home route

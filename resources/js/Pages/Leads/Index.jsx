@@ -8,7 +8,7 @@ import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import axios from 'axios';
 import Select from 'react-select';
-
+import AutheticatedLayout from '@/Layouts/AuthenticatedLayout'; // Adjust path if needed
 // Assuming you might refactor Dashboard into a layout component:
 // import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout'; // Example import
 
@@ -16,10 +16,10 @@ import Select from 'react-select';
 // Leads Index Page Component
 // Receives 'auth' (containing user), 'leads' (Laravel Paginator instance), and 'flash' messages as props
 export default function LeadsIndex({ user, leads }) {
-
+    const { props } = usePage();
     // --- Get Flash Messages ---
     // Use the usePage hook to access shared props, including flash messages
-    const { props } = usePage();
+    
     const flash = props.flash || {}; // Get flash object, default to empty object if not present
 
     // --- Status/Method Options (These should ideally come from props passed by the controller) ---
@@ -187,15 +187,13 @@ export default function LeadsIndex({ user, leads }) {
         // If using a separate Layout component, remove the outer div and Sidebar,
         // and wrap the content with <AuthenticatedLayout user={auth.user}> ... </AuthenticatedLayout>
         <>
+        <AutheticatedLayout user={user} title="Leads">
             <Head title="Leads" />
 
              {/* Main Flex Container including Sidebar */}
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
 
-                {/* Sidebar */}
-                {/* Ensure 'auth.user' object is passed */}
-                <Sidebar user={user} />
-
+              
                 {/* Main Content Area */}
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
                     {/* Optional Header for mobile (if not handled by layout) */}
@@ -240,7 +238,7 @@ export default function LeadsIndex({ user, leads }) {
                                                 )}
                                             </div>
                                             {/* Use absolute path for Kanban View to avoid route helper issues */}
-                                            <Link href="/admin/leads/kanban" className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition">Kanban View</Link>
+                                            <Link href={route('leads.kanban')} className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition">Kanban View</Link>
                                             <Link
                                                 href={route('leads.create')}
                                                 className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm text-sm font-medium hover:bg-blue-700 transition"
@@ -652,7 +650,8 @@ export default function LeadsIndex({ user, leads }) {
                     {/* <footer className="..."> ... </footer> */}
                 </div>
             </div>
+            </AutheticatedLayout> // Close layout component if used
         </>
-        // </AuthenticatedLayout> // Close layout component if used
+         
     );
 }

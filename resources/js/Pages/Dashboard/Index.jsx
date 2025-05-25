@@ -1,7 +1,7 @@
 import React, { useState } from 'react'; // Import useState for potential mobile menu toggle
 import { Head, Link } from '@inertiajs/react';
 import Logo from '@/Components/Logo'; // Adjust path if needed
-import Sidebar from '@/Components/parts/Sidebar';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -58,12 +58,11 @@ export default function Dashboard({ user, stats = {}, charts = {}, recentActivit
     };
 
     return (
-        <>
+        <AuthenticatedLayout user={user} title="Dashboard">
             <Head title="Dashboard" />
 
             {/* Main container with sidebar */}
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
-            <Sidebar user={user}/>
                
                 {/* Main content area */}
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
@@ -196,6 +195,6 @@ export default function Dashboard({ user, stats = {}, charts = {}, recentActivit
                 */}
 
             </div>
-        </>
+        </AuthenticatedLayout>
     );
 }

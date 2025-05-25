@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm, Link, usePage } from '@inertiajs/react';
 import CompanyLayout from './_CompanyLayout';
-
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 export default function CompaniesCreate() {
     const { props } = usePage();
     const user = props.auth?.user;
@@ -17,6 +17,7 @@ export default function CompaniesCreate() {
     };
 
     return (
+        <AuthenticatedLayout user={user} title="Add Company">
         <CompanyLayout user={user} title="Add Company">
             <h1 className="text-2xl font-bold mb-6">Add Company</h1>
             <form onSubmit={submit} className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-4">
@@ -41,5 +42,6 @@ export default function CompaniesCreate() {
                 </div>
             </form>
         </CompanyLayout>
+        </AuthenticatedLayout>
     );
 }

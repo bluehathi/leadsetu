@@ -40,7 +40,7 @@ class CompanyController extends Controller
 
     public function edit(Company $company)
     {
-        $this->authorize('update', $company);
+        //$this->authorize('update', $company);
         return Inertia::render('Companies/Edit', [
             'company' => $company,
         ]);

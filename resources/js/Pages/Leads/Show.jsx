@@ -1,8 +1,8 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link,usePage } from '@inertiajs/react';
 import Sidebar from '@/Components/parts/Sidebar';
-import { User, Info, FileText, PlusCircle, Edit3, Trash2, RefreshCw, StickyNote, ArrowRightLeft, Mail, Phone, Building2, Globe } from 'lucide-react';
-
+import { User2, User, Info, FileText, PlusCircle, Edit3, Trash2, RefreshCw, StickyNote, ArrowRightLeft, Mail, Phone, BriefcaseBusiness, Globe, DollarSign, Calendar } from 'lucide-react';
+import AutheticatedLayout from '@/Layouts/AuthenticatedLayout';
 // Map action types to icons and colors
 const actionMeta = {
     lead_created: { icon: <PlusCircle size={16} className="text-green-600 dark:text-green-300" />, color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', label: 'Created' },
@@ -14,6 +14,9 @@ const actionMeta = {
 };
 
 export default function LeadShow({ user, lead, activityLogs }) {
+    
+    const { props } = usePage();
+    activityLogs = Array.isArray(activityLogs) ? activityLogs : [];
     const attachments = Array.isArray(lead.attachments)
         ? lead.attachments
         : lead.attachments
@@ -22,20 +25,28 @@ export default function LeadShow({ user, lead, activityLogs }) {
 
     return (
         <>
+        <AutheticatedLayout user={user} title={`Lead: ${lead.name}`}>
             <Head title={`Lead: ${lead.name}`} />
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
-                <Sidebar user={user} />
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
                     <main className="flex-1 relative overflow-y-auto focus:outline-none">
-                        <div className="py-8 px-2 sm:px-4 lg:px-8 w-full">
-                            {/* Lead Info Card */}
-                            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 mb-4 border border-gray-200 dark:border-gray-700">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <User size={36} className="text-blue-500 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 rounded-full p-2" />
+                        <div className="py-8 px-2 sm:px-4 lg:px-8 w-full  mx-auto">
+                            {/* Lead Main Card */}
+                            <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8 mb-8 border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-6">
+                                    <div className="flex items-center gap-4">
+                                        <User2 size={44} className="text-blue-500 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 rounded-full p-2" />
                                         <div>
-                                            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{lead.name}</div>
-                                            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">{lead.email || '-'}</div>
+                                            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                                                {lead.name}
+                                                {lead.status && (
+                                                    <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold ${lead.status === 'won' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : lead.status === 'lost' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}`}>{lead.status}</span>
+                                                )}
+                                            </div>
+                                            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                                                <Mail size={14} className="inline-block mr-1" />{lead.email || '-'}
+                                                <Phone size={14} className="inline-block ml-4 mr-1" />{lead.phone || '-'}
+                                            </div>
                                             <div className="flex flex-wrap gap-2 mb-2">
                                                 {lead.title && <span className="inline-block bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full px-2 py-0.5 text-xs font-semibold">{lead.title}</span>}
                                                 {lead.positions && <span className="inline-block bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full px-2 py-0.5 text-xs font-semibold">{lead.positions}</span>}
@@ -43,7 +54,6 @@ export default function LeadShow({ user, lead, activityLogs }) {
                                                     <span key={idx} className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full px-2 py-0.5 text-xs font-semibold">{tag}</span>
                                                 ))}
                                             </div>
-                                            <div className="text-sm text-gray-700 dark:text-gray-300">{lead.company || '-'}</div>
                                         </div>
                                     </div>
                                     <div className="flex gap-2 flex-shrink-0">
@@ -55,49 +65,62 @@ export default function LeadShow({ user, lead, activityLogs }) {
                                         </Link>
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap gap-3 mt-2">
+                                {/* Status/Qualification/Score Row */}
+                                <div className="flex flex-wrap gap-3 mt-2 mb-6">
                                     <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs font-semibold">Status: {lead.status}</span>
                                     <span className="px-3 py-1 rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 text-xs font-semibold">Score: {lead.score ?? '-'}</span>
                                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${lead.qualification === 'Hot' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : lead.qualification === 'Warm' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>Qualification: {lead.qualification}</span>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${lead.priority === 'High' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : lead.priority === 'Low' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>Priority: {lead.priority || '-'}</span>
                                 </div>
+                                {/* Company/Contact/Deal Details */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <BriefcaseBusiness size={16} />
+                                            <span className="font-semibold">Company:</span> {lead.company?.name || lead.company || '-'}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <User2 size={16} />
+                                            <span className="font-semibold">Contact:</span> {lead.contact?.name || '-'}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <Globe size={16} />
+                                            <span className="font-semibold">Website:</span> {lead.website || '-'}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <DollarSign size={16} />
+                                            <span className="font-semibold">Deal Value:</span> {lead.deal_value ? `₹${lead.deal_value}` : '-'}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <Calendar size={16} />
+                                            <span className="font-semibold">Expected Close:</span> {lead.expected_close || '-'}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <User size={16} />
+                                            <span className="font-semibold">Lead Owner:</span> {lead.lead_owner || '-'}
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Notes Section */}
                                 {lead.notes && (
                                     <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg text-gray-700 dark:text-gray-200 text-sm border border-gray-100 dark:border-gray-800">
                                         <span className="font-semibold text-gray-600 dark:text-gray-300">Notes:</span> {lead.notes}
                                     </div>
                                 )}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Deal Value</span>
-                                        <span className="block text-base text-gray-900 dark:text-gray-100">{lead.deal_value ? `₹${lead.deal_value}` : '-'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Expected Close</span>
-                                        <span className="block text-base text-gray-900 dark:text-gray-100">{lead.expected_close || '-'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Lead Score</span>
-                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{lead.lead_score ?? '-'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Lead Owner</span>
-                                        <span className="block text-base text-gray-900 dark:text-gray-100">{lead.lead_owner || '-'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Priority</span>
-                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${lead.priority === 'High' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : lead.priority === 'Low' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>{lead.priority || '-'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Attachments</span>
-                                        {attachments && attachments.length > 0 ? (
-                                            <ul className="text-xs text-gray-700 dark:text-gray-200">
-                                                {attachments.map((file, idx) => (
-                                                    <li key={idx} className="truncate">{file.name || file}</li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <span className="block text-base text-gray-900 dark:text-gray-100">-</span>
-                                        )}
-                                    </div>
+                                {/* Attachments Section */}
+                                <div className="mt-4">
+                                    <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Attachments</span>
+                                    {attachments && attachments.length > 0 ? (
+                                        <ul className="text-xs text-gray-700 dark:text-gray-200">
+                                            {attachments.map((file, idx) => (
+                                                <li key={idx} className="truncate">{file.name || file}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <span className="block text-base text-gray-900 dark:text-gray-100">-</span>
+                                    )}
                                 </div>
                             </div>
 
@@ -137,8 +160,9 @@ export default function LeadShow({ user, lead, activityLogs }) {
                             </div>
                         </div>
                     </main>
-                </div>
+                </div>  
             </div>
+            </AutheticatedLayout>
         </>
     );
-} 
+}
