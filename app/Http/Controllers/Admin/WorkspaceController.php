@@ -21,9 +21,20 @@ class WorkspaceController extends Controller
 
     public function index()
     {
-        $workspaces = Workspace::all();
+        $user = Auth::user();
+        $workspaces = [];
+        if ($user && $user->workspace_id) {
+            $workspace = \App\Models\Workspace::find($user->workspace_id);
+            if ($workspace) {
+                $isOwner = $workspace->owners()->where('user_id', $user->id)->exists();
+                $workspaceArr = $workspace->toArray();
+                $workspaceArr['isOwner'] = $isOwner;
+                $workspaces = [$workspaceArr];
+            }
+        }
         return Inertia::render('Workspaces/Index', [
-            'workspaces' => $workspaces
+            'user' => $user,
+            'workspaces' => array_filter($workspaces),
         ]);
     }
 
@@ -65,9 +76,8 @@ class WorkspaceController extends Controller
 
     public function destroy(Workspace $workspace)
     {
-        $workspace->delete();
-        $this->logActivity('workspace_deleted', $workspace, 'Workspace deleted');
-        return redirect()->route('workspaces.index')->with('success', 'Workspace deleted.');
+        // Prevent workspace deletion
+        return redirect()->route('workspaces.index')->with('error', 'Workspace deletion is not allowed.');
     }
 
     protected function logActivity($action, $subject = null, $description = null, $properties = [])

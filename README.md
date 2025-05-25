@@ -112,3 +112,23 @@ PRs are welcome! Please follow PSR-12 and standard React best practices.
 
 ## License
 MIT
+
+## Authenticated Layout
+- All main pages (Leads, Companies, Contacts, Users, etc.) use a single, consistent `AuthenticatedLayout.jsx`.
+- Layout includes a responsive sidebar, header with workspace name, and user dropdown menu.
+- No legacy layouts or duplicate sidebar code remain.
+
+## Activity Logs
+- All activity logs are now workspace-scoped (`workspace_id` is always set).
+- Activity logs are created for all main entity actions (leads, companies, contacts, users, etc.).
+- Activity log logic is updated in all relevant controllers.
+
+## Workspace Management
+- Only the currently logged-in user's workspace is visible on the Manage Workspaces page.
+- Workspace deletion is fully disabled in both UI and backend (attempts to delete return an error).
+- Only workspace owners can edit workspace details (the Edit button is only visible for owners).
+
+## Sidebar & Layout
+- Sidebar is fully responsive: always visible on desktop, slides in/out on mobile with overlay and close button.
+- Sidebar toggle and collapse state are preserved per user/device.
+- Layout and sidebar are consistent across all main pages.

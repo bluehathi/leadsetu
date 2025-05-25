@@ -19,10 +19,11 @@ import {
   Mail,
   Phone,
   Globe,
-  Contact2
+  Contact2,
+  X // Import the X icon
 } from 'lucide-react';
 
-const Sidebar = ({ user }) => {
+const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
     const [collapsed, setCollapsed] = useState(() => {
         if (typeof window !== 'undefined') {
             const stored = localStorage.getItem('sidebar-collapsed');
@@ -31,6 +32,18 @@ const Sidebar = ({ user }) => {
         return false;
     });
 
+    // Prevent body scroll when sidebar is open on mobile
+    useEffect(() => {
+        if (sidebarOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [sidebarOpen]);
+
     const isActive = (routeName) => route().current(routeName);
     const getUserInitials = (name) => {
         if (!name) return '?';
@@ -38,22 +51,51 @@ const Sidebar = ({ user }) => {
         if (names.length === 1) return names[0].charAt(0).toUpperCase();
         return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
     };
+
     return <>
+        {/* Mobile Sidebar Overlay */}
+        <div
+            className={`fixed inset-0 z-40 transition-opacity md:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
+            onClick={() => setSidebarOpen && setSidebarOpen(false)}
+            aria-hidden={!sidebarOpen}
+        />
         {/* Sidebar */}
-        <aside className={`hidden md:flex md:flex-shrink-0 transition-all duration-200 ${collapsed ? 'w-20' : 'w-64'}`}>
+        <aside
+            className={`
+                fixed z-50 inset-y-0 left-0
+                bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full
+                transition-transform duration-200
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                md:translate-x-0 md:static md:flex md:flex-shrink-0
+                w-64 ${collapsed && !sidebarOpen ? 'md:w-20' : 'md:w-64'}
+            `}
+            // Removed boxShadow style to rely on the dedicated overlay
+        >
             <div className="flex flex-col h-full w-full">
                 <div className="flex flex-col flex-grow pt-5 overflow-y-auto bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full">
                     {/* Toggle Button */}
-                    <div className={`flex items-center px-4 mb-5 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+                    <div className={`flex items-center px-4 mb-5 ${(collapsed && !sidebarOpen) ? 'justify-center' : 'justify-between'}`}>
                         <Link href={route('dashboard')}>
-                            {collapsed ? <LogoLS className="w-8 h-8" /> : <Logo />}
+                            {/* Show full logo if mobile sidebar is open or if desktop is not collapsed */}
+                            {(sidebarOpen || !collapsed) ? <Logo /> : <LogoLS className="w-8 h-8" />}
                         </Link>
+                        {/* Mobile Close Button - visible only when sidebarOpen is true and on mobile screens */}
+                        {sidebarOpen && (
+                            <button
+                                onClick={() => setSidebarOpen && setSidebarOpen(false)}
+                                className="md:hidden ml-2 p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                aria-label="Close sidebar"
+                            >
+                                <X size={24} />
+                            </button>
+                        )}
                         <button
                             onClick={() => setCollapsed((c) => {
                                 localStorage.setItem('sidebar-collapsed', !c);
                                 return !c;
                             })}
-                            className="ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            // Hide collapse toggle button on mobile, show on md+
+                            className="hidden md:inline-flex ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
                             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                         >
                             {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
@@ -62,7 +104,7 @@ const Sidebar = ({ user }) => {
                     <div className="flex-grow mt-5 flex flex-col">
                         <nav className="flex-1 px-2 pb-4 space-y-1">
                             {/* Main Section */}
-                            {!collapsed && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-2 mb-1">Main</div>}
+                            {(sidebarOpen || !collapsed) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-2 mb-1">Main</div>}
                             <Link
                                 href={route('dashboard')}
                                 className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('dashboard')
@@ -71,7 +113,7 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <Home className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('dashboard') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Dashboard'}
+                                {(sidebarOpen || !collapsed) && 'Dashboard'}
                             </Link>
                             <Link
                                 href={route('leads.index')}
@@ -81,7 +123,7 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <User2 className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('leads.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Leads'}
+                                {(sidebarOpen || !collapsed) && 'Leads'}
                             </Link>
                             <Link
                                 href={route('contacts.index')}
@@ -91,7 +133,7 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <Contact2 className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('contacts.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Contacts'}
+                                {(sidebarOpen || !collapsed) && 'Contacts'}
                             </Link>
                             <Link
                                 href={route('workspaces.index')}
@@ -101,7 +143,7 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <Globe className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('workspaces.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Workspaces'}
+                                {(sidebarOpen || !collapsed) && 'Workspaces'}
                             </Link>
                             <Link
                                 href={route('companies.index')}
@@ -111,11 +153,11 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <BriefcaseBusiness className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('companies.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Companies'}
+                                {(sidebarOpen || !collapsed) && 'Companies'}
                             </Link>
 
                             {/* Access Control Section */}
-                            {!collapsed && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-5 mb-1">Access Control</div>}
+                            {(sidebarOpen || !collapsed) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-5 mb-1">Access Control</div>}
                             <Link
                                 href={route('users.index')}
                                 className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('users.index')
@@ -124,7 +166,7 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <Users2 className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('users.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Users'}
+                                {(sidebarOpen || !collapsed) && 'Users'}
                             </Link>
                             <Link
                                 href={route('roles.index')}
@@ -134,7 +176,7 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <Shield className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('roles.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Roles'}
+                                {(sidebarOpen || !collapsed) && 'Roles'}
                             </Link>
                             <Link
                                 href={route('permissions.index')}
@@ -144,11 +186,11 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <Key className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('permissions.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Permissions'}
+                                {(sidebarOpen || !collapsed) && 'Permissions'}
                             </Link>
 
                             {/* Logs Section */}
-                            {!collapsed && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-5 mb-1">Logs</div>}
+                            {(sidebarOpen || !collapsed) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-5 mb-1">Logs</div>}
                             <Link
                                 href={route('activity.logs')}
                                 className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('activity.logs')
@@ -157,13 +199,13 @@ const Sidebar = ({ user }) => {
                                     }`}
                             >
                                 <ScrollText className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('activity.logs') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {!collapsed && 'Activity Logs'}
+                                {(sidebarOpen || !collapsed) && 'Activity Logs'}
                             </Link>
                         </nav>
                     </div>
                     {/* User info at bottom of sidebar */}
-                    <div className={`flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/70 ${collapsed ? 'justify-center' : ''}`}>
-                        <div className={`flex items-center w-full gap-3 ${collapsed ? 'justify-center' : ''}`}>
+                    <div className={`flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/70 ${(collapsed && !sidebarOpen) ? 'justify-center' : ''}`}>
+                        <div className={`flex items-center w-full gap-3 ${(collapsed && !sidebarOpen) ? 'justify-center' : ''}`}>
                             {user?.avatar ? (
                                 <img
                                     src={user.avatar}
@@ -175,13 +217,13 @@ const Sidebar = ({ user }) => {
                                     {getUserInitials(user?.name)}
                                 </div>
                             )}
-                            {!collapsed && (
+                            {(sidebarOpen || !collapsed) && (
                                 <div className="flex flex-col flex-1 min-w-0">
                                     <span className="truncate text-sm font-semibold text-gray-800 dark:text-white">{user?.name ?? 'User'}</span>
                                     <Link href={route('profile')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-0.5">View profile</Link>
                                 </div>
                             )}
-                            {!collapsed && (
+                            {(sidebarOpen || !collapsed) && (
                                 <form method="POST" action={route('logout')} onSubmit={e => {
                                     e.preventDefault();
                                     if (window.Inertia && window.Inertia.post) {
@@ -218,7 +260,7 @@ const Sidebar = ({ user }) => {
                 </div>
             </div>
         </aside>
-    </>
+    </>;
 }
 
 export default Sidebar;

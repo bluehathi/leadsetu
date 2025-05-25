@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Sidebar from '@/Components/parts/Sidebar';
 import { Head, Link, router } from '@inertiajs/react';
-import { User2, LogOut, Building2 } from 'lucide-react';
+import { User2, LogOut, Building2, Menu } from 'lucide-react'; // Added Menu icon
+import Logo, { LogoLS } from '@/Components/Logo'; // Import Logo for mobile header
 
 export default function AuthenticatedLayout({ user, title, children }) {
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false); // State for mobile sidebar
     const dropdownRef = useRef(null);
     const avatarBtnRef = useRef(null);
 
@@ -40,11 +42,36 @@ export default function AuthenticatedLayout({ user, title, children }) {
         <>
             {title && <Head title={title} />}
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
-                <Sidebar user={user} />
+                <Sidebar user={user} sidebarOpen={mobileSidebarOpen} setSidebarOpen={setMobileSidebarOpen} />
                 <div className="flex flex-col w-0 flex-1 overflow-hidden">
-                    {/* Header */}
-                    <header className="w-full bg-white dark:bg-gray-800 shadow border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 h-16 z-20 relative">
-                        <div className="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">LeadSetu</div>
+                    {/* Mobile Header (visible on small screens, hidden on md and up) */}
+                    <header className="relative z-10 flex-shrink-0 flex h-16 bg-white dark:bg-gray-800 shadow border-b border-gray-200 dark:border-gray-700 md:hidden">
+                        <button
+                            type="button"
+                            className="px-4 border-r border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                            onClick={() => setMobileSidebarOpen(true)}
+                        >
+                            <span className="sr-only">Open sidebar</span>
+                            <Menu size={24} />
+                        </button>
+                        <div className="flex-1 px-4 flex justify-between items-center">
+                            <Link href={route('dashboard')}>
+                                <LogoLS className="h-8 w-auto" />
+                            </Link>
+                            {/* You can add a smaller avatar/dropdown for mobile here if needed, or just logout */}
+                             <button
+                                onClick={handleLogout}
+                                className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200"
+                            >
+                                <LogOut size={20} />
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Desktop Header (hidden on small screens, visible on md and up) */}
+                    <header className="hidden md:flex w-full bg-white dark:bg-gray-800 shadow border-b border-gray-200 dark:border-gray-700 items-center justify-between px-6 h-16 z-20 relative">
+                        {/* <div className="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">LeadSetu</div> */}
+                        <div className="text-xl font-semibold text-gray-700 dark:text-gray-200">{title || 'Dashboard'}</div>
                         <div className="flex items-center gap-4 relative">
                             <button
                                 ref={avatarBtnRef}
