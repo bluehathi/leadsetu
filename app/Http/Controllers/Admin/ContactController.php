@@ -13,7 +13,11 @@ class ContactController extends Controller
 {
     public function index()
     {
-        $contacts = Contact::with('company')->paginate(10);
+        $contacts = Contact::with('company')
+            ->where('workspace_id', auth()->user()->workspace_id)
+            ->orderByDesc('id')
+            ->paginate(10)
+            ->withQueryString();
 
         return Inertia::render('Contacts/Index', [
             'contacts' => $contacts,
@@ -35,12 +39,15 @@ class ContactController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'company_id' => 'nullable|exists:companies,id|unique:contacts,company_id',
+            'company_id' => 'required|exists:companies,id',
             'title' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
 
-        Contact::create($request->all());
+       $data = $request->all();
+       $data['workspace_id'] = auth()->user()->workspace_id;
+
+        $contact = Contact::create($data);
 
         return redirect()->route('contacts.index')
             ->with('success', 'Contact created successfully.');

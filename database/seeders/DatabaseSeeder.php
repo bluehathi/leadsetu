@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             WorkspaceOwnerSeeder::class,
             LeadSeeder::class,
             CompanySeeder::class,
+            ContactSeeder::class
         ]);
     }
 }

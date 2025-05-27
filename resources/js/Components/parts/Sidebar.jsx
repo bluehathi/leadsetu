@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, usePage, router as InertiaRouter } from '@inertiajs/react';
 import Logo, { LogoLS } from '@/Components/Logo';
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
 import {
-  Home,
-  Users,
-  Building,
-  Settings,
-  Shield,
-  Key,
-  User,
-  UserCog,
-  ScrollText,
-  ChevronLeft,
-  ChevronRight,
-  User2,
-  BriefcaseBusiness,
-  Users2,
-  Mail,
-  Phone,
-  Globe,
-  Contact2,
-  X // Import the X icon
+    Home,
+    Users,
+    Building,
+    Settings, 
+    Shield,
+    Key,
+    User as UserIcon, 
+    UserCog, 
+    ScrollText,
+    ChevronLeft,
+    ChevronRight,
+    User2, 
+    BriefcaseBusiness, 
+    Users2 as UsersIcon, 
+    Mail, 
+    Phone, 
+    Globe,
+    Contact2,
+    X,
+    LogOut 
 } from 'lucide-react';
 
 const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
@@ -32,7 +35,6 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
         return false;
     });
 
-    // Prevent body scroll when sidebar is open on mobile
     useEffect(() => {
         if (sidebarOpen) {
             document.body.style.overflow = 'hidden';
@@ -44,218 +46,167 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
         };
     }, [sidebarOpen]);
 
-    const isActive = (routeName) => route().current(routeName);
+    const isActive = (routeName) => {
+        try {
+            const currentRoute = route().current(routeName);
+            return currentRoute;
+        } catch (e) {
+            return false;
+        }
+    };
+    
     const getUserInitials = (name) => {
         if (!name) return '?';
         const names = name.split(' ');
-        if (names.length === 1) return names[0].charAt(0).toUpperCase();
-        return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+        if (names.length === 1 && names[0].length > 0) return names[0].charAt(0).toUpperCase();
+        if (names.length > 1 && names[0].length > 0 && names[names.length - 1].length > 0) {
+             return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+        }
+        return name.length > 0 ? name.charAt(0).toUpperCase() : '?';
+    };
+
+    // Placeholder for user permission checking logic
+    // Replace this with your actual permission checking implementation
+    // For example, if user object has a 'permissions' array: user.permissions.includes('view users')
+    // Or if user object has a 'can' method: user.can('view users')
+    const canViewUsers = user && user.can ? user.can('view users') : false; // Default to false if 'can' method doesn't exist
+    const canViewRoles = user && user.can ? user.can('view roles') : false;
+    const canViewPermissions = user && user.can ? user.can('view permissions') : false;
+    
+    const showAccessControlSection = canViewUsers || canViewRoles || canViewPermissions;
+
+
+    const NavLink = ({ href, routeName, icon: Icon, children }) => {
+        const active = isActive(routeName);
+        return (
+            <Tippy content={children} placement="right" disabled={!collapsed || sidebarOpen}>
+                <Link
+                    href={href}
+                    className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg group transition-all duration-200 ease-in-out
+                                ${active
+                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md scale-[1.02]'
+                                    : `text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 
+                                    hover:text-gray-900 dark:hover:text-white ${collapsed && !sidebarOpen ? 'justify-center' : 'hover:translate-x-0.5'}`
+                                }`}
+                >
+                    <Icon className={`flex-shrink-0 h-5 w-5 transition-colors duration-200 
+                                    ${active ? 'text-white' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}
+                                    ${(collapsed && !sidebarOpen) ? 'mx-auto' : 'mr-3'}`} />
+                    {(sidebarOpen || !collapsed) && <span className="truncate">{children}</span>}
+                </Link>
+            </Tippy>
+        );
+    };
+
+    const SectionTitle = ({ children }) => {
+        if (collapsed && !sidebarOpen) return (
+            <div className="px-3 mt-6 mb-2 flex justify-center">
+                <div className="w-6 h-0.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+            </div>
+        );
+        return <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-3 mt-6 mb-2 uppercase tracking-wider">{children}</div>;
+    };
+    
+    const handleLogout = (e) => {
+        e.preventDefault();
+        InertiaRouter.post(route('logout'));
     };
 
     return <>
-        {/* Mobile Sidebar Overlay */}
         <div
-            className={`fixed inset-0 z-40 transition-opacity md:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
+            className={`fixed inset-0 z-30 bg-black/30 backdrop-blur-sm md:hidden transition-opacity duration-300 ${sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
             onClick={() => setSidebarOpen && setSidebarOpen(false)}
             aria-hidden={!sidebarOpen}
         />
-        {/* Sidebar */}
         <aside
             className={`
-                fixed z-50 inset-y-0 left-0
-                bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full
-                transition-transform duration-200
-                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-                md:translate-x-0 md:static md:flex md:flex-shrink-0
-                w-64 ${collapsed && !sidebarOpen ? 'md:w-20' : 'md:w-64'}
+                fixed z-40 inset-y-0 left-0
+                bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700/60 h-full
+                flex flex-col transition-all duration-300 ease-in-out shadow-xl
+                ${sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
+                md:translate-x-0 md:static 
+                ${collapsed && !sidebarOpen ? 'md:w-20' : 'md:w-64'}
             `}
-            // Removed boxShadow style to rely on the dedicated overlay
         >
             <div className="flex flex-col h-full w-full">
-                <div className="flex flex-col flex-grow pt-5 overflow-y-auto bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full">
-                    {/* Toggle Button */}
-                    <div className={`flex items-center px-4 mb-5 ${(collapsed && !sidebarOpen) ? 'justify-center' : 'justify-between'}`}>
-                        <Link href={route('dashboard')}>
-                            {/* Show full logo if mobile sidebar is open or if desktop is not collapsed */}
-                            {(sidebarOpen || !collapsed) ? <Logo /> : <LogoLS className="w-8 h-8" />}
-                        </Link>
-                        {/* Mobile Close Button - visible only when sidebarOpen is true and on mobile screens */}
-                        {sidebarOpen && (
-                            <button
-                                onClick={() => setSidebarOpen && setSidebarOpen(false)}
-                                className="md:hidden ml-2 p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                aria-label="Close sidebar"
-                            >
-                                <X size={24} />
-                            </button>
-                        )}
+                <div className={`flex items-center pt-5 pb-4 mb-2 border-b border-gray-200 dark:border-gray-700/60 
+                                ${(collapsed && !sidebarOpen) ? 'justify-center px-2' : 'justify-between px-4'}`}>
+                    <Link href={route('dashboard')} className="flex items-center min-w-0">
+                        {(sidebarOpen || !collapsed) ? <Logo className="h-9 w-auto" /> : <LogoLS className="h-8 w-auto" />}
+                    </Link>
+                    
+                    {sidebarOpen && (
                         <button
-                            onClick={() => setCollapsed((c) => {
-                                localStorage.setItem('sidebar-collapsed', !c);
-                                return !c;
-                            })}
-                            // Hide collapse toggle button on mobile, show on md+
-                            className="hidden md:inline-flex ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                            onClick={() => setSidebarOpen && setSidebarOpen(false)}
+                            className="md:hidden ml-auto p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                            aria-label="Close sidebar"
                         >
-                            {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                            <X size={22} />
                         </button>
-                    </div>
-                    <div className="flex-grow mt-5 flex flex-col">
-                        <nav className="flex-1 px-2 pb-4 space-y-1">
-                            {/* Main Section */}
-                            {(sidebarOpen || !collapsed) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-2 mb-1">Main</div>}
-                            <Link
-                                href={route('dashboard')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('dashboard')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <Home className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('dashboard') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Dashboard'}
-                            </Link>
-                            <Link
-                                href={route('leads.index')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('leads.index')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <User2 className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('leads.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Leads'}
-                            </Link>
-                            <Link
-                                href={route('contacts.index')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('contacts.index')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <Contact2 className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('contacts.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Contacts'}
-                            </Link>
-                            <Link
-                                href={route('workspaces.index')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('workspaces.index')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <Globe className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('workspaces.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Workspaces'}
-                            </Link>
-                            <Link
-                                href={route('companies.index')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('companies.index')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <BriefcaseBusiness className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('companies.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Companies'}
-                            </Link>
+                    )}
 
-                            {/* Access Control Section */}
-                            {(sidebarOpen || !collapsed) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-5 mb-1">Access Control</div>}
-                            <Link
-                                href={route('users.index')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('users.index')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <Users2 className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('users.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Users'}
-                            </Link>
-                            <Link
-                                href={route('roles.index')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('roles.index')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <Shield className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('roles.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Roles'}
-                            </Link>
-                            <Link
-                                href={route('permissions.index')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('permissions.index')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <Key className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('permissions.index') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Permissions'}
-                            </Link>
+                    <button
+                        onClick={() => setCollapsed((c) => {
+                            localStorage.setItem('sidebar-collapsed', !c);
+                            return !c;
+                        })}
+                        className={`hidden md:inline-flex p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors 
+                                    ${(collapsed && !sidebarOpen) ? 'ml-1' : 'ml-2'} 
+                                    ${sidebarOpen ? 'hidden' : ''}`}
+                        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    >
+                        {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                    </button>
+                </div>
+                
+                <nav className="flex-grow px-3 py-2 space-y-1.5 overflow-y-auto">
+                    <SectionTitle>Main</SectionTitle>
+                    <NavLink href={route('dashboard')} routeName="dashboard" icon={Home}>Dashboard</NavLink>
+                    <NavLink href={route('leads.index')} routeName="leads.index" icon={User2}>Leads</NavLink>
+                    <NavLink href={route('contacts.index')} routeName="contacts.index" icon={Contact2}>Contacts</NavLink>
+                    <NavLink href={route('companies.index')} routeName="companies.index" icon={BriefcaseBusiness}>Companies</NavLink>
+                    <NavLink href={route('workspaces.index')} routeName="workspaces.index" icon={Globe}>Workspaces</NavLink>
 
-                            {/* Logs Section */}
-                            {(sidebarOpen || !collapsed) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 mt-5 mb-1">Logs</div>}
-                            <Link
-                                href={route('activity.logs')}
-                                className={`flex items-center px-2 py-2 text-sm font-medium rounded-md group ${isActive('activity.logs')
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <ScrollText className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive('activity.logs') ? 'text-blue-500 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} />
-                                {(sidebarOpen || !collapsed) && 'Activity Logs'}
-                            </Link>
-                        </nav>
-                    </div>
-                    {/* User info at bottom of sidebar */}
-                    <div className={`flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/70 ${(collapsed && !sidebarOpen) ? 'justify-center' : ''}`}>
-                        <div className={`flex items-center w-full gap-3 ${(collapsed && !sidebarOpen) ? 'justify-center' : ''}`}>
-                            {user?.avatar ? (
-                                <img
-                                    src={user.avatar}
-                                    alt={user.name}
-                                    className="w-10 h-10 rounded-full object-cover border-2 border-blue-400 dark:border-blue-600 shadow"
-                                />
-                            ) : (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold border-2 border-blue-400 dark:border-blue-600 shadow">
-                                    {getUserInitials(user?.name)}
-                                </div>
-                            )}
-                            {(sidebarOpen || !collapsed) && (
-                                <div className="flex flex-col flex-1 min-w-0">
-                                    <span className="truncate text-sm font-semibold text-gray-800 dark:text-white">{user?.name ?? 'User'}</span>
-                                    <Link href={route('profile')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-0.5">View profile</Link>
-                                </div>
-                            )}
-                            {(sidebarOpen || !collapsed) && (
-                                <form method="POST" action={route('logout')} onSubmit={e => {
-                                    e.preventDefault();
-                                    if (window.Inertia && window.Inertia.post) {
-                                        window.Inertia.post(route('logout'), {}, {
-                                            headers: {
-                                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''
-                                            }
-                                        });
-                                    } else {
-                                        // fallback: create a form and submit it
-                                        const form = document.createElement('form');
-                                        form.method = 'POST';
-                                        form.action = route('logout');
-                                        const csrf = document.createElement('input');
-                                        csrf.type = 'hidden';
-                                        csrf.name = '_token';
-                                        csrf.value = document.querySelector('meta[name=csrf-token]')?.content || '';
-                                        form.appendChild(csrf);
-                                        document.body.appendChild(form);
-                                        form.submit();
-                                    }
-                                }}>
-                                    <input type="hidden" name="_token" value={document.querySelector('meta[name=csrf-token]')?.content || ''} />
-                                    <button
-                                        type="submit"
-                                        className="ml-2 px-3 py-1 rounded bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs font-semibold hover:bg-red-200 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-400 transition"
-                                    >
-                                        Logout
-                                    </button>
-                                </form>
-                            )}
-                        </div>
+                    {showAccessControlSection && <SectionTitle>Access Control</SectionTitle>}
+                    {canViewUsers && <NavLink href={route('users.index')} routeName="users.index" icon={UsersIcon}>Users</NavLink>}
+                    {canViewRoles && <NavLink href={route('roles.index')} routeName="roles.index" icon={Shield}>Roles</NavLink>}
+                    {canViewPermissions && <NavLink href={route('permissions.index')} routeName="permissions.index" icon={Key}>Permissions</NavLink>}
+
+                    <SectionTitle>Logs</SectionTitle>
+                    <NavLink href={route('activity.logs')} routeName="activity.logs" icon={ScrollText}>Activity Logs</NavLink>
+                </nav>
+                
+                <div className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700/60 p-4 bg-gray-50 dark:bg-gray-800/50 ${(collapsed && !sidebarOpen) ? 'justify-center' : ''}`}>
+                    <div className={`flex items-center w-full gap-3 ${(collapsed && !sidebarOpen) ? 'flex-col space-y-2 text-center' : ''}`}>
+                        {user?.avatar ? (
+                            <img
+                                src={user.avatar}
+                                alt={user.name}
+                                className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 dark:border-blue-600 shadow-sm"
+                            />
+                        ) : (
+                            <div className={`w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white text-md font-semibold border-2 border-white dark:border-gray-700 shadow-sm ${(collapsed && !sidebarOpen) ? 'mx-auto' : ''}`}>
+                                {getUserInitials(user?.name)}
+                            </div>
+                        )}
+                        {(sidebarOpen || !collapsed) && (
+                            <div className={`flex flex-col flex-1 min-w-0 ${(collapsed && !sidebarOpen) ? 'items-center' : ''}`}>
+                                <span className="truncate text-sm font-semibold text-gray-800 dark:text-gray-100">{user?.name ?? 'User Name'}</span>
+                                <Link href={route('profile')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-0.5 transition-colors">View profile</Link>
+                            </div>
+                        )}
+                        {(sidebarOpen || !collapsed) && (
+                             <Tippy content="Logout">
+                                <button
+                                    onClick={handleLogout}
+                                    type="button"
+                                    className={`p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-red-100 dark:hover:bg-red-700/50 hover:text-red-600 dark:hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ${(collapsed && !sidebarOpen) ? 'mt-2' : 'ml-auto'}`}
+                                    aria-label="Logout"
+                                >
+                                    <LogOut size={18} />
+                                </button>
+                            </Tippy>
+                        )}
                     </div>
                 </div>
             </div>

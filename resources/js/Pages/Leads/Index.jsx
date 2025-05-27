@@ -1,657 +1,423 @@
-import React, { useState, useMemo } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
-// Import desired icons from lucide-react
-import { Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Info, Flame, TrendingUp, ChevronDown, Calendar, User, Tag, DollarSign, Search } from 'lucide-react'; // Added CheckCircle2, XCircle for flash
-import Sidebar from '@/Components/parts/Sidebar'; // Adjust path if needed
-import Pagination from '@/Components/Pagination'; // Import the Pagination component
+import React, { useState, useMemo, useEffect } from 'react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
+import { Plus, Eye, Edit2, Trash2, CheckCircle2, XCircle, Search, Filter as FilterIcon, RotateCcw, UserCircle2, Briefcase, Phone, Mail, Building, Tag, DollarSign, CalendarDays, TrendingUp, Flame, Star, SlidersHorizontal } from 'lucide-react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Pagination from '@/Components/Pagination';
+import Select from 'react-select';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
-import axios from 'axios';
-import Select from 'react-select';
-import AutheticatedLayout from '@/Layouts/AuthenticatedLayout'; // Adjust path if needed
-// Assuming you might refactor Dashboard into a layout component:
-// import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout'; // Example import
 
-
-// Leads Index Page Component
-// Receives 'auth' (containing user), 'leads' (Laravel Paginator instance), and 'flash' messages as props
-export default function LeadsIndex({ user, leads }) {
-    const { props } = usePage();
-    // --- Get Flash Messages ---
-    // Use the usePage hook to access shared props, including flash messages
+const getLeadAvatarPlaceholder = (name) => {
+    const colors = [
+        'bg-red-400', 'bg-green-400', 'bg-blue-400', 'bg-yellow-400', 
+        'bg-purple-400', 'bg-indigo-400', 'bg-pink-400', 'bg-teal-400',
+        'bg-cyan-400', 'bg-orange-400', 'bg-lime-400', 'bg-emerald-400'
+    ];
+    if (!name || name.trim() === '') name = "L"; 
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const color = colors[Math.abs(hash) % colors.length];
     
-    const flash = props.flash || {}; // Get flash object, default to empty object if not present
-
-    // --- Status/Method Options (These should ideally come from props passed by the controller) ---
-    const leadStatusOptions = props.statusOptions || [ // Example fallback
-        { value: 'new', label: 'New Lead' },
-        { value: 'contacted', label: 'Contacted' },
-        { value: 'qualified', label: 'Qualified' },
-        { value: 'unqualified', label: 'Unqualified' },
-        { value: 'lost', label: 'Lost Deal' },
-        { value: 'won', label: 'Won Deal' }
-    ];
-    const leadMethodOptions = props.methodOptions || [ // Example fallback
-        { value: 'website', label: 'Website Form' },
-        { value: 'referral', label: 'Referral' },
-        { value: 'cold_call', label: 'Cold Call' },
-        { value: 'advertisement', label: 'Advertisement' },
-        { value: 'other', label: 'Other' },
-    ];
-    // --- End Status/Method Options ---
-
-    // --- Filtering and Sorting State ---
-    const [statusMulti, setStatusMulti] = useState([]);
-    const [qualificationMulti, setQualificationMulti] = useState([]);
-    const [ownerMulti, setOwnerMulti] = useState([]);
-    const [sortField, setSortField] = useState('');
-    const [sortDir, setSortDir] = useState('asc');
-
-    // Advanced filter state
-    const [showAdvanced, setShowAdvanced] = useState(false);
-    const [searchText, setSearchText] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
-    const [ownerFilter, setOwnerFilter] = useState('');
-    const [dateFrom, setDateFrom] = useState('');
-    const [dateTo, setDateTo] = useState('');
-    const [dealMin, setDealMin] = useState('');
-    const [dealMax, setDealMax] = useState('');
-    const [tagsFilter, setTagsFilter] = useState('');
-
-    // --- Filtered and Sorted Leads ---
-    const filteredLeads = useMemo(() => {
-        let data = leads && leads.data ? [...leads.data] : [];
-        // Advanced filters
-        if (searchText) {
-            const s = searchText.toLowerCase();
-            data = data.filter(l =>
-                (l.name && l.name.toLowerCase().includes(s)) ||
-                (l.email && l.email.toLowerCase().includes(s)) ||
-                (l.company && l.company.toLowerCase().includes(s)) ||
-                (l.tags && Array.isArray(l.tags) && l.tags.join(',').toLowerCase().includes(s))
-            );
-        }
-        if (statusMulti.length > 0) {
-            const vals = statusMulti.map(s => s.value);
-            data = data.filter(l => vals.includes(l.status));
-        }
-        if (qualificationMulti.length > 0) {
-            const vals = qualificationMulti.map(q => q.value);
-            data = data.filter(l => vals.includes(l.qualification));
-        }
-        if (ownerMulti.length > 0) {
-            const vals = ownerMulti.map(o => o.value);
-            data = data.filter(l => vals.includes(String(l.lead_owner)));
-        }
-        if (dateFrom) {
-            data = data.filter(l => new Date(l.created_at) >= new Date(dateFrom));
-        }
-        if (dateTo) {
-            data = data.filter(l => new Date(l.created_at) <= new Date(dateTo));
-        }
-        if (dealMin !== '') {
-            data = data.filter(l => Number(l.deal_value) >= Number(dealMin));
-        }
-        if (dealMax !== '') {
-            data = data.filter(l => Number(l.deal_value) <= Number(dealMax));
-        }
-        if (tagsFilter) {
-            const tag = tagsFilter.toLowerCase();
-            data = data.filter(l => Array.isArray(l.tags) && l.tags.some(t => t.toLowerCase().includes(tag)));
-        }
-        if (sortField) {
-            data = data.sort((a, b) => {
-                if (sortField === 'score') {
-                    return sortDir === 'asc' ? a.score - b.score : b.score - a.score;
-                }
-                if (sortField === 'qualification') {
-                    const order = { Hot: 3, Warm: 2, Cold: 1 };
-                    return sortDir === 'asc' ? (order[a.qualification] || 0) - (order[b.qualification] || 0) : (order[b.qualification] || 0) - (order[a.qualification] || 0);
-                }
-                if (sortField === 'added_on') {
-                    return sortDir === 'asc'
-                        ? new Date(a.created_at) - new Date(b.created_at)
-                        : new Date(b.created_at) - new Date(a.created_at);
-                }
-                // Generic string/array sort for other fields
-                let aVal = a[sortField];
-                let bVal = b[sortField];
-                if (Array.isArray(aVal)) aVal = aVal.join(', ');
-                if (Array.isArray(bVal)) bVal = bVal.join(', ');
-                if (aVal === undefined) aVal = '';
-                if (bVal === undefined) bVal = '';
-                if (typeof aVal === 'string' && typeof bVal === 'string') {
-                    return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-                }
-                return 0;
-            });
-        }
-        return data;
-    }, [leads, searchText, statusMulti, qualificationMulti, ownerMulti, dateFrom, dateTo, dealMin, dealMax, tagsFilter, sortField, sortDir]);
-
-    // --- Sorting Handlers ---
-    const handleSort = (field) => {
-        if (sortField === field) {
-            setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortField(field);
-            setSortDir('asc');
-        }
+    const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    return {
+        colorClass: `${color} text-white`,
+        initials: initials || name.charAt(0).toUpperCase()
     };
+};
 
-    // --- Column Visibility State ---
-    const allColumns = [
-        { key: 'title', label: 'Title' },
-        { key: 'positions', label: 'Positions' },
-        { key: 'tags', label: 'Tags' },
-        { key: 'company', label: 'Company' },
-        { key: 'status', label: 'Status' },
-        { key: 'score', label: 'Score' },
-        { key: 'qualification', label: 'Qualification' },
-        { key: 'added_on', label: 'Added On' },
-    ];
-    const [showColumns, setShowColumns] = useState(allColumns.map(col => col.key));
-    const [showColDropdown, setShowColDropdown] = useState(false);
-    const [settingsLoading, setSettingsLoading] = useState(true);
+const statusColorMap = {
+    new: 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200',
+    contacted: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-200',
+    qualified: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200',
+    unqualified: 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200',
+    lost: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200',
+    won: 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-purple-200',
+    default: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+};
 
-    // Fetch user settings on mount
-    React.useEffect(() => {
-        let mounted = true;
-        axios.get('/admin/user/settings')
-            .then(res => {
-                if (mounted && res.data.settings && res.data.settings.leads_table_columns) {
-                    setShowColumns(res.data.settings.leads_table_columns);
-                }
-            })
-            .catch(() => {})
-            .finally(() => { if (mounted) setSettingsLoading(false); });
-        return () => { mounted = false; };
+const qualificationColorMap = {
+    Hot: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200',
+    Warm: 'bg-orange-100 text-orange-800 dark:bg-orange-700 dark:text-orange-200',
+    Cold: 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200',
+    default: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+};
+
+
+export default function LeadsIndex({ user, leads, statusOptions: propStatusOptions, methodOptions: propMethodOptions, owners: propOwners }) {
+    const { props } = usePage();
+    const flash = props.flash || {};
+
+    const queryParams = new URLSearchParams(window.location.search);
+    
+    const leadStatusOptions = propStatusOptions || [];
+    const leadMethodOptions = propMethodOptions || [];
+    const ownersOptions = propOwners ? propOwners.map(o => ({ value: String(o.id), label: o.name })) : [];
+
+    const [searchText, setSearchText] = useState(queryParams.get('search') || '');
+    const [statusFilter, setStatusFilter] = useState(
+        queryParams.getAll('status[]').map(val => leadStatusOptions.find(opt => opt.value === val)).filter(Boolean) || []
+    );
+    const [qualificationFilter, setQualificationFilter] = useState(
+        queryParams.getAll('qualification[]').map(val => ({ value: val, label: val })) || []
+    ); 
+    const [ownerFilter, setOwnerFilter] = useState(
+        queryParams.getAll('owner[]').map(val => ownersOptions.find(opt => opt.value === val)).filter(Boolean) || []
+    );
+    const [dateFrom, setDateFrom] = useState(queryParams.get('date_from') || '');
+    const [dateTo, setDateTo] = useState(queryParams.get('date_to') || '');
+    const [dealMin, setDealMin] = useState(queryParams.get('deal_min') || '');
+    const [dealMax, setDealMax] = useState(queryParams.get('deal_max') || '');
+    const [tagsFilter, setTagsFilter] = useState(queryParams.get('tags') || '');
+    
+    const [isListMounted, setIsListMounted] = useState(false);
+    const [showFilterPanel, setShowFilterPanel] = useState(false); // State for filter panel visibility
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsListMounted(true), 50);
+        return () => clearTimeout(timer);
     }, []);
 
-    // Persist column settings when changed
-    React.useEffect(() => {
-        if (!settingsLoading) {
-            axios.post('user/settings', { settings: { leads_table_columns: showColumns } });
-        }
-    }, [showColumns, settingsLoading]);
+    const displayedLeads = leads && leads.data ? leads.data : [];
 
-    const toggleColumn = (key) => {
-        setShowColumns(cols =>
-            cols.includes(key)
-                ? cols.filter(c => c !== key)
-                : [...cols, key]
-        );
+    const handleSearchInputChange = (e) => setSearchText(e.target.value);
+
+    const applyFilters = () => {
+        const params = {};
+        if (searchText) params.search = searchText;
+        if (statusFilter.length > 0) params['status[]'] = statusFilter.map(s => s.value);
+        if (qualificationFilter.length > 0) params['qualification[]'] = qualificationFilter.map(q => q.value);
+        if (ownerFilter.length > 0) params['owner[]'] = ownerFilter.map(o => o.value);
+        if (dateFrom) params.date_from = dateFrom;
+        if (dateTo) params.date_to = dateTo;
+        if (dealMin) params.deal_min = dealMin;
+        if (dealMax) params.deal_max = dealMax;
+        if (tagsFilter) params.tags = tagsFilter;
+        
+        router.get(route('leads.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     };
 
+    const resetFilters = () => {
+        setSearchText('');
+        setStatusFilter([]);
+        setQualificationFilter([]);
+        setOwnerFilter([]);
+        setDateFrom('');
+        setDateTo('');
+        setDealMin('');
+        setDealMax('');
+        setTagsFilter('');
+        router.get(route('leads.index'), {}, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+    
+    const handleDelete = (leadId, leadName) => {
+        if (confirm(`Are you sure you want to delete the lead "${leadName}"? This action cannot be undone.`)) {
+            router.delete(route('leads.destroy', leadId), {
+                preserveScroll: true,
+            });
+        }
+    };
+    
+    const qualificationOptions = [
+        { value: 'Hot', label: 'Hot' },
+        { value: 'Warm', label: 'Warm' },
+        { value: 'Cold', label: 'Cold' }
+    ];
+
+    const reactSelectStyles = {
+        control: (provided, state) => ({
+            ...provided,
+            minHeight: '42px',
+            borderColor: state.isFocused ? '#3b82f6' : (props.errors && Object.keys(props.errors).length > 0 ? '#ef4444' : '#d1d5db'),
+            '&:hover': { borderColor: state.isFocused ? '#3b82f6' : '#a5b4fc' },
+            boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : null,
+            borderRadius: '0.5rem',
+            backgroundColor: document.documentElement.classList.contains('dark') ? '#374151' : 'white', 
+        }),
+        menu: (provided) => ({
+            ...provided,
+            borderRadius: '0.5rem',
+            backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : 'white', 
+            zIndex: 50,
+        }),
+        option: (provided, state) => ({
+            ...provided,
+            backgroundColor: state.isSelected ? '#3b82f6' : (state.isFocused ? (document.documentElement.classList.contains('dark') ? '#374151' : '#eff6ff') : 'transparent'), 
+            color: state.isSelected ? 'white' : (document.documentElement.classList.contains('dark') ? '#d1d5db' : '#1f2937'), 
+            '&:hover': {
+                 backgroundColor: state.isSelected ? '#2563eb' : (document.documentElement.classList.contains('dark') ? '#4b5563' : '#dbeafe'), 
+            }
+        }),
+        multiValue: (provided) => ({
+            ...provided,
+            backgroundColor: document.documentElement.classList.contains('dark') ? '#4b5563' : '#e0e7ff', 
+            borderRadius: '0.25rem',
+        }),
+        multiValueLabel: (provided) => ({
+            ...provided,
+            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#3730a3', 
+        }),
+        multiValueRemove: (provided) => ({
+            ...provided,
+            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4338ca', 
+            '&:hover': {
+                backgroundColor: document.documentElement.classList.contains('dark') ? '#374151' : '#c7d2fe', 
+                color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#312e81', 
+            },
+        }),
+        placeholder: (provided) => ({
+            ...provided,
+            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280', 
+        }),
+         input: (provided) => ({
+            ...provided,
+            color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827', 
+        }),
+        singleValue: (provided) => ({
+            ...provided,
+            color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+        }),
+    };
+
+
     return (
-        // If using a separate Layout component, remove the outer div and Sidebar,
-        // and wrap the content with <AuthenticatedLayout user={auth.user}> ... </AuthenticatedLayout>
-        <>
-        <AutheticatedLayout user={user} title="Leads">
+        <AuthenticatedLayout user={user} title="Leads">
             <Head title="Leads" />
+            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-full mx-auto">
+                <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href={route('leads.create')}
+                            className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-sm font-medium"
+                        >
+                            <Plus size={18} className="mr-2 -ml-1" />
+                            Add Lead
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => setShowFilterPanel(!showFilterPanel)}
+                            className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150 shadow-sm hover:shadow-md"
+                        >
+                            <SlidersHorizontal size={16} className="mr-2" />
+                            {showFilterPanel ? 'Hide Filters' : 'Show Filters'}
+                        </button>
+                    </div>
+                    <div className="relative w-full sm:w-auto sm:max-w-xs md:max-w-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                        </div>
+                        <input
+                            type="text"
+                            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md"
+                            placeholder="Search leads..."
+                            value={searchText}
+                            onChange={handleSearchInputChange}
+                            onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+                        />
+                    </div>
+                </div>
 
-             {/* Main Flex Container including Sidebar */}
-            <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-sans">
+                {flash.success && (
+                    <div className="mb-5 p-4 bg-green-100 dark:bg-green-700/30 border border-green-300 dark:border-green-600 rounded-lg text-sm text-green-700 dark:text-green-200 flex items-center shadow" role="alert">
+                        <CheckCircle2 size={20} className="mr-2.5 flex-shrink-0" aria-hidden="true" />
+                        <span>{flash.success}</span>
+                    </div>
+                )}
+                {flash.error && (
+                    <div className="mb-5 p-4 bg-red-100 dark:bg-red-700/30 border border-red-300 dark:border-red-600 rounded-lg text-sm text-red-700 dark:text-red-200 flex items-center shadow" role="alert">
+                        <XCircle size={20} className="mr-2.5 flex-shrink-0" aria-hidden="true" />
+                        <span>{flash.error}</span>
+                    </div>
+                )}
 
-              
-                {/* Main Content Area */}
-                <div className="flex flex-col w-0 flex-1 overflow-hidden">
-                    {/* Optional Header for mobile (if not handled by layout) */}
-                    {/* Example: <header className="md:hidden ..."> ... </header> */}
-
-                    {/* Scrollable Content Area */}
-                    <main className="flex-1 relative overflow-y-auto focus:outline-none">
-                        <div className="py-8 px-4 sm:px-6 lg:px-8">
-                            {settingsLoading ? (
-                                <div className="flex justify-center items-center py-12">
-                                    <span className="text-gray-500 dark:text-gray-400 text-sm">Loading your preferences...</span>
+                {showFilterPanel && (
+                    <div className="mb-6 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-4 sm:p-6 transition-all duration-300 ease-in-out">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-end">
+                            <div className="min-w-[180px]">
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                                <Select isMulti options={leadStatusOptions} value={statusFilter} onChange={setStatusFilter} placeholder="Any Status" styles={reactSelectStyles} />
+                            </div>
+                            <div className="min-w-[180px]">
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Qualification</label>
+                                <Select isMulti options={qualificationOptions} value={qualificationFilter} onChange={setQualificationFilter} placeholder="Any Qualification" styles={reactSelectStyles} />
+                            </div>
+                            <div className="min-w-[180px]">
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Owner</label>
+                                <Select isMulti options={ownersOptions} value={ownerFilter} onChange={setOwnerFilter} placeholder="Any Owner" styles={reactSelectStyles} />
+                            </div>
+                             <div className="min-w-[180px]">
+                                <label htmlFor="tagsFilter" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tags</label>
+                                <input id="tagsFilter" type="text" value={tagsFilter} onChange={e => setTagsFilter(e.target.value)} placeholder="e.g. important, follow-up" className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md h-[42px]" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Date From</label>
+                                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md h-[42px]" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Date To</label>
+                                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md h-[42px]" />
+                            </div>
+                             <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Min Value</label>
+                                    <input type="number" value={dealMin} onChange={e => setDealMin(e.target.value)} placeholder="Min" className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md h-[42px]" />
                                 </div>
-                            ) : (
-                                <>
-                                    {/* Page Header */}
-                                    <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Leads</h1>
-                                        <div className="flex flex-row gap-2 w-full sm:w-auto justify-end items-center">
-                                            {/* Toggle Columns Button */}
-                                            <div className="relative">
-                                                <button
-                                                    type="button"
-                                                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                                                    onClick={() => setShowColDropdown(v => !v)}
-                                                >
-                                                    Toggle Columns
-                                                </button>
-                                                {showColDropdown && (
-                                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow z-50 p-2">
-                                                        {allColumns.map(col => (
-                                                            <label key={col.key} className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={showColumns.includes(col.key)}
-                                                                    onChange={() => toggleColumn(col.key)}
-                                                                    className="form-checkbox h-4 w-4 text-blue-600"
-                                                                />
-                                                                <span className="text-sm text-gray-700 dark:text-gray-200">{col.label}</span>
-                                                            </label>
-                                                        ))}
-                                                    </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Max Value</label>
+                                    <input type="number" value={dealMax} onChange={e => setDealMax(e.target.value)} placeholder="Max" className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md h-[42px]" />
+                                </div>
+                            </div>
+                            <div className="flex items-end gap-3 md:col-span-full lg:col-span-1 xl:col-auto justify-end w-full">
+                                <button type="button" onClick={applyFilters} className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md hover:shadow-lg transition-all duration-150 h-[42px]">
+                                    <FilterIcon size={16} className="mr-2"/>Apply
+                                </button>
+                                <button type="button" onClick={resetFilters} className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 shadow-sm hover:shadow-md transition-all duration-150 h-[42px]">
+                                    <RotateCcw size={16} className="mr-2"/>Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {displayedLeads.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                        {displayedLeads.map((lead, index) => {
+                            const avatar = getLeadAvatarPlaceholder(lead.name);
+                            const statusDisplay = leadStatusOptions.find(s => s.value === lead.status)?.label || lead.status;
+                            return (
+                                <div 
+                                    key={lead.id} 
+                                    className={`bg-white dark:bg-gray-800 shadow-lg rounded-xl p-5 flex flex-col justify-between transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-1.5
+                                                ${isListMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
+                                    style={{ animationDelay: isListMounted ? `${index * 0.06}s` : '0s' }}
+                                >
+                                    <div>
+                                        <div className="flex items-start mb-4">
+                                            <div className={`w-16 h-16 ${avatar.colorClass} rounded-lg flex items-center justify-center font-semibold text-2xl mr-4 flex-shrink-0 shadow-md`}>
+                                                {avatar.initials}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate" title={lead.name}>
+                                                    {lead.name}
+                                                </h3>
+                                                {lead.company && (
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate flex items-center" title={lead.company}>
+                                                        <Briefcase size={14} className="mr-1.5 flex-shrink-0 text-gray-400" /> {lead.company}
+                                                    </p>
+                                                )}
+                                                {lead.title && (
+                                                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5" title={lead.title}>
+                                                        {lead.title}
+                                                    </p>
                                                 )}
                                             </div>
-                                            {/* Use absolute path for Kanban View to avoid route helper issues */}
-                                            <Link href={route('leads.kanban')} className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition">Kanban View</Link>
-                                            <Link
-                                                href={route('leads.create')}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm text-sm font-medium hover:bg-blue-700 transition"
-                                            >
-                                                <Plus size={18} className="mr-2 -ml-1" />
-                                                Add Lead
-                                            </Link>
                                         </div>
-                                    </div>
-
-                                     {/* Flash Message Display */}
-                                    {flash.success && (
-                                        <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md flex items-center justify-between" role="alert">
-                                           <div className="flex items-center">
-                                             <CheckCircle2 size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
-                                             <span>{flash.success}</span>
-                                           </div>
                                         
+                                        <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300 mb-4">
+                                            {lead.email && (
+                                                <a href={`mailto:${lead.email}`} className="flex items-center group hover:text-blue-600 dark:hover:text-blue-400" title={lead.email} onClick={(e) => e.stopPropagation()}>
+                                                    <Mail size={14} className="mr-2.5 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 flex-shrink-0" />
+                                                    <span className="truncate group-hover:underline">{lead.email}</span>
+                                                </a>
+                                            )}
+                                            {lead.phone && (
+                                                <p className="flex items-center" title={`Phone: ${lead.phone}`}>
+                                                    <Phone size={14} className="mr-2.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                                    {lead.phone}
+                                                </p>
+                                            )}
                                         </div>
-                                    )}
-                                     {/* Display error flash messages if they exist */}
-                                     {flash.error && (
-                                        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md flex items-center justify-between" role="alert">
-                                           <div className="flex items-center">
-                                             <XCircle size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
-                                             <span>{flash.error}</span>
-                                           </div>
-                                        </div>
-                                    )}
 
-                                    {/* Advanced Filter Toggle */}
-                                    <button
-                                        className="mb-4 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow"
-                                        onClick={() => setShowAdvanced(v => !v)}
-                                    >
-                                        {showAdvanced ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
-                                    </button>
-                                    {showAdvanced && (
-                                        <div className="mb-6 bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex flex-wrap gap-4 items-center">
-                                            <div className="flex items-center gap-2">
-                                                <Search size={16} />
-                                                <input
-                                                    type="text"
-                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[180px]"
-                                                    placeholder="Search name, email, company, tags..."
-                                                    value={searchText}
-                                                    onChange={e => setSearchText(e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Tag size={16} />
-                                                <input
-                                                    type="text"
-                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[120px]"
-                                                    placeholder="Tag"
-                                                    value={tagsFilter}
-                                                    onChange={e => setTagsFilter(e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <DollarSign size={16} />
-                                                <input
-                                                    type="number"
-                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 w-20"
-                                                    placeholder="Min Value"
-                                                    value={dealMin}
-                                                    onChange={e => setDealMin(e.target.value)}
-                                                />
-                                                <span>-</span>
-                                                <input
-                                                    type="number"
-                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 w-20"
-                                                    placeholder="Max Value"
-                                                    value={dealMax}
-                                                    onChange={e => setDealMax(e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Calendar size={16} />
-                                                <input
-                                                    type="date"
-                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2"
-                                                    value={dateFrom}
-                                                    onChange={e => setDateFrom(e.target.value)}
-                                                />
-                                                <span>-</span>
-                                                <input
-                                                    type="date"
-                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2"
-                                                    value={dateTo}
-                                                    onChange={e => setDateTo(e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <User size={16} />
-                                                <input
-                                                    type="text"
-                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[100px]"
-                                                    placeholder="Owner ID"
-                                                    value={ownerFilter}
-                                                    onChange={e => setOwnerFilter(e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <select
-                                                    className="rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3 py-2 min-w-[110px]"
-                                                    value={statusFilter}
-                                                    onChange={e => setStatusFilter(e.target.value)}
-                                                >
-                                                    <option value="">All Statuses</option>
-                                                    {leadStatusOptions.map(opt => (
-                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            <Tippy content={`Status: ${statusDisplay}`}>
+                                                <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColorMap[lead.status] || statusColorMap.default}`}>
+                                                    {statusDisplay}
+                                                </span>
+                                            </Tippy>
+                                            {lead.qualification && (
+                                                <Tippy content={`Qualification: ${lead.qualification}`}>
+                                                    <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full items-center ${qualificationColorMap[lead.qualification] || qualificationColorMap.default}`}>
+                                                        {lead.qualification === 'Hot' && <Flame size={12} className="mr-1" />}
+                                                        {lead.qualification === 'Warm' && <TrendingUp size={12} className="mr-1" />}
+                                                        {lead.qualification === 'Cold' && <Star size={12} className="mr-1" />} 
+                                                        {lead.qualification}
+                                                    </span>
+                                                </Tippy>
+                                            )}
+                                            {lead.score !== null && lead.score !== undefined && (
+                                                <Tippy content={`Lead Score: ${lead.score}`}>
+                                                    <span className="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 items-center">
+                                                        <Star size={12} className="mr-1 text-yellow-500" /> Score: {lead.score}
+                                                    </span>
+                                                </Tippy>
+                                            )}
+                                        </div>
+                                        
+                                        {lead.tags && Array.isArray(lead.tags) && lead.tags.length > 0 && (
+                                            <div className="mb-3">
+                                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Tags:</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {lead.tags.slice(0, 3).map((tag, idx) => ( 
+                                                        <span key={idx} className="inline-block bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md px-2 py-0.5 text-xs font-medium">{tag}</span>
                                                     ))}
-                                                </select>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                className="ml-2 px-4 py-2 rounded border border-blue-500 text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 text-xs font-semibold hover:bg-blue-50 dark:hover:bg-blue-800 transition"
-                                                onClick={() => {
-                                                    setSearchText('');
-                                                    setStatusFilter('');
-                                                    setOwnerFilter('');
-                                                    setDateFrom('');
-                                                    setDateTo('');
-                                                    setDealMin('');
-                                                    setDealMax('');
-                                                    setTagsFilter('');
-                                                }}
-                                            >
-                                                Reset All
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Useful Filter Bar */}
-                                    <div className="mb-6 bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex flex-wrap gap-4 items-center">
-                                        <div className="min-w-[180px]">
-                                            <Select
-                                                isMulti
-                                                options={leadStatusOptions}
-                                                value={statusMulti}
-                                                onChange={setStatusMulti}
-                                                placeholder="Status"
-                                                classNamePrefix="react-select"
-                                            />
-                                        </div>
-                                        <div className="min-w-[180px]">
-                                            <Select
-                                                isMulti
-                                                options={[{ value: 'Hot', label: 'Hot' }, { value: 'Warm', label: 'Warm' }, { value: 'Cold', label: 'Cold' }]}
-                                                value={qualificationMulti}
-                                                onChange={setQualificationMulti}
-                                                placeholder="Qualification"
-                                                classNamePrefix="react-select"
-                                            />
-                                        </div>
-                                        <div className="min-w-[180px]">
-                                            <Select
-                                                isMulti
-                                                options={props.owners ? props.owners.map(u => ({ value: String(u.id), label: u.name })) : []}
-                                                value={ownerMulti}
-                                                onChange={setOwnerMulti}
-                                                placeholder="Owner"
-                                                classNamePrefix="react-select"
-                                            />
-                                        </div>
-                                        {(statusMulti.length > 0 || qualificationMulti.length > 0 || ownerMulti.length > 0) && (
-                                            <button
-                                                type="button"
-                                                className="ml-2 px-4 py-2 rounded-full border border-blue-500 text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 text-xs font-semibold hover:bg-blue-50 dark:hover:bg-blue-800 transition"
-                                                onClick={() => { setStatusMulti([]); setQualificationMulti([]); setOwnerMulti([]); }}
-                                            >
-                                                Reset
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* Leads Table Container */}
-                                    <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-                                        <div className="overflow-x-auto" style={{ minWidth: 900 }}>
-                                            <table className="min-w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
-                                                {/* Table Head */}
-                                                <thead className="bg-gray-50 dark:bg-gray-700">
-                                                    <tr>
-                                                        <th
-                                                            scope="col"
-                                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                            onClick={() => handleSort('name')}
-                                                        >
-                                                            <span className="inline-flex items-center">
-                                                                Name {sortField === 'name' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                            </span>
-                                                        </th>
-                                                        {showColumns.includes('title') && (
-                                                            <th
-                                                                scope="col"
-                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                                onClick={() => handleSort('title')}
-                                                            >
-                                                                <span className="inline-flex items-center">
-                                                                    Title {sortField === 'title' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                                </span>
-                                                            </th>
-                                                        )}
-                                                        {showColumns.includes('positions') && (
-                                                            <th
-                                                                scope="col"
-                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                                onClick={() => handleSort('positions')}
-                                                            >
-                                                                <span className="inline-flex items-center">
-                                                                    Positions {sortField === 'positions' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                                </span>
-                                                            </th>
-                                                        )}
-                                                        {showColumns.includes('tags') && (
-                                                            <th
-                                                                scope="col"
-                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                                onClick={() => handleSort('tags')}
-                                                            >
-                                                                <span className="inline-flex items-center">
-                                                                    Tags {sortField === 'tags' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                                </span>
-                                                            </th>
-                                                        )}
-                                                        {showColumns.includes('company') && (
-                                                            <th
-                                                                scope="col"
-                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                                onClick={() => handleSort('company')}
-                                                            >
-                                                                <span className="inline-flex items-center">
-                                                                    Company {sortField === 'company' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                                </span>
-                                                            </th>
-                                                        )}
-                                                        {showColumns.includes('status') && (
-                                                            <th
-                                                                scope="col"
-                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                                onClick={() => handleSort('status')}
-                                                            >
-                                                                <span className="inline-flex items-center">
-                                                                    Status {sortField === 'status' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                                </span>
-                                                            </th>
-                                                        )}
-                                                        {showColumns.includes('score') && (
-                                                            <th
-                                                                scope="col"
-                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                                onClick={() => handleSort('score')}
-                                                            >
-                                                                <span className="inline-flex items-center">
-                                                                    Score {sortField === 'score' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                                    <Tippy content="Lead Score: Calculated based on email, phone, status, notes, and source. Higher score = more qualified.">
-                                                                        <span><Info size={14} className="ml-1 text-gray-400" /></span>
-                                                                    </Tippy>
-                                                                </span>
-                                                            </th>
-                                                        )}
-                                                        {showColumns.includes('qualification') && (
-                                                            <th
-                                                                scope="col"
-                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                                onClick={() => handleSort('qualification')}
-                                                            >
-                                                                <span className="inline-flex items-center">
-                                                                    Qualification {sortField === 'qualification' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                                    <Tippy content="Qualification: Hot (score ≥ 70), Warm (score ≥ 40), Cold (score < 40).">
-                                                                        <span><Info size={14} className="ml-1 text-gray-400" /></span>
-                                                                    </Tippy>
-                                                                </span>
-                                                            </th>
-                                                        )}
-                                                        {showColumns.includes('added_on') && (
-                                                            <th
-                                                                scope="col"
-                                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
-                                                                onClick={() => handleSort('added_on')}
-                                                            >
-                                                                <span className="inline-flex items-center">
-                                                                    Added On {sortField === 'added_on' && (sortDir === 'asc' ? '▲' : '▼')}
-                                                                </span>
-                                                            </th>
-                                                        )}
-                                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                {/* Table Body */}
-                                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                                    {/* Check if leads.data exists and has items */}
-                                                    {filteredLeads.length > 0 ? (
-                                                        filteredLeads.map((lead) => (
-                                                            <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
-                                                                {/* Name & Email Cell */}
-                                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{lead.name}</div>
-                                                                    <div className="text-xs text-gray-500 dark:text-gray-400">{lead.email || '-'}</div>
-                                                                </td>
-                                                                {showColumns.includes('title') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{lead.title || '-'}</td>}
-                                                                {showColumns.includes('positions') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{lead.positions || '-'}</td>}
-                                                                {showColumns.includes('tags') && (
-                                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                                        {Array.isArray(lead.tags) && lead.tags.length > 0 ? (
-                                                                            <div className="flex flex-wrap gap-1">
-                                                                                {lead.tags.map((tag, idx) => (
-                                                                                    <span key={idx} className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full px-2 py-0.5 text-xs font-semibold">{tag}</span>
-                                                                                ))}
-                                                                            </div>
-                                                                        ) : (
-                                                                            <span className="text-xs text-gray-400">-</span>
-                                                                        )}
-                                                                    </td>
-                                                                )}
-                                                                {showColumns.includes('company') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{lead.company || '-'}</td>}
-                                                                {showColumns.includes('status') && (
-                                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                                            lead.status === 'new' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                                                                            lead.status === 'contacted' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                                                            lead.status === 'qualified' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                                                            lead.status === 'won' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                                                                            lead.status === 'lost' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                                                                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                                                                        }`}>
-                                                                            {leadStatusOptions.find(s => s.value === lead.status)?.label || lead.status}
-                                                                        </span>
-                                                                    </td>
-                                                                )}
-                                                                {showColumns.includes('score') && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{lead.score ?? '-'}</td>}
-                                                                {showColumns.includes('qualification') && (
-                                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                                        <Tippy
-                                                                            content={
-                                                                                lead.qualification === 'Hot'
-                                                                                    ? 'Hot: Highly qualified lead (score ≥ 70)'
-                                                                                    : lead.qualification === 'Warm'
-                                                                                    ? 'Warm: Moderately qualified lead (score ≥ 40)'
-                                                                                    : 'Cold: Low qualification (score < 40)'
-                                                                            }
-                                                                        >
-                                                                            <span
-                                                                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                                                    lead.qualification === 'Hot' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                                                                    lead.qualification === 'Warm' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                                                                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                                                                }`}
-                                                                            >
-                                                                                {lead.qualification || '-'}
-                                                                            </span>
-                                                                        </Tippy>
-                                                                    </td>
-                                                                )}
-                                                                {showColumns.includes('added_on') && (
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                                        {new Date(lead.created_at).toLocaleDateString()}
-                                                                    </td>
-                                                                )}
-                                                                {/* Actions Cell */}
-                                                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                                                    <div className="flex items-center justify-center space-x-2">
-                                                                        {/* View Action */}
-                                                                        <Link href={route('leads.show', lead.id)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="View">
-                                                                            <Eye size={16} />
-                                                                        </Link>
-                                                                        {/* Edit Action */}
-                                                                        <Link href={route('leads.edit', lead.id)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" title="Edit">
-                                                                            <Pencil size={16} />
-                                                                        </Link>
-                                                                        {/* Delete Action */}
-                                                                        <Link
-                                                                            href={route('leads.destroy', lead.id)}
-                                                                            method="delete"
-                                                                            as="button"
-                                                                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                                                            title="Delete"
-                                                                            onBefore={() => confirm('Are you sure you want to delete this lead?')}
-                                                                        >
-                                                                            <Trash2 size={16} />
-                                                                        </Link>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        ))
-                                                    ) : (
-                                                        // Row shown if no leads are found
-                                                        <tr>
-                                                            <td colSpan="5" className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                                                                No leads found.
-                                                            </td>
-                                                        </tr>
+                                                    {lead.tags.length > 3 && (
+                                                         <Tippy content={lead.tags.slice(3).join(', ')}>
+                                                            <span className="inline-block bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md px-2 py-0.5 text-xs font-medium">+{lead.tags.length - 3} more</span>
+                                                        </Tippy>
                                                     )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                         {/* --- Pagination --- */}
-                                         {leads && leads.links && leads.data.length > 0 && (
-                                             <Pagination links={leads.links} /> // Pass the links array
-                                         )}
-                                         {/* --- End Pagination --- */}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center mt-1">
+                                            <CalendarDays size={12} className="mr-1.5 flex-shrink-0" /> Added: {new Date(lead.created_at).toLocaleDateString()}
+                                        </p>
                                     </div>
-                                </>
-                            )}
-                        </div>
-                    </main>
-                     {/* Optional Footer (if not handled by layout) */}
-                    {/* <footer className="..."> ... </footer> */}
-                </div>
+
+                                    <div className="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700/60 flex items-center justify-end space-x-2">
+                                        <Tippy content="View Lead"><Link href={route('leads.show', lead.id)} className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-300 transition-colors p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-700/50"><Eye size={18} /></Link></Tippy>
+                                        <Tippy content="Edit Lead"><Link href={route('leads.edit', lead.id)} className="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-300 transition-colors p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-700/50"><Edit2 size={18} /></Link></Tippy>
+                                        <Tippy content="Delete Lead"><button onClick={() => handleDelete(lead.id, lead.name)} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-300 transition-colors p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-700/50"><Trash2 size={18} /></button></Tippy>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                     <div className="text-center py-20 px-6 bg-white dark:bg-gray-800 shadow-xl rounded-xl">
+                        <Search size={60} className="mx-auto mb-6 text-gray-400 dark:text-gray-500" />
+                        <p className="text-xl font-semibold text-gray-700 dark:text-gray-300">
+                            {queryParams.toString() ? 'No leads match your criteria.' : 'No leads found.'}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2.5">
+                            {queryParams.toString() ? 'Try adjusting your search or filter options.' : 'Get started by adding a new lead.'}
+                        </p>
+                        {!queryParams.toString() && (
+                            <Link
+                                href={route('leads.create')}
+                                className="mt-8 inline-flex items-center px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+                            >
+                                <Plus size={18} className="mr-2" /> Add New Lead
+                            </Link>
+                        )}
+                    </div>
+                )}
+
+                {leads && leads.links && leads.data && leads.data.length > 0 && (
+                     <div className="mt-8">
+                        <Pagination links={leads.links} />
+                    </div>
+                )}
             </div>
-            </AutheticatedLayout> // Close layout component if used
-        </>
-         
+        </AuthenticatedLayout>
     );
 }

@@ -132,3 +132,11 @@ MIT
 - Sidebar is fully responsive: always visible on desktop, slides in/out on mobile with overlay and close button.
 - Sidebar toggle and collapse state are preserved per user/device.
 - Layout and sidebar are consistent across all main pages.
+
+## Modern UI/UX Improvements
+
+- The application now features a more modern, visually appealing, and consistent sidebar and layout, built with Tailwind CSS and Lucide icons.
+- Sidebar navigation is fully responsive, with smooth transitions, mobile slide-in/out, and persistent collapse state per user/device.
+- Sidebar menu items for Users, Roles, and Permissions are only visible to users with the appropriate permissions, providing a cleaner and more secure navigation experience.
+- All navigation, section titles, and user profile elements in the sidebar have been updated for a modern look and improved usability.
+- The UI/UX across all main pages (Leads, Companies, Contacts, Users, etc.) is unified and modernized, with improved accessibility and responsiveness.

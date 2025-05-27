@@ -70,12 +70,12 @@ export default function PermissionsIndex({ user, permissions }) {
                                             <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                                 <div className="flex items-center justify-center space-x-2">
                                                     {/* Edit and Delete actions can be implemented here */}
-                                                    <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" title="Edit" disabled>
+                                                    {/* <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" title="Edit" disabled>
                                                         <Pencil size={16} />
                                                     </button>
                                                     <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Delete" disabled>
                                                         <Trash2 size={16} />
-                                                    </button>
+                                                    </button> */}
                                                 </div>
                                             </td>
                                         </tr>

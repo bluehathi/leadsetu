@@ -12,7 +12,10 @@ class RoleSeeder extends Seeder
     {
         // Define roles and their permissions
         $roles = [
-            'Admin' => Permission::pluck('name')->toArray(), // All permissions
+            'Admin' => Permission::pluck('name')->toArray(),
+            'WorkSpace Owner' => Permission::where('name','not like','%roles%')
+            ->where('name','not like','%permission%')
+            ->pluck('name')->toArray(), // All permissions
             'Manager' => [
                 'view leads', 'create leads', 'edit leads', 'delete leads',
                 'view users', 'view workspaces',

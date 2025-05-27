@@ -3,7 +3,7 @@ import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Plus, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
-const DEFAULT_ROLE_NAMES = ["Admin", "Manager", "Sales", "Viewer"];
+const DEFAULT_ROLE_NAMES = ["Admin", "Manager", "Sales", "Viewer","WorkSpace Owner"];
 
 export default function RolesIndex({ user, roles }) {
     const { data, setData, post, processing, errors, reset } = useForm({ name: '' });
@@ -84,7 +84,7 @@ export default function RolesIndex({ user, roles }) {
                                             <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                                 <div className="flex items-center justify-center space-x-2">
                                                     {/* Edit Action - hide for Admin role */}
-                                                    {role.name !== "Admin" && (
+                                                    {role.name !== "Admin" && role.name !== "WorkSpace Owner" && (
                                                         <a
                                                             href={route('roles.edit', role.id)}
                                                             className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"

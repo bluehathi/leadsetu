@@ -135,6 +135,8 @@ class AuthController extends Controller
             'workspace_id' => $workspace->id, // Associate the user with the workspace
         ]);
 
+         $user->syncRoles(['WorkSpace Owner']);
+
         Auth::login($user);
         $request->session()->regenerate();
 

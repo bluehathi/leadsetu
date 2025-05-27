@@ -10,8 +10,16 @@ export default { // Use 'export default' instead of 'module.exports'
     ],
     theme: {
       extend: {
-        // Add any theme customizations here
+      keyframes: {
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' }, // Subtle Y translation
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
+      animation: {
+        fadeInUp: 'fadeInUp 0.4s ease-out forwards', // Faster animation
+      },
+    },
     },
     plugins: [
       // Add any Tailwind plugins here (e.g., require('@tailwindcss/forms'))

@@ -10,11 +10,11 @@ class CompanySeeder extends Seeder
 {
     public function run(): void
     {
-        $workspaces = Workspace::all();
-        foreach ($workspaces as $workspace) {
+        $workspace = Workspace::first();
+      
             Company::factory()->count(3)->create([
                 'workspace_id' => $workspace->id,
             ]);
-        }
+        
     }
 }
