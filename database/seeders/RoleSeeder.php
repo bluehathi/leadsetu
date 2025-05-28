@@ -35,6 +35,8 @@ class RoleSeeder extends Seeder
         foreach ($roles as $roleName => $perms) {
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
             $role->syncPermissions($perms);
+            // Log activity for each role created
+           
         }
     }
 }

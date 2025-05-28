@@ -24,6 +24,7 @@ const getLogoPlaceholder = (name) => {
 
 export default function CompaniesIndex({ companies: initialCompanies = [] }) { // Renamed prop for clarity
     const { props } = usePage();
+    const flash = props.flash || {};
     const user = props.auth?.user;
     const [isListMounted, setIsListMounted] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -75,6 +76,23 @@ export default function CompaniesIndex({ companies: initialCompanies = [] }) { /
                             Add
                         </Link>
                     </div>
+
+                    {flash.success && (
+                    <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md flex items-center justify-between" role="alert">
+                        <div className="flex items-center">
+                            <CheckCircle2 size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
+                            <span>{flash.success}</span>
+                        </div>
+                    </div>
+                )}
+                {flash.error && (
+                    <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md flex items-center justify-between" role="alert">
+                        <div className="flex items-center">
+                            <XCircle size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
+                            <span>{flash.error}</span>
+                        </div>
+                    </div>
+                )}
 
                     {/* Companies List Area */}
                     <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-3 sm:p-4">

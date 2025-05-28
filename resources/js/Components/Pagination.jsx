@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react'; // Icons for prev/next
+import { Link } from "@inertiajs/react";
+import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'; // Added MoreHorizontal for ellipsis
 
 /**
  * Renders pagination links provided by Laravel's Paginator.
@@ -9,93 +9,102 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'; // Icons for prev/next
  * @param {object} props
  * @param {Array} props.links - The links array from the Laravel Paginator object. Each link object typically has 'url', 'label', 'active'.
  * @param {string} [props.className=''] - Optional additional CSS classes for the main nav container.
+ * @param {object} [props.meta={}] - Optional meta data from Laravel paginator (for showing "Showing X to Y of Z results").
  * @returns {JSX.Element|null} The pagination component or null if no links need to be rendered.
  */
-export default function Pagination({ links = [], className = '' }) {
-    // Don't render the component if there are 3 or fewer links
-    // (typically means only one page: just prev, page 1, next)
-    if (!links || links.length <= 3) {
+export default function Pagination({ links = [], meta = {}, className = '' }) {
+    // Don't render the component if there are 3 or fewer links (typically just prev, page 1, next)
+    // or if there's only one page of results based on meta.
+    if (!links || links.length <= 3 || (meta && meta.last_page <= 1) ) {
         return null;
     }
 
     return (
-        // Main navigation container
         <nav
-            className={`flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 ${className}`}
+            className={`flex flex-col sm:flex-row items-center justify-between bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 ${className}`}
             aria-label="Pagination"
         >
-            {/* Placeholder for "Showing X to Y of Z results" - requires 'meta' data from paginator */}
-            {/* <div className="hidden sm:block">
-                <p className="text-sm text-gray-700 dark:text-gray-400">
-                    Showing <span className="font-medium">{meta.from || 0}</span> to <span className="font-medium">{meta.to || 0}</span> of{' '}
-                    <span className="font-medium">{meta.total || 0}</span> results
-                </p>
-            </div> */}
+            {/* "Showing X to Y of Z results" - visible on sm+ screens */}
+            <div className="hidden sm:block mb-2 sm:mb-0">
+                {meta.total > 0 && (
+                     <p className="text-sm text-gray-700 dark:text-gray-400">
+                        Showing <span className="font-semibold text-gray-800 dark:text-gray-200">{meta.from || 0}</span> to <span className="font-semibold text-gray-800 dark:text-gray-200">{meta.to || 0}</span> of{' '}
+                        <span className="font-semibold text-gray-800 dark:text-gray-200">{meta.total || 0}</span> results
+                    </p>
+                )}
+            </div>
 
-            {/* Container for the pagination links, aligned to the right on larger screens */}
             <div className="flex flex-1 justify-between sm:justify-end">
-                <div className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    {/* Map through each link object provided by Laravel Paginator */}
+                <div className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px" aria-label="Pagination">
                     {links.map((link, index) => {
-                        // Determine the state of the link
-                        const isFirst = index === 0; // Is it the 'Previous' link?
-                        const isLast = index === links.length - 1; // Is it the 'Next' link?
-                        const isDisabled = !link.url; // Is the link disabled (no URL)?
-                        const isActive = link.active; // Is it the currently active page number?
+                        const isFirst = index === 0;
+                        const isLast = index === links.length - 1;
+                        const isDisabled = !link.url;
+                        const isActive = link.active;
 
-                        // Set the label: use icons for Prev/Next, otherwise use the label from Laravel (might contain HTML entities)
                         let labelContent;
                         if (isFirst) {
-                            labelContent = <ChevronLeft size={18} aria-hidden="true" />;
+                            labelContent = (
+                                <>
+                                    <ChevronLeft size={18} className="mr-1 sm:mr-0" aria-hidden="true" />
+                                    <span className="hidden sm:inline">Previous</span>
+                                </>
+                            );
                         } else if (isLast) {
-                            labelContent = <ChevronRight size={18} aria-hidden="true" />;
-                        } else {
-                            // Use dangerouslySetInnerHTML for labels like '1', '2', '&raquo;', etc.
+                            labelContent = (
+                                <>
+                                    <span className="hidden sm:inline">Next</span>
+                                    <ChevronRight size={18} className="ml-1 sm:ml-0" aria-hidden="true" />
+                                </>
+                            );
+                        } else if (link.label.includes('...')) {
+                             labelContent = <MoreHorizontal size={18} aria-hidden="true" />;
+                        }
+                        else {
                             labelContent = <span dangerouslySetInnerHTML={{ __html: link.label }} />;
                         }
 
-                        // Define base styling classes
-                        const baseClasses = "relative inline-flex items-center px-4 py-2 border text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition ease-in-out duration-150";
-                        // Define classes for different states
-                        const activeClasses = "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-200";
-                        const defaultClasses = "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700";
-                        const disabledClasses = "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-300 dark:text-gray-500 cursor-not-allowed";
-                        // Define classes for rounded corners on first/last elements
-                        const firstClasses = "rounded-l-md";
-                        const lastClasses = "rounded-r-md";
+                        const baseClasses = "relative inline-flex items-center px-3 sm:px-4 py-2 border text-sm font-medium focus:z-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-all duration-150 ease-in-out";
+                        const activeClasses = "z-10 bg-blue-600 border-blue-600 text-white dark:bg-blue-500 dark:border-blue-500 dark:text-white shadow-md";
+                        const defaultClasses = "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-100";
+                        const disabledClasses = "bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-70";
+                        
+                        const firstLinkClasses = "rounded-l-lg";
+                        const lastLinkClasses = "rounded-r-lg";
+                        // For single page numbers, make them more square-ish
+                        const pageNumberClasses = (!isFirst && !isLast && !link.label.includes('...')) ? "min-w-[2.5rem] justify-center" : "";
 
-                        // Combine classes based on the link's state
-                        let combinedClasses = `${baseClasses} `;
-                        if (isDisabled) combinedClasses += disabledClasses;
+
+                        let combinedClasses = `${baseClasses} ${pageNumberClasses} `;
+                        if (isDisabled && !link.label.includes('...')) combinedClasses += disabledClasses; // Apply disabled only if not ellipsis
                         else if (isActive) combinedClasses += activeClasses;
                         else combinedClasses += defaultClasses;
 
-                        // Add rounding for the first and last visible links
-                        if (isFirst) combinedClasses += ` ${firstClasses}`;
-                        if (isLast) combinedClasses += ` ${lastClasses}`;
-
-                        // Handle rendering '...' separator (usually has null URL and label containing '...')
-                        if (link.label.includes('...')) {
+                        if (isFirst) combinedClasses += ` ${firstLinkClasses}`;
+                        if (isLast) combinedClasses += ` ${lastLinkClasses}`;
+                        
+                        // Special styling for ellipsis
+                         if (link.label.includes('...')) {
                             return (
-                                <span key={`separator-${index}`} className={`${baseClasses} ${defaultClasses} cursor-default`}>
-                                    ...
+                                <span key={`separator-${index}`} className={`${baseClasses} ${defaultClasses} cursor-default px-3 sm:px-4`}>
+                                   {labelContent}
                                 </span>
                             );
                         }
 
-                        // Return the Inertia Link component for clickable links
+
                         return (
                             <Link
-                                key={`link-${link.label}-${index}`} // Create a unique key
-                                href={link.url || '#'} // Use URL if available, otherwise '#'
+                                key={`link-${link.label}-${index}`}
+                                href={link.url || '#'}
                                 className={combinedClasses}
-                                aria-current={isActive ? 'page' : undefined} // Indicate active page for accessibility
-                                preserveScroll // Maintain scroll position on page change
-                                // preserveState // Optionally maintain component state
-                                only={['leads']} // Important: Only request updated 'leads' data to optimize performance
-                                {...(isDisabled ? { as: 'span', tabIndex: -1 } : {})} // Render disabled links as non-interactive spans
+                                aria-current={isActive ? 'page' : undefined}
+                                preserveScroll
+                                // preserveState // Usually not needed for pagination
+                                // only={['your_data_prop_name']} // Be specific about what data to reload
+                                {...(isDisabled ? { as: 'span', tabIndex: -1, role: 'button', 'aria-disabled': true } : {})}
                             >
-                                {labelContent} {/* Render the icon or text label */}
+                                {labelContent}
                             </Link>
                         );
                     })}

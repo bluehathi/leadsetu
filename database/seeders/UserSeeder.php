@@ -49,6 +49,7 @@ class UserSeeder extends Seeder
                 'workspace_id' => $workspace ? $workspace->id : null,
             ]);
             $user->syncRoles([$userData['role']]);
+           
         }
     }
 }

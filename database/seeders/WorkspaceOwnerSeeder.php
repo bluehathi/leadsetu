@@ -16,10 +16,28 @@ class WorkspaceOwnerSeeder extends Seeder
         $workspaces = Workspace::all();
         foreach ($workspaces as $workspace) {
             // Assign a random user as owner, or the first user if only one
-            WorkspaceOwner::firstOrCreate([
+            $workspaceOwner = WorkspaceOwner::firstOrCreate([
                 'workspace_id' => $workspace->id,
                 'user_id' => $owner->id,
             ]);
+            // Log activity for each workspace owner assignment
+            if (class_exists('App\\Models\\ActivityLog')) {
+                \App\Models\ActivityLog::create([
+                    'user_id' => $owner->id,
+                    'workspace_id' => $workspace->id,
+                    'action' => 'workspace_owner_assigned',
+                    'subject_type' => WorkspaceOwner::class,
+                    'subject_id' => $workspaceOwner->id,
+                    'description' => 'Workspace owner assigned via seeder',
+                    'properties' => json_encode([
+                        'seeded' => true,
+                        'workspace_id' => $workspace->id,
+                        'user_id' => $owner->id,
+                    ]),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
     }
 }

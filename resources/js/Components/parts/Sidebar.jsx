@@ -166,11 +166,14 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
                     <NavLink href={route('contacts.index')} routeName="contacts.index" icon={Contact2}>Contacts</NavLink>
                     <NavLink href={route('companies.index')} routeName="companies.index" icon={BriefcaseBusiness}>Companies</NavLink>
                     <NavLink href={route('workspaces.index')} routeName="workspaces.index" icon={Globe}>Workspaces</NavLink>
-
-                    {showAccessControlSection && <SectionTitle>Access Control</SectionTitle>}
+                    <SectionTitle>Access Control</SectionTitle>
+                    <NavLink href={route('users.index')} routeName="users.index" icon={UsersIcon}>Users</NavLink>
+                    <NavLink href={route('roles.index')} routeName="roles.index" icon={Shield}>Roles</NavLink>
+                    <NavLink href={route('permissions.index')} routeName="permissions.index" icon={Key}>Permissions</NavLink>
+                    {/* {showAccessControlSection && <SectionTitle>Access Control</SectionTitle>}
                     {canViewUsers && <NavLink href={route('users.index')} routeName="users.index" icon={UsersIcon}>Users</NavLink>}
                     {canViewRoles && <NavLink href={route('roles.index')} routeName="roles.index" icon={Shield}>Roles</NavLink>}
-                    {canViewPermissions && <NavLink href={route('permissions.index')} routeName="permissions.index" icon={Key}>Permissions</NavLink>}
+                    {canViewPermissions && <NavLink href={route('permissions.index')} routeName="permissions.index" icon={Key}>Permissions</NavLink>} */}
 
                     <SectionTitle>Logs</SectionTitle>
                     <NavLink href={route('activity.logs')} routeName="activity.logs" icon={ScrollText}>Activity Logs</NavLink>

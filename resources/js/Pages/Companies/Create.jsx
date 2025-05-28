@@ -29,7 +29,7 @@ export default function CompaniesCreate() {
                     {/* Page Header - Can be removed if AuthenticatedLayout handles the title prominently */}
                     {/* <h1 className="text-3xl font-semibold text-gray-800 dark:text-gray-100 mb-8">Add New Company</h1> */}
 
-                    <div className="max-w-2xl mx-auto"> {/* Centered form container */}
+                    <div className="w-full mx-auto"> {/* Centered form container */}
                         <form 
                             onSubmit={submit} 
                             className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 sm:p-8 space-y-6"
@@ -58,7 +58,7 @@ export default function CompaniesCreate() {
                                     value={data.name} 
                                     onChange={e => setData('name', e.target.value)} 
                                     required 
-                                    placeholder="e.g., Acme Corp"
+                                    placeholder=""
                                 />
                                 {errors.name && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.name}</div>}
                             </div>

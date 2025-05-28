@@ -56,16 +56,18 @@ class LeadSeeder extends Seeder
                  'workspace_id' => $workspaceId, // Use seeded workspace
              ]);
              $lead->calculateScoreAndQualification();
+             // Log activity for lead creation (already present, just ensure correct format)
              ActivityLog::create([
                  'user_id' => 1,
                  'action' => 'lead_created',
                  'subject_type' => Lead::class,
                  'subject_id' => $lead->id,
                  'description' => 'Lead created via seeder',
-                 'properties' => [
+                 'workspace_id' => $workspaceId,
+                 'properties' => json_encode([
                      'seeded' => true,
                      'lead_name' => $lead->name,
-                 ],
+                 ]),
                  'created_at' => $lead->created_at,
                  'updated_at' => $lead->updated_at,
              ]);

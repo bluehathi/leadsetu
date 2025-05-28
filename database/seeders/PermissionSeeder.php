@@ -26,7 +26,9 @@ class PermissionSeeder extends Seeder
             'view dashboard','workspace_owner',
         ];
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+            $perm = Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+           
+           
         }
     }
 }

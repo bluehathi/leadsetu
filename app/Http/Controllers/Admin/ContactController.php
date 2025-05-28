@@ -49,6 +49,19 @@ class ContactController extends Controller
 
         $contact = Contact::create($data);
 
+        // Log activity for contact creation
+        if (class_exists('App\\Models\\ActivityLog')) {
+            \App\Models\ActivityLog::create([
+                'user_id' => auth()->id(),
+                'workspace_id' => auth()->user()->workspace_id,
+                'action' => 'contact_created',
+                'subject_type' => Contact::class,
+                'subject_id' => $contact->id,
+                'description' => 'Contact created',
+                'properties' => json_encode($data),
+            ]);
+        }
+
         return redirect()->route('contacts.index')
             ->with('success', 'Contact created successfully.');
     }
@@ -83,13 +96,41 @@ class ContactController extends Controller
 
         $contact->update($request->all());
 
+        // Log activity for contact update
+        if (class_exists('App\\Models\\ActivityLog')) {
+            \App\Models\ActivityLog::create([
+                'user_id' => auth()->id(),
+                'workspace_id' => auth()->user()->workspace_id,
+                'action' => 'contact_updated',
+                'subject_type' => Contact::class,
+                'subject_id' => $contact->id,
+                'description' => 'Contact updated',
+                'properties' => json_encode($request->all()),
+            ]);
+        }
+
         return redirect()->route('contacts.index')
             ->with('success', 'Contact updated successfully.');
     }
 
     public function destroy(Contact $contact)
     {
+        $contactId = $contact->id;
+        $contactData = $contact->toArray();
         $contact->delete();
+
+        // Log activity for contact deletion
+        if (class_exists('App\\Models\\ActivityLog')) {
+            \App\Models\ActivityLog::create([
+                'user_id' => auth()->id(),
+                'workspace_id' => auth()->user()->workspace_id,
+                'action' => 'contact_deleted',
+                'subject_type' => Contact::class,
+                'subject_id' => $contactId,
+                'description' => 'Contact deleted',
+                'properties' => json_encode($contactData),
+            ]);
+        }
 
         return redirect()->route('contacts.index')
             ->with('success', 'Contact deleted successfully.');
