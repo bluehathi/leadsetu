@@ -17,12 +17,16 @@ class CompanyController extends Controller
         $companies = Company::where('workspace_id', $user->workspace_id)->get();
         return Inertia::render('Companies/Index', [
             'companies' => $companies,
+            'user' => $user
         ]);
     }
 
     public function create()
     {
-        return Inertia::render('Companies/Create');
+        return Inertia::render('Companies/Create', [
+
+            'user' => Auth::user()
+        ]);
     }
 
     public function store(Request $request)
@@ -55,6 +59,7 @@ class CompanyController extends Controller
         //$this->authorize('update', $company);
         return Inertia::render('Companies/Edit', [
             'company' => $company,
+             'user' => Auth::user()
         ]);
     }
 

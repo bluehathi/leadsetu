@@ -3,11 +3,11 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Plus, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
-export default function UsersIndex({ users }) {
+export default function UsersIndex({ users , user }) {
     const { props } = usePage();
     const flash = props.flash || {};
     return (
-        <AuthenticatedLayout user={props.auth?.user} title="Users">
+        <AuthenticatedLayout user={user} title="Users">
             <Head title="Users" />
             <div className="py-8 px-4 sm:px-6 lg:px-8">
                 <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">

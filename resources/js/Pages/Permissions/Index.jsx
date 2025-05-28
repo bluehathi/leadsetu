@@ -8,9 +8,9 @@ import 'tippy.js/dist/tippy.css';
 // Placeholder for any default permission names that shouldn't be deleted/edited if applicable
 // const DEFAULT_PERMISSION_NAMES = ["browse admin"]; 
 
-export default function PermissionsIndex({ permissions: initialPermissions = [] }) {
+export default function PermissionsIndex({ permissions: initialPermissions = [], user }) {
     const { props } = usePage();
-    const user = props.auth?.user;
+   
     const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({ name: '' });
     const flash = props.flash || {};
     const [isModalOpen, setIsModalOpen] = useState(false);

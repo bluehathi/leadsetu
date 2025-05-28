@@ -3,9 +3,9 @@ import { Head, useForm, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { CheckCircle2, XCircle, User, Mail as MailIcon, Phone as PhoneIcon, Briefcase as BriefcaseIcon, AlignLeft, Building, Save, ArrowLeft } from 'lucide-react'; // Added more icons
 
-export default function Create({}) { // Assuming props are destructured or passed directly
+export default function Create({user}) { // Assuming props are destructured or passed directly
     const { props } = usePage();
-    const user = props.auth?.user; // Get user from props.auth
+    
     const flash = props.flash || {};
     const companies = props.companies || []; // Ensure companies is an array
 

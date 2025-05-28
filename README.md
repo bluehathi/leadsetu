@@ -1,6 +1,10 @@
 # LeadSetu SaaS Lead Management Platform
 
-LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, contacts, and users. Built with Laravel, Inertia.js, and React, it features a clean, responsive UI, workspace-based multi-tenancy, and robust role/permission management.
+LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, contacts, users, roles, and permissions. Built with Laravel, Inertia.js, and React, it features a beautiful, responsive UI, workspace-based multi-tenancy, and robust role/permission management with full activity logging.
+
+## Recent Improvements
+- **Modern UI/UX:** The entire application UI has been redesigned for a cleaner, more modern, and responsive experience. The sidebar, layouts, and all main pages use Tailwind CSS and Lucide icons for a consistent, professional look.
+- **Comprehensive Activity Logs:** All major CRUD operations (create, update, delete) for Leads, Companies, Contacts, Users, Roles, Permissions, and Workspaces are now tracked in the Activity Logs section. Seeder actions are also logged.
 
 ## Features
 - **Workspace-based Multi-Tenancy:**
@@ -24,14 +28,10 @@ LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, 
   - UI and backend enforce access control everywhere.
 - **Workspace Owner Functionality:**
   - Only users who are workspace owners and have the `workspace_owner` permission can manage workspace settings.
-- **Modern UI/UX:**
-  - Responsive, accessible, and visually consistent.
-  - Sidebar, header, and dropdown menus with user/workspace info.
-  - Built with Tailwind CSS and Lucide icons.
 - **Activity Logs:**
-  - Track key actions (user created, lead created, contact created, company created, etc.)
+  - Track all key actions (user created, lead created, contact created, company created, etc.)
   - All activity logs are workspace-scoped and include workspace_id.
-  - Activity logs are recorded for all contact and company actions.
+  - Activity logs are created for all main entity actions and seeders.
 - **Authentication:**
   - Modern registration, login, and password reset flows.
 
@@ -91,6 +91,9 @@ LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, 
 - `resources/js/Pages/Companies/` — Company management
 - `resources/js/Pages/Contacts/` — Contact management
 - `resources/js/Pages/Users/` — User management
+- `resources/js/Pages/Roles/` — Role management
+- `resources/js/Pages/Permissions/` — Permission management
+- `resources/js/Pages/ActivityLogs/` — Activity log viewing and filtering
 - `resources/js/Components/parts/Sidebar.jsx` — Sidebar navigation
 
 ## Customization
@@ -112,38 +115,3 @@ PRs are welcome! Please follow PSR-12 and standard React best practices.
 
 ## License
 MIT
-
-## Authenticated Layout
-- All main pages (Leads, Companies, Contacts, Users, etc.) use a single, consistent `AuthenticatedLayout.jsx`.
-- Layout includes a responsive sidebar, header with workspace name, and user dropdown menu.
-- No legacy layouts or duplicate sidebar code remain.
-
-## Activity Logs
-- All activity logs are now workspace-scoped (`workspace_id` is always set).
-- Activity logs are created for all main entity actions (leads, companies, contacts, users, etc.).
-- Activity log logic is updated in all relevant controllers.
-
-## Workspace Management
-- Only the currently logged-in user's workspace is visible on the Manage Workspaces page.
-- Workspace deletion is fully disabled in both UI and backend (attempts to delete return an error).
-- Only workspace owners can edit workspace details (the Edit button is only visible for owners).
-
-## Sidebar & Layout
-- Sidebar is fully responsive: always visible on desktop, slides in/out on mobile with overlay and close button.
-- Sidebar toggle and collapse state are preserved per user/device.
-- Layout and sidebar are consistent across all main pages.
-
-## Modern UI/UX Improvements
-
-- The application now features a more modern, visually appealing, and consistent sidebar and layout, built with Tailwind CSS and Lucide icons.
-- Sidebar navigation is fully responsive, with smooth transitions, mobile slide-in/out, and persistent collapse state per user/device.
-- Sidebar menu items for Users, Roles, and Permissions are only visible to users with the appropriate permissions, providing a cleaner and more secure navigation experience.
-- All navigation, section titles, and user profile elements in the sidebar have been updated for a modern look and improved usability.
-- The UI/UX across all main pages (Leads, Companies, Contacts, Users, etc.) is unified and modernized, with improved accessibility and responsiveness.
-
-## Recent Improvements
-
-- **Modern UI/UX:** The entire application UI has been modernized for a cleaner, more responsive, and visually appealing experience. This includes a redesigned sidebar, improved layouts, and consistent use of Tailwind CSS and Lucide icons across all pages.
-- **Comprehensive Activity Logs:** Activity logging has been implemented for all major CRUD operations (create, update, delete) on Leads, Companies, Contacts, Users, Roles, Permissions, and Workspaces. All actions are now tracked and visible in the Activity Logs section, including those generated by seeders.
-
----

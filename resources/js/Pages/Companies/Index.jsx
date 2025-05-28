@@ -22,10 +22,10 @@ const getLogoPlaceholder = (name) => {
     };
 };
 
-export default function CompaniesIndex({ companies: initialCompanies = [] }) { // Renamed prop for clarity
+export default function CompaniesIndex({ user, companies: initialCompanies = [] }) { // Renamed prop for clarity
     const { props } = usePage();
     const flash = props.flash || {};
-    const user = props.auth?.user;
+  
     const [isListMounted, setIsListMounted] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 

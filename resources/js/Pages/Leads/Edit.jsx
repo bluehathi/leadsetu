@@ -28,9 +28,9 @@ const priorityOptions = [
     { value: 'Low', label: 'Low' },
 ];
 
-export default function LeadEdit({ lead, companies: initialCompanies = [], contacts: initialContacts = [] }) {
+export default function LeadEdit({ user, lead, companies: initialCompanies = [], contacts: initialContacts = [] }) {
     const { props } = usePage();
-    const user = props.auth?.user;
+  
     const flash = props.flash || {};
 
     const companies = Array.isArray(initialCompanies) ? initialCompanies : [];

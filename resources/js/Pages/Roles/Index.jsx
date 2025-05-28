@@ -54,9 +54,9 @@ const getRolePlaceholder = (name) => {
   };
 };
 
-export default function RolesIndex({ roles: initialRoles = [] }) {
+export default function RolesIndex({ roles: initialRoles = [] , user}) {
   const { props } = usePage();
-  const user = props.auth?.user;
+
   const { data, setData, post, processing, errors, reset, recentlySuccessful } =
     useForm({ name: "" });
   const flash = props.flash || {};

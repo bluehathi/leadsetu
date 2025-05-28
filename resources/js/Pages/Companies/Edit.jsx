@@ -4,9 +4,9 @@ import CompanyLayout from './_CompanyLayout'; // Assuming this path is correct
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout'; // Assuming this path is correct
 import { Save, XCircle, Briefcase, Building, Link2, Edit } from 'lucide-react'; // Added Edit icon
 
-export default function CompaniesEdit({ company }) {
+export default function CompaniesEdit({ company, user }) {
     const { props } = usePage();
-    const user = props.auth?.user;
+    
     const { data, setData, put, processing, errors, recentlySuccessful } = useForm({
         name: company.name || '',
         description: company.description || '',
@@ -26,7 +26,7 @@ export default function CompaniesEdit({ company }) {
             <AuthenticatedLayout user={user} title={`Edit Company: ${company.name}`}>
                 <CompanyLayout user={user} title={`Edit Company: ${company.name}`}>
                     
-                    <div className="max-w-2xl mx-auto"> {/* Centered form container */}
+                    <div className="w-full mx-auto"> {/* Centered form container */}
                         <form 
                             onSubmit={submit} 
                             className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 sm:p-8 space-y-6"

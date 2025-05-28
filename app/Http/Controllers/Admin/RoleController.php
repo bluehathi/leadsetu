@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Inertia\Inertia;
+use Auth;
 
 class RoleController extends Controller
 {
@@ -17,6 +18,7 @@ class RoleController extends Controller
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
             'permissions' => $permissions,
+            'user' => Auth::user()
         ]);
     }
 
@@ -68,6 +70,7 @@ class RoleController extends Controller
         $permissions = Permission::all();
         return Inertia::render('Roles/Create', [
             'permissions' => $permissions,
+            'user' => Auth::user()
         ]);
     }
 
@@ -78,6 +81,7 @@ class RoleController extends Controller
         return Inertia::render('Roles/Edit', [
             'role' => $role,
             'permissions' => $permissions,
+            'user' => Auth::user()
         ]);
     }
 }

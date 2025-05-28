@@ -3,9 +3,9 @@ import { Head, useForm, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { CheckCircle2, XCircle, User, Mail as MailIcon, Phone as PhoneIcon, Briefcase as BriefcaseIcon, AlignLeft, Building, Save, ArrowLeft, Edit3 } from 'lucide-react'; // Added Edit3 icon
 
-export default function Edit({ contact, companies }) { // Destructure props directly
+export default function Edit({ contact, companies, user }) { // Destructure props directly
     const { props } = usePage();
-    const user = props.auth?.user;
+   
     const flash = props.flash || {};
     // Ensure companies is an array, even if not passed or null
     const companiesList = companies || [];

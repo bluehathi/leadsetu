@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Inertia\Inertia;
+use Auth;
 
 class PermissionController extends Controller
 {
     public function index()
     {
         $permissions = Permission::all();
-        return Inertia::render('Permissions/Index', ['permissions' => $permissions]);
+        return Inertia::render('Permissions/Index', ['permissions' => $permissions,   'user' => Auth::user()]);
     }
 
     public function store(Request $request)

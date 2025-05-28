@@ -21,6 +21,7 @@ class ContactController extends Controller
 
         return Inertia::render('Contacts/Index', [
             'contacts' => $contacts,
+             'user' => Auth::user(),
         ]);
     }
 
@@ -30,6 +31,7 @@ class ContactController extends Controller
 
         return Inertia::render('Contacts/Create', [
             'companies' => $companies,
+             'user' => Auth::user(),
         ]);
     }
 
@@ -70,6 +72,7 @@ class ContactController extends Controller
     {
         return Inertia::render('Contacts/Show', [
             'contact' => $contact,
+             'user' => Auth::user(),
         ]);
     }
 
@@ -80,6 +83,7 @@ class ContactController extends Controller
         return Inertia::render('Contacts/Edit', [
             'contact' => $contact,
             'companies' => $companies,
+             'user' => Auth::user(),
         ]);
     }
 

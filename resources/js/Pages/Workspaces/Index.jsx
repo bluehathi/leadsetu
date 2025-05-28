@@ -104,7 +104,7 @@ export default function WorkspacesIndex({ user, workspaces = [] }) { // Default 
     return (
         <AuthenticatedLayout user={user} title="Workspaces">
             <Head title="Workspaces" />
-            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto"> {/* Adjusted max-width for single column */}
+            <div className="py-8 px-4 sm:px-6 lg:px-8 w-full mx-auto"> {/* Adjusted max-width for single column */}
                 <div className="mb-6 flex flex-col sm:flex-row justify-end items-center gap-4">
                  
                     <button

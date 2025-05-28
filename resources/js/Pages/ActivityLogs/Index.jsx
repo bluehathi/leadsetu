@@ -36,9 +36,9 @@ const actionDisplayMeta = {
 };
 
 
-export default function ActivityLogsIndex({ logs, filters, users, actions, entities }) {
+export default function ActivityLogsIndex({ logs, filters, users, actions, entities ,user}) {
     const { props } = usePage();
-    const authUser = props.auth?.user;
+    const authUser = user;
     const flash = props.flash || {};
 
     const queryParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');

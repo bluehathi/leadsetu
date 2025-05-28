@@ -82,9 +82,9 @@ const actionMeta = {
 };
 
 
-export default function LeadShow({ lead, activityLogs: propActivityLogs, statusOptions: propStatusOptions, owners: propOwners }) {
+export default function LeadShow({ user, lead, activityLogs: propActivityLogs, statusOptions: propStatusOptions, owners: propOwners }) {
     const { props } = usePage();
-    const user = props.auth?.user;
+   
     const flash = props.flash || {};
     
     const activityLogs = Array.isArray(propActivityLogs) ? propActivityLogs : [];

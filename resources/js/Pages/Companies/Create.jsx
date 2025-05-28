@@ -4,9 +4,9 @@ import CompanyLayout from './_CompanyLayout'; // Assuming this path is correct
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout'; // Assuming this path is correct
 import { Save, XCircle, Briefcase, Building, Link2 } from 'lucide-react'; // Added icons
 
-export default function CompaniesCreate() {
+export default function CompaniesCreate({user}) {
     const { props } = usePage();
-    const user = props.auth?.user;
+   
     const { data, setData, post, processing, errors, recentlySuccessful } = useForm({
         name: '',
         description: '',

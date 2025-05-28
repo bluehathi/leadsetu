@@ -46,10 +46,9 @@ ChartJS.register(
 // );
 
 
-export default function Dashboard({ stats = {}, charts = {}, recentActivity = [] }) {
+export default function Dashboard({ user, stats = {}, charts = {}, recentActivity = [] }) {
     const { props } = usePage();
-    const user = props.auth?.user; 
-
+    
     const commonChartOptions = (darkMode) => ({
         responsive: true,
         maintainAspectRatio: false,

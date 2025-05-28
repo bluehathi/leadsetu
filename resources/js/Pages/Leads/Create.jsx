@@ -28,9 +28,9 @@ const priorityOptions = [
     { value: 'Low', label: 'Low' },
 ];
 
-export default function LeadCreate({ companies: initialCompanies = [], contacts: initialContacts = [] }) {
+export default function LeadCreate({ user,companies: initialCompanies = [], contacts: initialContacts = [] }) {
     const { props } = usePage();
-    const user = props.auth?.user;
+    
     const flash = props.flash || {};
     
     // Ensure companies and contacts are arrays

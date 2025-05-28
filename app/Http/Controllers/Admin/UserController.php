@@ -20,6 +20,7 @@ class UserController extends Controller
         ->get();
         return Inertia::render('Users/Index', [
             'users' => $users,
+            'user' => auth()->user()
         ]);
     }
 
@@ -28,6 +29,7 @@ class UserController extends Controller
         $roles = Role::all();
         return Inertia::render('Users/Create', [
             'roles' => $roles,
+             'user' => auth()->user()
         ]);
     }
 
@@ -73,6 +75,7 @@ class UserController extends Controller
         return Inertia::render('Users/Edit', [
             'user' => $user,
             'roles' => $roles,
+            'loginuser' => auth()->user()
         ]);
     }
 
@@ -179,6 +182,7 @@ class UserController extends Controller
             'users' => $users,
             'actions' => $actions,
             'entities' => $entities,
+            'user' => Auth::user(),
         ]);
     }
 
@@ -199,6 +203,7 @@ class UserController extends Controller
 
         return response()->json([
             'settings' => $settings,
+            
         ]);
     }
 

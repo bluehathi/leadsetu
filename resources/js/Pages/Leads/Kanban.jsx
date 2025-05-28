@@ -46,9 +46,9 @@ const getLeadAvatarPlaceholder = (name) => {
 };
 
 
-export default function KanbanLeads({ leads: initialLeads = [] }) {
+export default function KanbanLeads({ user, leads: initialLeads = [] }) {
     const { props } = usePage();
-    const user = props.auth?.user;
+  
     const flash = props.flash || {};
     
     const [leads, setLeads] = useState(initialLeads);
