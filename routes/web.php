@@ -25,6 +25,8 @@ Route::post('/register', [AuthController::class, 'register'])->middleware('guest
 Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/leads/kanban', [\App\Http\Controllers\Admin\LeadsController::class, 'kanban'])->name('leads.kanban');
+    Route::get('contacts/import-excel', [\App\Http\Controllers\Admin\ContactController::class, 'import_excel'])->name('contacts.import_excel');
+    Route::post('contacts/import-excel', [\App\Http\Controllers\Admin\ContactController::class, 'import_excel_store'])->name('contacts.import_excel.store');
     Route::resource('/leads', App\Http\Controllers\Admin\LeadsController::class);
     Route::resource('/workspaces', App\Http\Controllers\Admin\WorkspaceController::class)->except(['show', 'edit', 'update', 'destroy']);
     Route::resource('/roles', App\Http\Controllers\Admin\RoleController::class)->except(['show', 'create']);
@@ -45,6 +47,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::post('/store-company', [\App\Http\Controllers\Admin\CompanyController::class, 'storeCompany'])->name('contact.company.store');
     // Route for fetching contacts by company (AJAX)
     Route::get('companies/{company}/contacts', [\App\Http\Controllers\Admin\ContactController::class, 'contacts'])->name('company.contacts');
+    
     
 });
 

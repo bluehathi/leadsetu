@@ -89,10 +89,25 @@ export default function ContactsIndex({ user, contacts, workspaces }) {
             <Head title="Contacts" />
             <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
                 <div className="mb-6 flex flex-row  justify-between items-center gap-4">
-                    {/* Add Contact Button on the left */}
-                    
+                    {/* Add Contact Button and Import Excel Button */}
+                    <div className="flex gap-2">
+                        <Link
+                            href={route('contacts.create')}
+                            className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-sm font-medium"
+                        >
+                            <Plus size={18} className="mr-2 -ml-1" />
+                            Add
+                        </Link>
+                        <Link
+                            href={route('contacts.import_excel')}
+                            className="inline-flex items-center px-5 py-2.5 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 text-sm font-medium"
+                        >
+                            <RotateCcw size={18} className="mr-2 -ml-1" />
+                            Import Excel
+                        </Link>
+                    </div>
                     {/* Search Input on the right */}
-                    <div className="relative w-full  sm:order-none sm:ml-auto">
+                    <div className="relative w-2xl  sm:order-none sm:ml-auto">
                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                             <Search className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                         </div>
@@ -110,14 +125,6 @@ export default function ContactsIndex({ user, contacts, workspaces }) {
                             }}
                         />
                     </div>
-
-                    <Link
-                        href={route('contacts.create')}
-                        className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-sm font-medium order-1 sm:order-none"
-                    >
-                        <Plus size={18} className="mr-2 -ml-1" />
-                        Add 
-                    </Link>
                 </div>
 
                 {flash.success && (

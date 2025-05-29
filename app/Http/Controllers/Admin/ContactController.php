@@ -8,6 +8,8 @@ use App\Models\Company;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\ContactCompanyImport;
 
 class ContactController extends Controller
 {
@@ -45,6 +47,13 @@ class ContactController extends Controller
             'title' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
+
+        // Require at least one of phone or email
+        if (empty($request->input('email')) && empty($request->input('phone'))) {
+            return redirect()->back()
+                ->withErrors(['email' => 'Either email or phone is required.', 'phone' => 'Either phone or email is required.'])
+                ->withInput();
+        }
 
        $data = $request->all();
        $data['workspace_id'] = auth()->user()->workspace_id;
@@ -98,6 +107,13 @@ class ContactController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Require at least one of phone or email
+        if (empty($request->input('email')) && empty($request->input('phone'))) {
+            return redirect()->back()
+                ->withErrors(['email' => 'Either email or phone is required.', 'phone' => 'Either phone or email is required.'])
+                ->withInput();
+        }
+
         $contact->update($request->all());
 
         // Log activity for contact update
@@ -147,5 +163,25 @@ class ContactController extends Controller
             ->where('workspace_id', auth()->user()->workspace_id)
             ->get();
         return response()->json(['contacts' => $contacts]);
+    }
+
+    public function import_excel()
+    {
+        return Inertia::render('Contacts/ImportExcel', [
+            'user' => Auth::user(),
+        ]);
+    }
+
+    public function import_excel_store(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xls,xlsx',
+        ]);
+        try {
+            Excel::import(new ContactCompanyImport, $request->file('file'));
+            return redirect()->route('contacts.index')->with('success', 'Contacts and companies imported successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
+        }
     }
 }
