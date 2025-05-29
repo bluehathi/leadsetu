@@ -192,26 +192,10 @@ export default function LeadsIndex({ user, leads, statusOptions: propStatusOptio
     return (
         <AuthenticatedLayout user={user} title="Leads">
             <Head title="Leads" />
-            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-full mx-auto">
+            <div className="py-8 px-4 sm:px-6 lg:px-8 w-full mx-auto">
                 <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href={route('leads.create')}
-                            className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-sm font-medium"
-                        >
-                            <Plus size={18} className="mr-2 -ml-1" />
-                            Add Lead
-                        </Link>
-                        <button
-                            type="button"
-                            onClick={() => setShowFilterPanel(!showFilterPanel)}
-                            className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150 shadow-sm hover:shadow-md"
-                        >
-                            <SlidersHorizontal size={16} className="mr-2" />
-                            {showFilterPanel ? 'Hide Filters' : 'Show Filters'}
-                        </button>
-                    </div>
-                    <div className="relative w-full sm:w-auto sm:max-w-xs md:max-w-sm">
+                    
+                    <div className="relative w-full flex flex-1/2 items-center">
                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                             <Search className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                         </div>
@@ -224,6 +208,24 @@ export default function LeadsIndex({ user, leads, statusOptions: propStatusOptio
                             onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
                         />
                     </div>
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href={route('leads.create')}
+                            className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-sm font-medium"
+                        >
+                            <Plus size={18} className="mr-2 -ml-1" />
+                            Add
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => setShowFilterPanel(!showFilterPanel)}
+                            className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150 shadow-sm hover:shadow-md"
+                        >
+                            <SlidersHorizontal size={16} className="mr-2" />
+                            {showFilterPanel ? 'Hide Filters' : 'Show Filters'}
+                        </button>
+                    </div>
+                    
                 </div>
 
                 {flash.success && (

@@ -29,26 +29,22 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::resource('/workspaces', App\Http\Controllers\Admin\WorkspaceController::class)->except(['show', 'edit', 'update', 'destroy']);
     Route::resource('/roles', App\Http\Controllers\Admin\RoleController::class)->except(['show', 'create']);
     Route::resource('/permissions', App\Http\Controllers\Admin\PermissionController::class)->except(['show', 'edit', 'create']);
-    Route::resource('/users', App\Http\Controllers\Admin\UserController::class);
-    Route::resource('/contacts', App\Http\Controllers\Admin\ContactController::class);
-    Route::resource('/companies', App\Http\Controllers\Admin\CompanyController::class);
-
-    // User profile view
-    Route::get('/profile', [App\Http\Controllers\Admin\UserController::class, 'profile'])->name('profile');
-    // Update user profile
-    Route::post('/profile', [App\Http\Controllers\Admin\UserController::class, 'updateProfile'])->name('profile.update');
-    // Change password
-    Route::post('/profile/password', [App\Http\Controllers\Admin\UserController::class, 'changePassword'])->name('profile.password');
-    // Workspace settings view
-    Route::get('/workspace/settings', [App\Http\Controllers\Admin\UserController::class, 'workspaceSettings'])->name('workspace.settings');
-    // Update workspace settings
-    Route::post('/workspace/settings', [App\Http\Controllers\Admin\UserController::class, 'updateWorkspaceSettings'])->name('workspace.settings.update');
-    // Activity Logs
-    Route::get('/activity-logs', [App\Http\Controllers\Admin\UserController::class, 'activityLogs'])->name('activity.logs');
-    // User settings API
-    Route::get('/user/settings', [App\Http\Controllers\Admin\UserController::class, 'getSettings'])->name('user.settings.get');
-    Route::post('/user/settings', [App\Http\Controllers\Admin\UserController::class, 'setSettings'])->name('user.settings.set');
-    Route::get('/roles/create', [App\Http\Controllers\Admin\RoleController::class, 'create'])->name('roles.create');
+    Route::resource('/users', \App\Http\Controllers\Admin\UserController::class);
+    Route::resource('/contacts', \App\Http\Controllers\Admin\ContactController::class);
+    Route::resource('/companies', \App\Http\Controllers\Admin\CompanyController::class);
+    Route::get('/profile', [\App\Http\Controllers\Admin\UserController::class, 'profile'])->name('profile');
+    Route::post('/profile', [\App\Http\Controllers\Admin\UserController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/profile/password', [\App\Http\Controllers\Admin\UserController::class, 'changePassword'])->name('profile.password');
+    Route::get('/workspace/settings', [\App\Http\Controllers\Admin\UserController::class, 'workspaceSettings'])->name('workspace.settings');
+    Route::post('/workspace/settings', [\App\Http\Controllers\Admin\UserController::class, 'updateWorkspaceSettings'])->name('workspace.settings.update');
+    Route::get('/activity-logs', [\App\Http\Controllers\Admin\UserController::class, 'activityLogs'])->name('activity.logs');
+    Route::get('/user/settings', [\App\Http\Controllers\Admin\UserController::class, 'getSettings'])->name('user.settings.get');
+    Route::post('/user/settings', [\App\Http\Controllers\Admin\UserController::class, 'setSettings'])->name('user.settings.set');
+    Route::get('/roles/create', [\App\Http\Controllers\Admin\RoleController::class, 'create'])->name('roles.create');
+    // Minimal company creation for AJAX (from contact form)
+    Route::post('/store-company', [\App\Http\Controllers\Admin\CompanyController::class, 'storeCompany'])->name('contact.company.store');
+    // Route for fetching contacts by company (AJAX)
+    Route::get('companies/{company}/contacts', [\App\Http\Controllers\Admin\ContactController::class, 'contacts'])->name('company.contacts');
     
 });
 

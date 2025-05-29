@@ -50,7 +50,7 @@ export default function CompaniesIndex({ user, companies: initialCompanies = [] 
             <AutheticatedLayout user={user} title="Companies">
                 <CompanyLayout user={user} title="Companies"> {/* This title prop might be redundant if AuthenticatedLayout already shows it */}
                     {/* Top Bar: Search Filter and Add Company Button */}
-                    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-1 gap-4">
+                    <div className="flex flex-row justify-between items-center mb-6 px-1 gap-4">
                         {/* Search Input - now on the left */}
                         <div className="relative w-full "> {/* Adjusted max-width for responsiveness */}
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -70,7 +70,7 @@ export default function CompaniesIndex({ user, companies: initialCompanies = [] 
                         {/* Add Company Button - now on the right */}
                         <Link 
                             href={route('companies.create')} 
-                            className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-sm font-medium w-full sm:w-auto justify-center" // Added w-full sm:w-auto and justify-center
+                            className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-sm font-medium  w-auto justify-center" // Added w-full sm:w-auto and justify-center
                         >
                             <PlusCircle size={18} className="-ml-1 mr-2" />
                             Add

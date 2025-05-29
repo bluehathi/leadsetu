@@ -104,7 +104,7 @@ export default function LeadShow({ user, lead, activityLogs: propActivityLogs, s
     return (
         <AuthenticatedLayout user={user} title={`Lead: ${lead.name}`}>
             <Head title={`Lead Details - ${lead.name}`} />
-            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+            <div className="py-8 px-4 sm:px-6 lg:px-8 w-full mx-auto">
 
                 <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <Link 

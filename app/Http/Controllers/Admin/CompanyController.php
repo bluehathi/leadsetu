@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Auth;
 
 class CompanyController extends Controller
 {
+    /**
+     * Display a listing of the companies for the current workspace.
+     */
     public function index()
     {
         $user = Auth::user();
@@ -21,6 +24,9 @@ class CompanyController extends Controller
         ]);
     }
 
+    /**
+     * Show the form for creating a new company.
+     */
     public function create()
     {
         return Inertia::render('Companies/Create', [
@@ -29,6 +35,12 @@ class CompanyController extends Controller
         ]);
     }
 
+    /**
+     * Store a newly created company in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -54,6 +66,12 @@ class CompanyController extends Controller
         return redirect()->route('companies.index')->with('success', 'Company created.');
     }
 
+    /**
+     * Show the form for editing the specified company.
+     *
+     * @param  \App\Models\Company  $company
+     * @return \Inertia\Response
+     */
     public function edit(Company $company)
     {
         //$this->authorize('update', $company);
@@ -63,6 +81,13 @@ class CompanyController extends Controller
         ]);
     }
 
+    /**
+     * Update the specified company in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Company  $company
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, Company $company)
     {
         $data = $request->validate([
@@ -86,6 +111,12 @@ class CompanyController extends Controller
         return redirect()->route('companies.index')->with('success', 'Company updated.');
     }
 
+    /**
+     * Remove the specified company from storage.
+     *
+     * @param  \App\Models\Company  $company
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy(Company $company)
     {
         $companyId = $company->id;
@@ -104,5 +135,56 @@ class CompanyController extends Controller
             ]);
         }
         return redirect()->route('companies.index')->with('success', 'Company deleted.');
+    }
+
+
+    /**
+     * Store a new company with minimal input via AJAX (for inline creation).
+     * Prevents duplicate names per workspace (case-insensitive, trimmed).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function storeCompany(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'website' => 'nullable|string|max:255',
+        ]);
+        $workspaceId = \Illuminate\Support\Facades\Auth::user()->workspace_id;
+        $companyName = trim($request->name);
+        //create a website if provided
+        $website = $request->website ? trim($request->website) : null;
+
+        // Prevent duplicate company names in the same workspace (case-insensitive, trimmed)
+        // $existing = Company::where('workspace_id', $workspaceId)
+        //     ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($companyName)])
+        //     ->first();
+        // if ($existing) {
+        //     return response()->json([
+        //         'message' => 'A company with this name already exists in your workspace.',
+        //         'errors' => ['name' => ['A company with this name already exists in your workspace.']],
+        //     ], 422);
+        // }
+        $company = Company::create([
+            'name' => $companyName,
+            'workspace_id' => $workspaceId,
+            'website' => $website,
+        ]);
+        // Log activity for company creation
+        if (class_exists('App\\Models\\ActivityLog')) {
+            \App\Models\ActivityLog::create([
+                'user_id' => \Illuminate\Support\Facades\Auth::id(),
+                'workspace_id' => $workspaceId,
+                'action' => 'company_created',
+                'subject_type' => Company::class,
+                'subject_id' => $company->id,
+                'description' => 'Company created',
+                'properties' => json_encode($company->toArray()),
+            ]);
+        }
+        return response()->json([
+            'company' => $company,
+        ], 201);
     }
 }

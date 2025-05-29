@@ -139,4 +139,13 @@ class ContactController extends Controller
         return redirect()->route('contacts.index')
             ->with('success', 'Contact deleted successfully.');
     }
+
+    // Get contacts for a company (AJAX)
+    public function contacts($companyId)
+    {
+        $contacts = \App\Models\Contact::where('company_id', $companyId)
+            ->where('workspace_id', auth()->user()->workspace_id)
+            ->get();
+        return response()->json(['contacts' => $contacts]);
+    }
 }

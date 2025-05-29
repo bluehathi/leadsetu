@@ -6,6 +6,7 @@ import {
     Globe, DollarSign, CalendarDays, Star, AlignLeft, Building, Save, ArrowLeft, Tag,
     TrendingUp, Users, Info, PlusCircle // Added icons for tabs and fields
 } from 'lucide-react';
+import axios from 'axios';
 
 const statusOptions = [
     { value: 'new', label: 'New' },
@@ -28,7 +29,7 @@ const priorityOptions = [
     { value: 'Low', label: 'Low' },
 ];
 
-export default function LeadCreate({ user,companies: initialCompanies = [], contacts: initialContacts = [] }) {
+export default function LeadCreate({ user, companies: initialCompanies = [], contacts: initialContacts = [], users: initialUsers = [] }) {
     const { props } = usePage();
     
     const flash = props.flash || {};
@@ -36,10 +37,12 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
     // Ensure companies and contacts are arrays
     const companies = Array.isArray(initialCompanies) ? initialCompanies : [];
     const contacts = Array.isArray(initialContacts) ? initialContacts : [];
+    const users = Array.isArray(initialUsers) ? initialUsers : [];
 
     const [tab, setTab] = useState('lead'); // 'lead', 'company', 'contact'
     const [showNewCompany, setShowNewCompany] = useState(false);
     const [showNewContact, setShowNewContact] = useState(false);
+    const [filteredContacts, setFilteredContacts] = useState([]);
 
     const { data, setData, post, processing, errors, recentlySuccessful } = useForm({
         name: '',
@@ -65,6 +68,9 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
         tags: '', // Assuming tags are comma-separated strings for now
     });
 
+    // Inline contact error state
+    const [inlineContactErrors, setInlineContactErrors] = useState({});
+
     const handleSubmit = (e) => {
         e.preventDefault();
         // Prepare tags: split string into array, trim whitespace, filter empty
@@ -78,15 +84,97 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
         });
     };
 
+    // Handle inline company creation
+    const handleSaveCompany = async () => {
+        if (!data.company_name) return;
+        // Optionally, you can add more validation here
+        try {
+            const response = await axios.post(route('contact.company.store'), {
+                name: data.company_name,
+                website: data.company_website,
+            });
+            if (response.data && response.data.company) {
+                // Add new company to companies list
+                companies.push(response.data.company);
+                setData('company_id', response.data.company.id);
+                setShowNewCompany(false);
+                //setTab('lead');
+            }
+        } catch (error) {
+            // Handle validation or server errors
+            if (error.response && error.response.data && error.response.data.errors) {
+                // Set errors for company fields
+                Object.entries(error.response.data.errors).forEach(([field, message]) => {
+                    errors[field] = message;
+                });
+            } else {
+                alert('Failed to create company. Please try again.');
+            }
+        }
+    };
+
+    // Handle inline contact creation
+    const handleSaveContact = async () => {
+        if (!data.contact_name || !data.company_id) return;
+        setInlineContactErrors({});
+        try {
+            const response = await axios.post(route('contacts.store'), {
+                name: data.contact_name,
+                email: data.contact_email,
+                phone: data.contact_phone,
+                company_id: data.company_id,
+            });
+            if (response.data && response.data.contact) {
+                // Add new contact to filteredContacts
+                setFilteredContacts(prev => {
+                    const updated = [...prev, response.data.contact];
+                    // Ensure the new contact is selected
+                    setData('contact_id', response.data.contact.id);
+                    return updated;
+                });
+                // Reset inline contact form fields and errors
+                setData(prev => ({
+                    ...prev,
+                    contact_name: '',
+                    contact_email: '',
+                    contact_phone: '',
+                }));
+                setInlineContactErrors({});
+                setShowNewContact(false);
+                //setTab('lead');
+            }
+        } catch (error) {
+            if (error.response && error.response.data && error.response.data.errors) {
+                setInlineContactErrors(error.response.data.errors);
+            } else {
+                alert('Failed to create contact. Please try again.');
+            }
+        }
+    };
+
+    // Watch for company_id changes to fetch contacts
+    React.useEffect(() => {
+        if (data.company_id) {
+            axios.get(route('company.contacts', { company: data.company_id }))
+                .then(res => {
+                    setFilteredContacts(res.data.contacts || []);
+                })
+                .catch(() => setFilteredContacts([]));
+        } else {
+            setFilteredContacts([]);
+            setData('contact_id', ''); // Clear contact selection if no company
+        }
+        // eslint-disable-next-line
+    }, [data.company_id]);
+
     const commonInputClasses = "block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md";
     const commonLabelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center";
     const commonSelectClasses = `${commonInputClasses} appearance-none`;
 
-
     return (
         <AuthenticatedLayout user={user} title="Add New Lead">
             <Head title="Add Lead" />
-            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+            <div className="py-8 px-4 sm:px-6 lg:px-8 w-full mx-auto">
 
              
 
@@ -126,8 +214,10 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
                                 className={`flex items-center gap-2 whitespace-nowrap pb-3 pt-1 px-3 border-b-2 font-medium text-sm sm:text-base transition-colors duration-150
                                             ${tab === item.key 
                                                 ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' 
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'}`}
-                                onClick={() => setTab(item.key)}
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'}
+                                            ${item.key === 'contact' && !data.company_id ? ' opacity-50 pointer-events-none cursor-not-allowed' : ''}`}
+                                onClick={() => item.key === 'contact' && !data.company_id ? null : setTab(item.key)}
+                                disabled={item.key === 'contact' && !data.company_id}
                             >
                                 <item.icon size={18} className={tab === item.key ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} />
                                 {item.label}
@@ -152,14 +242,14 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label htmlFor="status" className={commonLabelClasses}>Status</label>
+                                        <label htmlFor="status" className={commonLabelClasses}>Status <span className="text-red-500 ml-1">*</span></label>
                                         <select id="status" className={commonSelectClasses} value={data.status} onChange={e => setData('status', e.target.value)}>
                                             {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                         </select>
                                         {errors.status && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.status}</div>}
                                     </div>
                                     <div>
-                                        <label htmlFor="source" className={commonLabelClasses}>Source</label>
+                                        <label htmlFor="source" className={commonLabelClasses}>Source <span className="text-red-500 ml-1">*</span></label>
                                         <select id="source" className={commonSelectClasses} value={data.source} onChange={e => setData('source', e.target.value)}>
                                             {sourceOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                         </select>
@@ -168,15 +258,29 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                       <div>
-                                        <label htmlFor="priority" className={commonLabelClasses}>Priority</label>
+                                        <label htmlFor="priority" className={commonLabelClasses}>Priority <span className="text-red-500 ml-1">*</span></label>
                                         <select id="priority" className={commonSelectClasses} value={data.priority} onChange={e => setData('priority', e.target.value)}>
                                             {priorityOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                         </select>
                                         {errors.priority && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.priority}</div>}
                                     </div>
                                     <div>
-                                        <label htmlFor="lead_owner" className={commonLabelClasses}><User size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Lead Owner</label>
-                                        <input type="text" id="lead_owner" className={commonInputClasses} value={data.lead_owner} onChange={e => setData('lead_owner', e.target.value)} placeholder="e.g., Current User ID or Name"/>
+                                        <label htmlFor="lead_owner" className={commonLabelClasses}><User size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Lead Owner <span className="text-red-500 ml-1">*</span></label>
+                                        <select
+                                            id="lead_owner"
+                                            className={commonSelectClasses}
+                                            value={data.lead_owner}
+                                            onChange={e => setData('lead_owner', e.target.value)}
+                                        >
+                                            {(!data.lead_owner || data.lead_owner === '') && (
+                                                <option value="">-- Select Lead Owner --</option>
+                                            )}
+                                            {users.map(u => (
+                                                <option key={u.id} value={u.id}>
+                                                    {u.name} ({u.email}){user && String(u.id) === String(user.id) ? ' (You)' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
                                         {errors.lead_owner && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.lead_owner}</div>}
                                     </div>
                                 </div>
@@ -205,8 +309,8 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
                                     </div>
                                 </div>
                                 <div>
-                                    <label htmlFor="notes" className={commonLabelClasses}><AlignLeft size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Notes (Optional)</label>
-                                    <textarea id="notes" rows="4" className={commonInputClasses} value={data.notes} onChange={e => setData('notes', e.target.value)} placeholder="Add any relevant notes about this lead..."></textarea>
+                                    <label htmlFor="notes" className={commonLabelClasses}><AlignLeft size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Notes <span className="text-red-500 ml-1">*</span></label>
+                                    <textarea id="notes" rows="4" className={commonInputClasses} value={data.notes} required onChange={e => setData('notes', e.target.value)} placeholder="Add any relevant notes about this lead..."></textarea>
                                     {errors.notes && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.notes}</div>}
                                 </div>
                             </div>
@@ -215,7 +319,7 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
                         {tab === 'company' && (
                             <div className="space-y-6">
                                 <div>
-                                    <label htmlFor="company_id" className={commonLabelClasses}><Building size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Select Existing Company</label>
+                                    <label htmlFor="company_id" className={commonLabelClasses}><Building size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Select Existing Company <span className="text-red-500 ml-1">*</span></label>
                                     <select id="company_id" className={commonSelectClasses} value={data.company_id} onChange={e => { setData('company_id', e.target.value); if(e.target.value) setShowNewCompany(false); }}>
                                         <option value="">-- Select Company --</option>
                                         {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
@@ -245,6 +349,16 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
                                             <input type="url" id="company_website" className={commonInputClasses} value={data.company_website} onChange={e => setData('company_website', e.target.value)} placeholder="https://newcompany.com"/>
                                             {errors.company_website && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.company_website}</div>}
                                         </div>
+                                        <div className="flex justify-end pt-2">
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-all text-sm font-medium"
+                                                onClick={handleSaveCompany}
+                                                disabled={!data.company_name || processing}
+                                            >
+                                                <Save size={16} className="mr-2" /> Save Company & Continue
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -254,9 +368,9 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
                              <div className="space-y-6">
                                 <div>
                                     <label htmlFor="contact_id" className={commonLabelClasses}><User size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Select Existing Contact (Optional)</label>
-                                    <select id="contact_id" className={commonSelectClasses} value={data.contact_id} onChange={e => { setData('contact_id', e.target.value); if(e.target.value) setShowNewContact(false); }}>
+                                    <select id="contact_id" className={commonSelectClasses} value={data.contact_id} onChange={e => { setData('contact_id', e.target.value); if(e.target.value) setShowNewContact(false); }} disabled={!data.company_id}>
                                         <option value="">-- Select Contact --</option>
-                                        {contacts.map(contact => <option key={contact.id} value={contact.id}>{contact.name} ({contact.email})</option>)}
+                                        {filteredContacts.map(contact => <option key={contact.id} value={contact.id}>{contact.name} ({contact.email})</option>)}
                                     </select>
                                     {errors.contact_id && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.contact_id}</div>}
                                 </div>
@@ -274,21 +388,31 @@ export default function LeadCreate({ user,companies: initialCompanies = [], cont
                                     <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-6 bg-gray-50 dark:bg-gray-700/30">
                                         <h3 className="text-md font-semibold text-gray-700 dark:text-gray-200">New Contact Details</h3>
                                         <div>
-                                            <label htmlFor="contact_name" className={commonLabelClasses}>Contact Name</label>
+                                            <label htmlFor="contact_name" className={commonLabelClasses}>Contact Name <span className="text-red-500 ml-1">*</span></label>
                                             <input type="text" id="contact_name" className={commonInputClasses} value={data.contact_name} onChange={e => setData('contact_name', e.target.value)} placeholder="e.g., Alex Smith"/>
-                                            {errors.contact_name && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.contact_name}</div>}
+                                            {(inlineContactErrors.name || errors.contact_name) && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{inlineContactErrors.name || errors.contact_name}</div>}
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label htmlFor="contact_email" className={commonLabelClasses}><Mail size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Contact Email</label>
                                                 <input type="email" id="contact_email" className={commonInputClasses} value={data.contact_email} onChange={e => setData('contact_email', e.target.value)} placeholder="e.g., alex.smith@example.com"/>
-                                                {errors.contact_email && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.contact_email}</div>}
+                                                {inlineContactErrors.email && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{inlineContactErrors.email}</div>}
                                             </div>
                                             <div>
                                                 <label htmlFor="contact_phone" className={commonLabelClasses}><PhoneIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Contact Phone</label>
                                                 <input type="text" id="contact_phone" className={commonInputClasses} value={data.contact_phone} onChange={e => setData('contact_phone', e.target.value)} placeholder="e.g., (555) 123-4567"/>
-                                                {errors.contact_phone && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.contact_phone}</div>}
+                                                {inlineContactErrors.phone && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{inlineContactErrors.phone}</div>}
                                             </div>
+                                        </div>
+                                        <div className="flex justify-end pt-2">
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-all text-sm font-medium"
+                                                onClick={handleSaveContact}
+                                                disabled={!data.contact_name || !data.company_id || processing}
+                                            >
+                                                <Save size={16} className="mr-2" /> Save Contact & Continue
+                                            </button>
                                         </div>
                                     </div>
                                 )}

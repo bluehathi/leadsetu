@@ -6,6 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Workspace;
+use Illuminate\Testing\Fluent\Concerns\Has;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable

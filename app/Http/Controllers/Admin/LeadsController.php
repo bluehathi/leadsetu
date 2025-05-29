@@ -16,11 +16,11 @@ class LeadsController extends Controller
 {
     public function __construct()
     {
-    //     $this->middleware('permission:view leads')->only(['index', 'show']);
-    //     $this->middleware('permission:create leads')->only(['store']);
-    //     $this->middleware('permission:edit leads')->only(['update']);
-    //     $this->middleware('permission:delete leads')->only(['destroy']);
-     }
+        //     $this->middleware('permission:view leads')->only(['index', 'show']);
+        //     $this->middleware('permission:create leads')->only(['store']);
+        //     $this->middleware('permission:edit leads')->only(['update']);
+        //     $this->middleware('permission:delete leads')->only(['destroy']);
+    }
 
     /**
      * Display a listing of the resource.
@@ -29,20 +29,20 @@ class LeadsController extends Controller
     {
 
         $leads = Lead::query()
-        ->latest() // Order by latest first (optional)
-        ->where('user_id', Auth::id()) // Filter by logged-in user
-        ->paginate(15) // Use pagination (adjust count as needed)
-        ->withQueryString();
+            ->latest() // Order by latest first (optional)
+            ->where('user_id', Auth::id()) // Filter by logged-in user
+            ->paginate(15) // Use pagination (adjust count as needed)
+            ->withQueryString();
 
 
 
         return Inertia::render('Leads/Index', [
-            'user' => Auth::user(), 
+            'user' => Auth::user(),
             'leads' => $leads
         ]);
     }
 
-   
+
     /**
      * Store a newly created resource in storage.
      */
@@ -50,51 +50,53 @@ class LeadsController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:180',
-            'email' => 'nullable|string|email',
-            'phone' => 'nullable|string|max:20',
             'company_id' => 'nullable|exists:companies,id',
-            'company_name' => 'nullable|string|max:180',
-            'company_website' => 'nullable|string|max:255',
             'contact_id' => 'nullable|exists:contacts,id',
-            'contact_name' => 'nullable|string|max:180',
-            'contact_email' => 'nullable|string|email|max:255',
-            'contact_phone' => 'nullable|string|max:20',
-            'website' => 'nullable|string|max:180',
-            'notes' => 'nullable|string|max:180',
+            'notes' => 'required|string|max:180',
             'status' => 'required|string|max:180',
             'source' => 'required|string|max:180',
             'deal_value' => 'nullable|integer',
             'expected_close' => 'nullable|date',
             'lead_score' => 'nullable|integer',
             'lead_owner' => 'nullable|string|max:180',
-            'priority' => 'nullable|string|max:20',
+            'priority' => 'required|string|max:20',
             'title' => 'nullable|string|max:180',
             'positions' => 'nullable|string|max:180',
             'tags' => 'nullable|string',
         ]);
 
-        // Handle company
+        // Handle company: Only use selected company_id, do not create new company
         $companyId = $request->company_id;
-        if (!$companyId && $request->company_name) {
-            $company = Company::create([
-                'name' => $request->company_name,
-                'website' => $request->company_website,
-                'workspace_id' => Auth::user()->workspace_id,
-            ]);
-            $companyId = $company->id;
+        if ($companyId) {
+            $company = Company::where('id', $companyId)
+                ->where('workspace_id', Auth::user()->workspace_id)
+                ->first();
+            if ($company) {
+                $data['company_name'] = $company->name;
+                $data['company_website'] = $company->website;
+            }
+        } else {
+            $company = null;
+            $data['company_name'] = null;
+            $data['company_website'] = null;
         }
 
-        // Handle contact
+        // Handle contact: Only use selected contact_id, do not create new contact
         $contactId = $request->contact_id;
-        if (!$contactId && $request->contact_name) {
-            $contact = Contact::create([
-                'name' => $request->contact_name,
-                'email' => $request->contact_email,
-                'phone' => $request->contact_phone,
-                'company_id' => $companyId,
-                'workspace_id' => Auth::user()->workspace_id,
-            ]);
-            $contactId = $contact->id;
+        if ($contactId) {
+            $contact = Contact::where('id', $contactId)
+                ->where('workspace_id', Auth::user()->workspace_id)
+                ->first();
+            if ($contact) {
+                $data['contact_name'] = $contact->name;
+                $data['contact_email'] = $contact->email;
+                $data['contact_phone'] = $contact->phone;
+            }
+        } else {
+            $contact = null;
+            $data['contact_name'] = null;
+            $data['contact_email'] = null;
+            $data['contact_phone'] = null;
         }
 
         // Parse tags if string (comma separated)
@@ -105,11 +107,12 @@ class LeadsController extends Controller
 
         $lead = Lead::create([
             'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
+            'email' => $data['contact_email'],
+            'phone' => $data['contact_phone'],
             'company_id' => $companyId,
             'contact_id' => $contactId,
-            'website' => $request->website,
+            'website' => $data['company_website'],
+            'company' => $data['company_name'],
             'notes' => $request->notes,
             'status' => $request->status,
             'source' => $request->source,
@@ -123,14 +126,13 @@ class LeadsController extends Controller
             'tags' => $tags,
             'user_id' => Auth::id(),
             'workspace_id' => Auth::user()->workspace_id,
+            
         ]);
 
         $this->logActivity('lead_created', $lead, 'Lead created', ['data' => $data]);
 
         // Redirect back to the leads index page with a success message
         return to_route('leads.index')->with('success', 'Lead created successfully.');
-    
-    
     }
 
     /**
@@ -141,7 +143,7 @@ class LeadsController extends Controller
         $lead = Lead::findOrFail($id); // Find the lead by ID or fail
 
         return Inertia::render('Leads/Show', [
-            'user' => Auth::user(), 
+            'user' => Auth::user(),
             'lead' => $lead,
         ]);
     }
@@ -151,8 +153,14 @@ class LeadsController extends Controller
      */
     public function create()
     {
+        $user = Auth::user();
+        $companies = Company::where('workspace_id', $user->workspace_id)->get();
+        $users = \App\Models\User::where('workspace_id', $user->workspace_id)->get();
         return Inertia::render('Leads/Create', [
-            'user' => Auth::user(),
+            'user' => $user,
+            'companies' => $companies,
+            'contacts' => [],
+            'users' => $users,
         ]);
     }
 
@@ -179,53 +187,20 @@ class LeadsController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:180',
-            'email' => 'nullable|string|email',
-            'phone' => 'nullable|string|max:20',
-            'company_id' => 'nullable|exists:companies,id',
-            'company_name' => 'nullable|string|max:180',
-            'company_website' => 'nullable|string|max:255',
-            'contact_id' => 'nullable|exists:contacts,id',
-            'contact_name' => 'nullable|string|max:180',
-            'contact_email' => 'nullable|string|email|max:255',
-            'contact_phone' => 'nullable|string|max:20',
-            'website' => 'nullable|string|max:180',
-            'notes' => 'nullable|string|max:180',
+            'notes' => 'required|string|max:180',
             'status' => 'required|string|max:180',
             'source' => 'required|string|max:180',
             'deal_value' => 'nullable|integer',
             'expected_close' => 'nullable|date',
             'lead_score' => 'nullable|integer',
-            'lead_owner' => 'nullable|string|max:180',
             'priority' => 'nullable|string|max:20',
             'title' => 'nullable|string|max:180',
             'positions' => 'nullable|string|max:180',
             'tags' => 'nullable|string',
         ]);
 
-        // Handle company
-        $companyId = $request->company_id;
-        if (!$companyId && $request->company_name) {
-            $company = Company::create([
-                'name' => $request->company_name,
-                'website' => $request->company_website,
-                'workspace_id' => Auth::user()->workspace_id,
-            ]);
-            $companyId = $company->id;
-        }
-
-        // Handle contact
-        $contactId = $request->contact_id;
-        if (!$contactId && $request->contact_name) {
-            $contact = Contact::create([
-                'name' => $request->contact_name,
-                'email' => $request->contact_email,
-                'phone' => $request->contact_phone,
-                'company_id' => $companyId,
-                'workspace_id' => Auth::user()->workspace_id,
-            ]);
-            $contactId = $contact->id;
-        }
-
+        
+       
         // Parse tags if string (comma separated)
         $tags = $request->tags;
         if (is_string($tags)) {
@@ -234,11 +209,6 @@ class LeadsController extends Controller
 
         $lead->update([
             'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'company_id' => $companyId,
-            'contact_id' => $contactId,
-            'website' => $request->website,
             'notes' => $request->notes,
             'status' => $request->status,
             'source' => $request->source,
@@ -254,7 +224,7 @@ class LeadsController extends Controller
 
         $this->logActivity('lead_updated', $lead, 'Lead updated', ['data' => $data]);
 
-        if ($request->inertia()) {
+        if (!$request->inertia()) {
             // Return a minimal JSON response to satisfy Inertia
             return response()->json(['success' => true, 'id' => $lead->id, 'status' => $lead->status]);
         }
@@ -299,7 +269,7 @@ class LeadsController extends Controller
      */
     public function kanban()
     {
-        
+
         $user = Auth::user();
         $leads = Lead::with('company')
             ->where('workspace_id', $user->workspace_id)

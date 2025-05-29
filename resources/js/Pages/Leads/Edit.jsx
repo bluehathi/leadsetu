@@ -6,6 +6,7 @@ import {
     Globe, DollarSign, CalendarDays, Star, AlignLeft, Building, Save, ArrowLeft, Tag,
     TrendingUp, Users2, Info, Edit3,PlusCircle // Added Edit3 for consistency
 } from 'lucide-react';
+import axios from 'axios';
 
 const statusOptions = [
     { value: 'new', label: 'New' },
@@ -37,20 +38,18 @@ export default function LeadEdit({ user, lead, companies: initialCompanies = [],
     const contacts = Array.isArray(initialContacts) ? initialContacts : [];
     
     const [tab, setTab] = useState('lead');
-    const [showNewCompany, setShowNewCompany] = useState(false);
-    const [showNewContact, setShowNewContact] = useState(false);
 
     const { data, setData, put, processing, errors, recentlySuccessful } = useForm({
         name: lead.name || '',
         email: lead.email || '',
         phone: lead.phone || '',
         company_id: lead.company_id || '',
-        company_name: '', 
-        company_website: '',
+        company_name: '', // For new company
+        company_website: '', // For new company
         contact_id: lead.contact_id || '',
-        contact_name: '',
-        contact_email: '',
-        contact_phone: '',
+        contact_name: '', // For new contact
+        contact_email: '', // For new contact
+        contact_phone: '', // For new contact
         status: lead.status || 'new',
         source: lead.source || 'website',
         notes: lead.notes || '',
@@ -60,7 +59,7 @@ export default function LeadEdit({ user, lead, companies: initialCompanies = [],
         lead_owner: lead.lead_owner || (user ? String(user.id) : ''),
         priority: lead.priority || 'Medium',
         title: lead.title || '',
-        positions: lead.positions || '', 
+        positions: lead.positions || '',
         tags: Array.isArray(lead.tags) ? lead.tags.join(', ') : (lead.tags || ''),
     });
 
@@ -76,20 +75,6 @@ export default function LeadEdit({ user, lead, companies: initialCompanies = [],
         });
     };
     
-    // Effect to handle deselection of existing company/contact if new one is being added
-    useEffect(() => {
-        if (showNewCompany) {
-            setData('company_id', '');
-        }
-    }, [showNewCompany]);
-
-    useEffect(() => {
-        if (showNewContact) {
-            setData('contact_id', '');
-        }
-    }, [showNewContact]);
-
-
     const commonInputClasses = "block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md";
     const commonLabelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center";
     const commonSelectClasses = `${commonInputClasses} appearance-none`;
@@ -97,7 +82,7 @@ export default function LeadEdit({ user, lead, companies: initialCompanies = [],
     return (
         <AuthenticatedLayout user={user} title={`Edit Lead: ${lead.name}`}>
             <Head title={`Edit ${lead.name}`} />
-            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+            <div className="py-8 px-4 sm:px-6 lg:px-8 w-full mx-auto">
 
                
                 {flash.success && (
@@ -158,16 +143,16 @@ export default function LeadEdit({ user, lead, companies: initialCompanies = [],
                                         {errors.title && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.title}</div>}
                                     </div>
                                 </div>
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label htmlFor="email" className={commonLabelClasses}><MailIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Email Address</label>
-                                        <input type="email" id="email" className={commonInputClasses} value={data.email} onChange={e => setData('email', e.target.value)} placeholder="e.g., lead@example.com"/>
-                                        {errors.email && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.email}</div>}
+                                        <input type="email" id="email" className={commonInputClasses + ' bg-gray-100 dark:bg-gray-700 cursor-not-allowed'} value={data.email} readOnly tabIndex={-1} aria-readonly="true" style={{ pointerEvents: 'none' }} placeholder="e.g., lead@example.com"/>
+                                        <div className="text-xs text-gray-500 mt-1">This field cannot be edited.</div>
                                     </div>
                                     <div>
                                         <label htmlFor="phone" className={commonLabelClasses}><PhoneIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Phone Number</label>
-                                        <input type="text" id="phone" className={commonInputClasses} value={data.phone} onChange={e => setData('phone', e.target.value)} placeholder="e.g., (123) 456-7890"/>
-                                        {errors.phone && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.phone}</div>}
+                                        <input type="text" id="phone" className={commonInputClasses + ' bg-gray-100 dark:bg-gray-700 cursor-not-allowed'} value={data.phone} readOnly tabIndex={-1} aria-readonly="true" style={{ pointerEvents: 'none' }} placeholder="e.g., (123) 456-7890"/>
+                                        <div className="text-xs text-gray-500 mt-1">This field cannot be edited.</div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -196,7 +181,21 @@ export default function LeadEdit({ user, lead, companies: initialCompanies = [],
                                     </div>
                                     <div>
                                         <label htmlFor="lead_owner" className={commonLabelClasses}><User size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Lead Owner</label>
-                                        <input type="text" id="lead_owner" className={commonInputClasses} value={data.lead_owner} onChange={e => setData('lead_owner', e.target.value)} placeholder="e.g., Current User ID or Name"/>
+                                        <select
+                                            id="lead_owner"
+                                            className={commonSelectClasses}
+                                            value={data.lead_owner}
+                                            onChange={e => setData('lead_owner', e.target.value)}
+                                        >
+                                            {(!data.lead_owner || data.lead_owner === '') && (
+                                                <option value="">-- Select Lead Owner --</option>
+                                            )}
+                                            {(props.users || user ? [user] : []).map(u => (
+                                                <option key={u.id} value={u.id}>
+                                                    {u.name} ({u.email}){user && String(u.id) === String(user.id) ? ' (You)' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
                                         {errors.lead_owner && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.lead_owner}</div>}
                                     </div>
                                 </div>
@@ -235,83 +234,44 @@ export default function LeadEdit({ user, lead, companies: initialCompanies = [],
                         {tab === 'company' && (
                             <div className="space-y-6">
                                 <div>
-                                    <label htmlFor="company_id_select" className={commonLabelClasses}><Building size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Select Existing Company <span className="text-red-500 ml-1">*</span></label>
-                                    <select id="company_id_select" className={commonSelectClasses} value={data.company_id} onChange={e => { setData('company_id', e.target.value); if(e.target.value) setShowNewCompany(false); }} disabled={showNewCompany} required={!showNewCompany}>
-                                        <option value="">-- Select Company --</option>
-                                        {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-                                    </select>
-                                    {errors.company_id && !showNewCompany && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.company_id}</div>}
+                                    <label htmlFor="company_id" className={commonLabelClasses}><Building size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Company</label>
+                                    <input
+                                        type="text"
+                                        id="company_id"
+                                        className={commonInputClasses + ' bg-gray-100 dark:bg-gray-700 cursor-not-allowed'}
+                                        value={(() => {
+                                            const c = companies.find(c => String(c.id) === String(data.company_id));
+                                            return c ? c.name : '';
+                                        })()}
+                                        readOnly
+                                        tabIndex={-1}
+                                        aria-readonly="true"
+                                        style={{ pointerEvents: 'none' }}
+                                    />
+                                    <div className="text-xs text-gray-500 mt-1">This field cannot be edited.</div>
                                 </div>
-                                <div className="flex items-center">
-                                    <hr className="flex-grow border-gray-300 dark:border-gray-600"/>
-                                    <span className="px-3 text-xs text-gray-500 dark:text-gray-400">OR</span>
-                                    <hr className="flex-grow border-gray-300 dark:border-gray-600"/>
-                                </div>
-                                <div>
-                                    <button type="button" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center" onClick={() => {setShowNewCompany(v => !v); if(!showNewCompany) setData('company_id', '');}}>
-                                        <PlusCircle size={16} className="mr-1.5"/> {showNewCompany ? 'Cancel Adding New Company' : 'Add New Company'}
-                                    </button>
-                                </div>
-                                {showNewCompany && (
-                                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-6 bg-gray-50 dark:bg-gray-700/30">
-                                        <h3 className="text-md font-semibold text-gray-700 dark:text-gray-200">New Company Details</h3>
-                                        <div>
-                                            <label htmlFor="company_name" className={commonLabelClasses}>Company Name <span className="text-red-500 ml-1">*</span></label>
-                                            <input type="text" id="company_name" className={commonInputClasses} value={data.company_name} onChange={e => setData('company_name', e.target.value)} required={showNewCompany} placeholder="New Company Inc."/>
-                                            {errors.company_name && showNewCompany && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.company_name}</div>}
-                                        </div>
-                                        <div>
-                                            <label htmlFor="company_website" className={commonLabelClasses}><Globe size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Company Website (Optional)</label>
-                                            <input type="url" id="company_website" className={commonInputClasses} value={data.company_website} onChange={e => setData('company_website', e.target.value)} placeholder="https://newcompany.com"/>
-                                            {errors.company_website && showNewCompany && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.company_website}</div>}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         )}
 
                         {tab === 'contact' && (
                              <div className="space-y-6">
                                 <div>
-                                    <label htmlFor="contact_id_select" className={commonLabelClasses}><Users2 size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Select Existing Contact (Optional)</label>
-                                    <select id="contact_id_select" className={commonSelectClasses} value={data.contact_id} onChange={e => { setData('contact_id', e.target.value); if(e.target.value) setShowNewContact(false); }} disabled={showNewContact}>
-                                        <option value="">-- Select Contact --</option>
-                                        {contacts.map(contact => <option key={contact.id} value={contact.id}>{contact.name} ({contact.email || 'No email'})</option>)}
-                                    </select>
-                                    {errors.contact_id && !showNewContact && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.contact_id}</div>}
+                                    <label htmlFor="contact_id" className={commonLabelClasses}><Users2 size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Primary Contact</label>
+                                    <input
+                                        type="text"
+                                        id="contact_id"
+                                        className={commonInputClasses + ' bg-gray-100 dark:bg-gray-700 cursor-not-allowed'}
+                                        value={(() => {
+                                            const c = contacts.find(c => String(c.id) === String(data.contact_id));
+                                            return c ? `${c.name}${c.email ? ' (' + c.email + ')' : ''}` : '';
+                                        })()}
+                                        readOnly
+                                        tabIndex={-1}
+                                        aria-readonly="true"
+                                        style={{ pointerEvents: 'none' }}
+                                    />
+                                    <div className="text-xs text-gray-500 mt-1">This field cannot be edited.</div>
                                 </div>
-                                 <div className="flex items-center">
-                                    <hr className="flex-grow border-gray-300 dark:border-gray-600"/>
-                                    <span className="px-3 text-xs text-gray-500 dark:text-gray-400">OR</span>
-                                    <hr className="flex-grow border-gray-300 dark:border-gray-600"/>
-                                </div>
-                                <div>
-                                     <button type="button" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center" onClick={() => {setShowNewContact(v => !v); if(!showNewContact) setData('contact_id', '');}}>
-                                        <PlusCircle size={16} className="mr-1.5"/> {showNewContact ? 'Cancel Adding New Contact' : 'Add New Contact (if not listed)'}
-                                    </button>
-                                </div>
-                                {showNewContact && (
-                                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-6 bg-gray-50 dark:bg-gray-700/30">
-                                        <h3 className="text-md font-semibold text-gray-700 dark:text-gray-200">New Contact Details</h3>
-                                        <div>
-                                            <label htmlFor="contact_name_new" className={commonLabelClasses}>Contact Name</label>
-                                            <input type="text" id="contact_name_new" className={commonInputClasses} value={data.contact_name} onChange={e => setData('contact_name', e.target.value)} placeholder="e.g., Alex Smith"/>
-                                            {errors.contact_name && showNewContact && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.contact_name}</div>}
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label htmlFor="contact_email_new" className={commonLabelClasses}><MailIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Contact Email</label>
-                                                <input type="email" id="contact_email_new" className={commonInputClasses} value={data.contact_email} onChange={e => setData('contact_email', e.target.value)} placeholder="e.g., alex.smith@example.com"/>
-                                                {errors.contact_email && showNewContact && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.contact_email}</div>}
-                                            </div>
-                                            <div>
-                                                <label htmlFor="contact_phone_new" className={commonLabelClasses}><PhoneIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" />Contact Phone</label>
-                                                <input type="text" id="contact_phone_new" className={commonInputClasses} value={data.contact_phone} onChange={e => setData('contact_phone', e.target.value)} placeholder="e.g., (555) 123-4567"/>
-                                                {errors.contact_phone && showNewContact && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.contact_phone}</div>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         )}
 

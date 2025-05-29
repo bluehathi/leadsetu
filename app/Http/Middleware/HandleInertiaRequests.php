@@ -35,8 +35,21 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+
+        $user = $request->user();
+        $userPermissions = [];
+
+        if ($user) {
+            // If using spatie/laravel-permission package:
+            if (method_exists($user, 'getAllPermissions')) {
+                $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+            }
+            
+        }
         return [
-            ...parent::share($request),
+            ...parent::share($request), 
+                'userPermissions' => $userPermissions
+            
             //
         ];
     }

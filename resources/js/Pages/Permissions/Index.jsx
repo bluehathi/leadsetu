@@ -57,7 +57,7 @@ export default function PermissionsIndex({ permissions: initialPermissions = [],
     return (
         <AuthenticatedLayout user={user} title="Permissions">
             <Head title="Permissions" />
-            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+            <div className="py-8 px-4 sm:px-6 lg:px-8 w-full mx-auto">
                 <div className="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <h1 className="text-3xl font-semibold text-gray-800 dark:text-gray-100 flex items-center">
                        <KeyRound size={30} className="mr-3 text-blue-500" /> Manage Permissions

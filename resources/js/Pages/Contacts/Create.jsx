@@ -18,6 +18,12 @@ export default function Create({user}) { // Assuming props are destructured or p
         company_id: '', // Initialize company_id
     });
 
+    const [showNewCompany, setShowNewCompany] = React.useState(false);
+    const [newCompanyName, setNewCompanyName] = React.useState('');
+    const [creatingCompany, setCreatingCompany] = React.useState(false);
+    const [companyError, setCompanyError] = React.useState('');
+    const [companyList, setCompanyList] = React.useState(companies);
+
     const handleSubmit = (e) => {
         e.preventDefault();
         // Ensure company_id is sent as a number (not string) if not empty
@@ -29,6 +35,41 @@ export default function Create({user}) { // Assuming props are destructured or p
             ...payload,
             preserveScroll: true,
         });
+    };
+
+    const handleCreateCompany = async (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent bubbling to parent form
+        setCompanyError('');
+        if (!newCompanyName.trim()) {
+            setCompanyError('Company name is required.');
+            return;
+        }
+        setCreatingCompany(true);
+        try {
+            const response = await fetch(route('contact.company.store'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                },
+                body: JSON.stringify({ name: newCompanyName }),
+            });
+            const result = await response.json();
+            if (response.ok && result && result.company) {
+                setCompanyList(prev => [...prev, result.company]);
+                setData('company_id', result.company.id);
+                setShowNewCompany(false);
+                setNewCompanyName('');
+            } else {
+                setCompanyError(result.message || 'Failed to create company.');
+            }
+        } catch (err) {
+            setCompanyError('Failed to create company.');
+        } finally {
+            setCreatingCompany(false);
+        }
     };
 
     return (
@@ -77,7 +118,7 @@ export default function Create({user}) { // Assuming props are destructured or p
                     </div>
 
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
+                        <label htmlFor="name" className="flex text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 items-center">
                             Full Name <span className="text-red-500 ml-1">*</span>
                         </label>
                         <input 
@@ -94,7 +135,7 @@ export default function Create({user}) { // Assuming props are destructured or p
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
+                            <label htmlFor="email" className="flex text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 items-center">
                                 <MailIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Email Address
                             </label>
                             <input 
@@ -109,7 +150,7 @@ export default function Create({user}) { // Assuming props are destructured or p
                         </div>
 
                         <div>
-                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
+                            <label htmlFor="phone" className="flex text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 items-center">
                                 <PhoneIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Phone Number
                             </label>
                             <input 
@@ -126,25 +167,56 @@ export default function Create({user}) { // Assuming props are destructured or p
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label htmlFor="company_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
+                            <label htmlFor="company_id" className="flex text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 items-center">
                                 <Building size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Company <span className="text-red-500 ml-1">*</span>
                             </label>
-                            <select 
+                            <select
                                 id="company_id"
-                                value={data.company_id || ''} 
-                                onChange={e => setData('company_id', e.target.value)} 
+                                value={data.company_id || ''}
+                                onChange={e => setData('company_id', e.target.value)}
                                 className="block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md appearance-none"
                                 required
+                                disabled={showNewCompany}
                             >
                                 <option value="">Select a company</option>
-                                {companies.map(company => (
+                                {companyList.map(company => (
                                     <option key={company.id} value={company.id}>{company.name}</option>
                                 ))}
                             </select>
                             {errors.company_id && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.company_id}</div>}
+                            <button
+                                type="button"
+                                className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                                onClick={() => setShowNewCompany(v => !v)}
+                            >
+                                {showNewCompany ? 'Cancel' : '+ Add new company'}
+                            </button>
+                            {showNewCompany && (
+                                <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col gap-2">
+                                    <label htmlFor="new_company_name" className="text-xs font-medium text-gray-700 dark:text-gray-300">Company Name <span className="text-red-500">*</span></label>
+                                    <input
+                                        id="new_company_name"
+                                        type="text"
+                                        value={newCompanyName}
+                                        onChange={e => setNewCompanyName(e.target.value)}
+                                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700/50 text-sm"
+                                        placeholder="e.g., New Company Inc."
+                                        disabled={creatingCompany}
+                                    />
+                                    {companyError && <div className="text-xs text-red-500 mt-1">{companyError}</div>}
+                                    <button
+                                        type="button"
+                                        className="mt-2 inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-60"
+                                        disabled={creatingCompany}
+                                        onClick={handleCreateCompany}
+                                    >
+                                        {creatingCompany ? 'Creating...' : 'Create & Select'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <div>
-                            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
+                            <label htmlFor="title" className="flex text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 items-center">
                                 <BriefcaseIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Job Title (Optional)
                             </label>
                             <input 
@@ -160,7 +232,7 @@ export default function Create({user}) { // Assuming props are destructured or p
                     </div>
                     
                     <div>
-                        <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
+                        <label htmlFor="notes" className="flex text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 items-center">
                            <AlignLeft size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Notes (Optional)
                         </label>
                         <textarea 

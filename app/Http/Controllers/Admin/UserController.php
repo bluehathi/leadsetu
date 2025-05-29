@@ -13,14 +13,25 @@ use App\Models\ActivityLog;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('workspace', 'roles')
-        ->where('workspace_id', auth()->user()->workspace_id)
-        ->get();
+        $search = $request->input('search');
+        $usersQuery = User::with('workspace', 'roles')
+            ->where('workspace_id', Auth::user()->workspace_id);
+        if ($search) {
+            $usersQuery->where(function($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                  ->orWhere('email', 'like', "%$search%")
+                  ->orWhereHas('roles', function($qr) use ($search) {
+                      $qr->where('name', 'like', "%$search%") ;
+                  });
+            });
+        }
+        $users = $usersQuery->get();
         return Inertia::render('Users/Index', [
             'users' => $users,
-            'user' => auth()->user()
+            'user' => Auth::user(),
+            'search' => $search,
         ]);
     }
 
@@ -29,7 +40,7 @@ class UserController extends Controller
         $roles = Role::all();
         return Inertia::render('Users/Create', [
             'roles' => $roles,
-             'user' => auth()->user()
+             'user' => Auth::user()
         ]);
     }
 
@@ -59,7 +70,7 @@ class UserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => bcrypt($data['password']),
-            'workspace_id' => auth()->user()->workspace_id ?? null,
+            'workspace_id' => Auth::user()->workspace_id ?? null,
         ]);
         if (!empty($data['roles'])) {
             $user->syncRoles($data['roles']);
@@ -75,7 +86,7 @@ class UserController extends Controller
         return Inertia::render('Users/Edit', [
             'user' => $user,
             'roles' => $roles,
-            'loginuser' => auth()->user()
+            'loginuser' => Auth::user()
         ]);
     }
 
@@ -91,7 +102,7 @@ class UserController extends Controller
         $user->update([
             'name' => $data['name'],
             'email' => $data['email'],
-            'workspace_id' => auth()->user()->workspace_id ?? null,
+            'workspace_id' => Auth::user()->workspace_id ?? null,
         ]);
         if (!empty($data['password'])) {
             $user->update(['password' => bcrypt($data['password'])]);
@@ -224,7 +235,7 @@ class UserController extends Controller
 
     public function workspaceSettings()
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $workspace = $user->workspace;
         $isOwner = $workspace && $workspace->owners()->where('user_id', $user->id)->exists();
         if (!$isOwner || !$user->can('workspace_owner')) {
@@ -237,7 +248,7 @@ class UserController extends Controller
 
     public function updateWorkspaceSettings(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $workspace = $user->workspace;
         $isOwner = $workspace && $workspace->owners()->where('user_id', $user->id)->exists();
         if (!$isOwner || !$user->can('workspace_owner')) {
