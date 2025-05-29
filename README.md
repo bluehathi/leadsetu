@@ -17,6 +17,7 @@ LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, 
   - Manage companies and contacts per workspace.
   - Associate leads and contacts with companies.
   - Inline creation and validation for companies/contacts.
+  - **Excel Import:** Bulk import companies and contacts from Excel (.xls/.xlsx) with support for name, company, websiteUrl, email, mobile, notes, and more. Each import always creates new records.
 - **User Management:**
   - Invite, edit, and remove users from your workspace.
   - Assign roles and permissions per user.
@@ -36,7 +37,7 @@ LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, 
   - All main pages use a unified AuthenticatedLayout.
 
 ## Tech Stack
-- **Backend:** Laravel 10+, Spatie Permission
+- **Backend:** Laravel 10+, Spatie Permission, maatwebsite/excel
 - **Frontend:** React (via Inertia.js), Tailwind CSS, Lucide React Icons
 - **Database:** MySQL or PostgreSQL
 
@@ -88,8 +89,8 @@ LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, 
 ## Project Structure
 - `resources/js/Layouts/AuthenticatedLayout.jsx` — Main app layout (sidebar, header, dropdown)
 - `resources/js/Pages/Leads/` — Lead management (Kanban, List, Create, Edit, Show)
-- `resources/js/Pages/Companies/` — Company management
-- `resources/js/Pages/Contacts/` — Contact management
+- `resources/js/Pages/Companies/` — Company management (with search, website links)
+- `resources/js/Pages/Contacts/` — Contact management (with company website, Excel import)
 - `resources/js/Pages/Users/` — User management (with search/filter)
 - `resources/js/Pages/Roles/` — Role management
 - `resources/js/Pages/Permissions/` — Permission management
