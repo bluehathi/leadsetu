@@ -17,40 +17,39 @@ class ContactCompanyImport implements OnEachRow, WithHeadingRow
         $row = $row->toArray();
         $workspaceId = Auth::user()->workspace_id;
 
-        // Validate: name required, at least one of email/phone
-        if (empty($row['name']) || (empty($row['email']) && empty($row['phone']))) {
-            // Optionally log or collect errors
-            Log::warning('Skipped row: missing name or both email/phone', $row);
+        // Map columns: support both 'company' and 'websiteUrl', 'mobile' as phone
+        $contactName = $row['name'] ?? null;
+        $companyName = $row['name'] ?? null;
+        $companyWebsite = $row['websiteurl'] ?? null; // Excel columns are lowercased by WithHeadingRow
+        $email = $row['email'] ?? null;
+        $phone = $row['mobile'] ?? ($row['phone'] ?? null);
+        $notes = $row['notes'] ?? null;
+        $title = $row['title'] ?? null;
+
+        // Validate: name required only
+        if (empty($contactName)) {
+            Log::warning('Skipped row: missing name', $row);
             return;
         }
 
-        // Find or create company
+        // Always create a new company (no duplicate check)
         $company = null;
-        if (!empty($row['company'])) {
-            $company = Company::firstOrCreate([
-                'name' => $row['company'],
-                'workspace_id' => $workspaceId,
-            ]);
+        if (!empty($companyName)) {
+            $company = new Company();
+            $company->name = $companyName;
+            $company->workspace_id = $workspaceId;
+            $company->website = $companyWebsite;
+            $company->save();
         }
 
-        // Find or create contact (by email or phone)
-        $contact = Contact::where('workspace_id', $workspaceId)
-            ->where(function($q) use ($row) {
-                if (!empty($row['email'])) $q->orWhere('email', $row['email']);
-                if (!empty($row['phone'])) $q->orWhere('phone', $row['phone']);
-            })
-            ->first();
-
-        if (!$contact) {
-            $contact = new Contact();
-            $contact->workspace_id = $workspaceId;
-        }
-
-        $contact->name = $row['name'];
-        $contact->email = $row['email'] ?? null;
-        $contact->phone = $row['phone'] ?? null;
-        $contact->title = $row['title'] ?? null;
-        $contact->notes = $row['notes'] ?? null;
+        // Always create a new contact (no duplicate check)
+        $contact = new Contact();
+        $contact->workspace_id = $workspaceId;
+        $contact->name = $contactName;
+        $contact->email = $email;
+        $contact->phone = $phone;
+        $contact->title = $title;
+        $contact->notes = $notes;
         if ($company) {
             $contact->company_id = $company->id;
         }

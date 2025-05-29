@@ -183,9 +183,21 @@ export default function ContactsIndex({ user, contacts, workspaces }) {
                                                 </p>
                                             )}
                                             {contact.company && contact.company.name && (
-                                                <p className="flex items-center" title={`Company: ${contact.company.name}`}>
+                                                <p className="flex items-center" title={`Company: ${contact.company.name}`}> 
                                                     <Building size={12} className="mr-2 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                                                     {contact.company.name}
+                                                    {contact.company.website && (
+                                                        <a
+                                                            href={contact.company.website.startsWith('http') ? contact.company.website : `https://${contact.company.website}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="ml-2 text-blue-500 dark:text-blue-400 hover:underline flex items-center"
+                                                            title={contact.company.website}
+                                                        >
+                                                            <Filter size={12} className="mr-1" />
+                                                            <span className="truncate max-w-[120px] align-middle">{contact.company.website}</span>
+                                                        </a>
+                                                    )}
                                                 </p>
                                             )}
                                         </div>
