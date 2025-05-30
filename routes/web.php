@@ -12,7 +12,8 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ContactController;
 use App\Http\Controllers\Admin\WorkspaceController;
 use App\Http\Controllers\Admin\CompanyController;
-
+use App\Http\Controllers\Admin\SMTPController;
+use App\Http\Controllers\Admin\SettingController;
 
 // Auth routes
 Route::get('/login', [AuthController::class, 'showLoginForm'])->middleware('guest')->name('login');
@@ -48,6 +49,10 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     // Route for fetching contacts by company (AJAX)
     Route::get('companies/{company}/contacts', [\App\Http\Controllers\Admin\ContactController::class, 'contacts'])->name('company.contacts');
     
+    Route::get('settings',[SettingController::class,'index'])->name('settings.index');
+    Route::get('settings/smtp',[SMTPController::class,'index'])->name('smtp.index');
+    Route::post('settings/smtp', [\App\Http\Controllers\Admin\SMTPController::class, 'save'])->name('settings.smtp.save');
+    Route::post('settings/smtp/test', [SMTPController::class, 'test'])->name('settings.smtp.test');
     
 });
 

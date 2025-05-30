@@ -17,18 +17,18 @@ class RoleSeeder extends Seeder
             ->where('name','not like','%permission%')
             ->pluck('name')->toArray(), // All permissions
             'Manager' => [
-                'view leads', 'create leads', 'edit leads', 'delete leads',
-                'view users', 'view workspaces',
-                'view roles', 'view permissions',
-                'view activity logs', 'view dashboard',
+                'view_leads', 'create_leads', 'edit_leads', 'delete_leads',
+                'view_users', 'view_workspaces',
+                'view_roles', 'view_permissions',
+                'view_activity_logs', 'view_dashboard',
             ],
             'Sales' => [
-                'view leads', 'create leads', 'edit leads',
-                'view workspaces',
-                'view dashboard',
+                'view_leads', 'create_leads', 'edit_leads',
+                'view_workspaces',
+                'view_dashboard',
             ],
             'Viewer' => [
-                'view leads', 'view users', 'view workspaces', 'view roles', 'view permissions', 'view activity logs', 'view dashboard',
+                'view_leads', 'view_users', 'view_workspaces', 'view_roles', 'view_permissions', 'view_activity_logs', 'view_dashboard',
             ],
         ];
 

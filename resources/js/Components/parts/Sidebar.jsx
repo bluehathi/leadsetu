@@ -24,7 +24,7 @@ import {
     Globe,
     Contact2,
     X,
-    LogOut
+    LogOut,Settings2
 } from 'lucide-react';
 
 const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
@@ -172,17 +172,18 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
                     <NavLink href={route('contacts.index')} routeName="contacts.index" icon={Contact2}>Contacts</NavLink>
                     <NavLink href={route('companies.index')} routeName="companies.index" icon={BriefcaseBusiness}>Companies</NavLink>
                     <NavLink href={route('workspaces.index')} routeName="workspaces.index" icon={Globe}>Workspaces</NavLink>
-                    {can('view users') && (
+                    <NavLink href={route('settings.index')} routeName="settings.index" icon={Settings2}>Settings</NavLink>
+                    {can('view_users') && (
                         <>
                             <SectionTitle>Access Control</SectionTitle>
                             <NavLink href={route('users.index')} routeName="users.index" icon={UsersIcon}>Users</NavLink>
                         </>
                     )}
-                    {can('view roles') && (
+                    {can('view_roles') && (
                          <NavLink href={route('roles.index')} routeName="roles.index" icon={Shield}>Roles</NavLink>
                    
                     )}
-                    {can('view permissions') && (   
+                    {can('view_permissions') && (   
                     <NavLink href={route('permissions.index')} routeName="permissions.index" icon={Key}>Permissions</NavLink>
                     )}
                     {/* {showAccessControlSection && <SectionTitle>Access Control</SectionTitle>}

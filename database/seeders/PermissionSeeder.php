@@ -11,19 +11,21 @@ class PermissionSeeder extends Seeder
     {
         $permissions = [
             // Leads
-            'view leads', 'create leads', 'edit leads', 'delete leads',
+            'view_leads', 'create_leads', 'edit_leads', 'delete_leads',
             // Users
-            'view users', 'create users', 'edit users', 'delete users',
+            'view_users', 'create_users', 'edit_users', 'delete_users',
             // Workspaces
-            'view workspaces', 'create workspaces', 'edit workspaces', 'delete workspaces',
+            'view_workspaces', 'create_workspaces', 'edit_workspaces', 'delete_workspaces',
             // Roles
-            'view roles', 'create roles', 'edit roles', 'delete roles',
+            'view_roles', 'create_roles', 'edit_roles', 'delete_roles',
             // Permissions
-            'view permissions', 'create permissions', 'edit permissions', 'delete permissions',
+            'view_permissions', 'create_permissions', 'edit_permissions', 'delete_permissions',
             // Activity Logs
-            'view activity logs',
+            'view_activity_logs',
             // Dashboard
-            'view dashboard','workspace_owner',
+            'view_dashboard','workspace_owner',
+            //settings
+            'manage_settings','manage_smtp_settings'
         ];
         foreach ($permissions as $permission) {
             $perm = Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
