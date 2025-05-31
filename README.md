@@ -1,43 +1,44 @@
 # LeadSetu SaaS Lead Management Platform
 
-LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, contacts, users, roles, and permissions. Built with Laravel, Inertia.js, and React, it features a beautiful, responsive UI, workspace-based multi-tenancy, robust role/permission management, and comprehensive activity logging.
+LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, contacts, users, roles, and permissions. Built with Laravel, Inertia.js, and React, it features a beautiful, responsive UI, workspace-based multi-tenancy, robust role/permission management, and full activity logging for all major actions.
 
-## Key Features
+## Recent Improvements
+- **Modern UI/UX:** The entire application UI has been redesigned for a cleaner, more modern, and responsive experience. The sidebar, layouts, and all main pages use Tailwind CSS and Lucide icons for a consistent, professional look.
+- **Comprehensive Activity Logs:** All major CRUD operations (create, update, delete) for Leads, Companies, Contacts, Users, Roles, Permissions, and Workspaces are now tracked in the Activity Logs section. Seeder actions and email sends are also logged.
+- **Email Log History:** The Contact details page now displays a full email log history, showing all emails sent to a contact, their status, and any errors.
+
+## Features
 - **Workspace-based Multi-Tenancy:**
-  - All data (leads, users, companies, contacts, permissions) is scoped to workspaces.
-  - Workspace owners have special management privileges.
+  - All data is scoped to workspaces (formerly organizations).
+  - Users, leads, contacts, companies, and permissions are managed per workspace.
 - **Leads Management:**
   - Create, view, edit, and delete leads scoped to your workspace.
   - Kanban and list views for leads.
-  - Inline company/contact creation in lead forms (with AJAX, duplicate prevention, and activity logging).
-  - Lead Owner field: dropdown of all workspace users, defaults to current user.
-  - Dynamic contact dropdown: only shows contacts for the selected company.
-  - Read-only fields in lead edit for company, contact, email, and phone.
-- **Company & Contact Management:**
-  - Manage companies and contacts per workspace.
+  - Lead fields: name, email, phone, company, website, notes, status, source, tags, etc.
+- **Company Management:**
+  - Manage companies per workspace.
   - Associate leads and contacts with companies.
-  - Inline creation and validation for companies/contacts.
-  - **Excel Import:** Bulk import companies and contacts from Excel (.xls/.xlsx) with support for name, company, websiteUrl, email, mobile, notes, and more. Each import always creates new records.
+- **Contact Management:**
+  - Manage contacts per workspace.
+  - Associate contacts with companies and leads.
+  - Send emails to contacts and view full email log history.
 - **User Management:**
   - Invite, edit, and remove users from your workspace.
   - Assign roles and permissions per user.
-  - **User Search/Filter:** Search users by name, email, or role from the Users page.
 - **Role & Permission Management:**
   - Uses Spatie Laravel Permission for roles/permissions.
   - UI and backend enforce access control everywhere.
-  - Permissions are typically code-defined, but custom permissions can be added.
+- **Workspace Owner Functionality:**
+  - Only users who are workspace owners and have the `workspace_owner` permission can manage workspace settings.
 - **Activity Logs:**
-  - Track all key actions (user created, lead created, contact created, company created, etc.)
+  - Track all key actions (user created, lead created, contact created, company created, email sent, etc.)
   - All activity logs are workspace-scoped and include workspace_id.
   - Activity logs are created for all main entity actions and seeders.
 - **Authentication:**
   - Modern registration, login, and password reset flows.
-- **Modern UI/UX:**
-  - Responsive layouts, sidebar, and header using Tailwind CSS and Lucide icons.
-  - All main pages use a unified AuthenticatedLayout.
 
 ## Tech Stack
-- **Backend:** Laravel 10+, Spatie Permission, maatwebsite/excel
+- **Backend:** Laravel 10+, Spatie Permission
 - **Frontend:** React (via Inertia.js), Tailwind CSS, Lucide React Icons
 - **Database:** MySQL or PostgreSQL
 
@@ -89,13 +90,14 @@ LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, 
 ## Project Structure
 - `resources/js/Layouts/AuthenticatedLayout.jsx` — Main app layout (sidebar, header, dropdown)
 - `resources/js/Pages/Leads/` — Lead management (Kanban, List, Create, Edit, Show)
-- `resources/js/Pages/Companies/` — Company management (with search, website links)
-- `resources/js/Pages/Contacts/` — Contact management (with company website, Excel import)
-- `resources/js/Pages/Users/` — User management (with search/filter)
+- `resources/js/Pages/Companies/` — Company management
+- `resources/js/Pages/Contacts/` — Contact management and email log history
+- `resources/js/Pages/Users/` — User management
 - `resources/js/Pages/Roles/` — Role management
 - `resources/js/Pages/Permissions/` — Permission management
 - `resources/js/Pages/ActivityLogs/` — Activity log viewing and filtering
 - `resources/js/Components/parts/Sidebar.jsx` — Sidebar navigation
+- `app/Services/EmailDispatchService.php` — Email sending and logging logic
 
 ## Customization
 - Update branding, colors, and logo in `AuthenticatedLayout.jsx` and Tailwind config.

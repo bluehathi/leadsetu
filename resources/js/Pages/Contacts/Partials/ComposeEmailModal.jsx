@@ -19,29 +19,18 @@ export default function ComposeEmailModal({
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // This is where you'll eventually POST to your Laravel backend
-        // For now, let's just log it and close the modal
-        console.log('Form data to send:', {
-            contact_id: contact.id,
-            ...data
+        post(route('contacts.sendComposedEmail', { contact: contact.id }), { // Make sure 'contact.id' is correct
+            preserveScroll: true,
+            onSuccess: () => {
+                onClose(); 
+                reset();   
+                // The flash message will be handled by the parent page (ContactShow.jsx)
+            },
+            onError: (formErrors) => {
+                console.error("Error submitting email form:", formErrors);
+                // Errors passed to `errors` prop by useForm will update automatically
+            }
         });
-        // Example: post(route('contacts.sendComposedEmail', { contact: contact.id }), {
-        //     preserveScroll: true,
-        //     onSuccess: () => {
-        //         onClose(); 
-        //         reset();   
-        //         // Add a success flash message here
-        //     },
-        //     onError: (formErrors) => {
-        //         console.error("Error sending email:", formErrors);
-        //         // Handle errors, maybe show them in the modal
-        //     }
-        // });
-        
-        // For UI testing:
-        alert(`Email to ${contact.name} would be sent with subject: ${data.subject}`);
-        onClose();
-        reset();
     };
 
     if (!isOpen || !contact) {
@@ -50,7 +39,7 @@ export default function ComposeEmailModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out">
-            <div className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform transition-all duration-300 ease-in-out scale-95 opacity-0 animate-modalFadeInScale">
+            <div className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform transition-all duration-300 ease-in-out">
                 {/* Modal Header */}
                 <div className="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
@@ -127,22 +116,7 @@ export default function ComposeEmailModal({
                     </button>
                 </div>
             </div>
-            {/* Add this to your global CSS or a <style jsx global> tag if using Next.js for animation */}
-            <style jsx global>{`
-                @keyframes fadeInScale {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.95);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                }
-                .animate-modalFadeInScale {
-                    animation: fadeInScale 0.3s ease-out forwards;
-                }
-            `}</style>
+            
         </div>
     );
 }

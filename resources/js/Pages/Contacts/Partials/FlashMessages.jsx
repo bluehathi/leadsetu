@@ -2,6 +2,9 @@ import React from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
 export default function FlashMessages({ flash }) {
+
+    if(!flash) return null;
+
     if (!flash.success && !flash.error) return null;
     return (
         <>

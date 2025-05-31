@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ContactCompanyImport;
+use App\Models\MailConfiguration;
 
 class ContactController extends Controller
 {
@@ -79,9 +80,17 @@ class ContactController extends Controller
 
     public function show(Contact $contact)
     {
+        $user = Auth::user();
+        // Fetch email logs for this contact, most recent first
+        $emailLogs = \App\Models\EmailLog::where('contact_id', $contact->id)
+            ->orderByDesc('sent_at')
+            ->limit(20)
+            ->get();
         return Inertia::render('Contacts/Show', [
             'contact' => $contact,
-             'user' => Auth::user(),
+            'user' => $user,
+            'smtpConfig' => MailConfiguration::where('workspace_id', $user->workspace_id)->first(),
+            'emailLogs' => $emailLogs,
         ]);
     }
 
