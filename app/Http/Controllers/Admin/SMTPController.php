@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\MailConfiguration;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use App\Helpers\SmtpConfigHelper;
 
 class SMTPController extends Controller
 {
@@ -19,7 +20,7 @@ class SMTPController extends Controller
         $smtpConfig = \App\Models\MailConfiguration::where('workspace_id', $workspaceId)->first();
         return Inertia::render('Settings/SmtpSettings', [
             'smtpConfig' => $smtpConfig,
-            'auth' => [ 'user' => $user ]
+            'auth' => ['user' => $user]
         ]);
     }
 
@@ -65,36 +66,30 @@ class SMTPController extends Controller
         $validated = $request->validate([
             'to' => 'required|email',
         ]);
-        $config = \App\Models\MailConfiguration::where('workspace_id', $workspaceId)->first();
+
+        // Mail::to($validated['to'])
+        // ->send(new TestMail());
+
+        // return response()->json(['success' => 'Test email sent (if SMTP config is valid). If you do not receive it, check your SMTP credentials and logs.']);
+
+        $config = SmtpConfigHelper::getCurrentWorkspaceConfig();
         if (!$config) {
             return response()->json(['error' => 'No SMTP configuration found.'], 422);
         }
+        SmtpConfigHelper::applyMailConfig($config);
 
-        // Dynamically override mail config for this request
-        $mailConfig = [
-            'transport' => 'smtp',
-            'host' => $config->host,
-            'port' => $config->port,
-            'encryption' => $config->encryption === 'none' ? null : $config->encryption,
-            'username' => $config->username,
-            'password' => $config->password,
-            'timeout' => null,
-            'auth_mode' => null,
-        ];
+     try {
 
-        // config(['mail.mailers.smtp' => $mailConfig]);
-        // config(['mail.from.address' => $config->from_address]);
-        // config(['mail.from.name' => $config->from_name]);
+        Mail::raw('This is a test email from LeadSetu SMTP settings.', function ($message) use ($validated, $config) {
+            $message->to($validated['to']);
+            $message->subject('SMTP Test Email');
+            $message->from($config->from_address, $config->from_name);
+        });
 
-        
-            Mail::raw('This is a test email from LeadSetu SMTP settings.', function ($message) use ($validated, $config) {
-                $message->to($validated['to']);
-                $message->subject('SMTP Test Email');
-                $message->from($config->from_address, $config->from_name);
-            });
-            return response()->json(['success' => 'Test email sent (if SMTP config is valid). If you do not receive it, check your SMTP credentials and logs.']);
-        // } catch (\Exception $e) {
-        //     return response()->json(['error' => 'Failed to send test email: ' . $e->getMessage()], 422);
-        // }
+
+        return response()->json(['success' => 'Test email sent (if SMTP config is valid). If you do not receive it, check your SMTP credentials and logs.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to send test email: ' . $e->getMessage()], 422);
+        }
     }
 }

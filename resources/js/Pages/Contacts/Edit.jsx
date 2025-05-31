@@ -2,6 +2,9 @@ import React from 'react';
 import { Head, useForm, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { CheckCircle2, XCircle, User, Mail as MailIcon, Phone as PhoneIcon, Briefcase as BriefcaseIcon, AlignLeft, Building, Save, ArrowLeft, Edit3 } from 'lucide-react'; // Added Edit3 icon
+import FlashMessages from './partials/FlashMessages';
+import ValidationErrors from './partials/ValidationErrors';
+import ContactFormFields from './partials/ContactFormFields';
 
 export default function Edit({ contact, companies, user }) { // Destructure props directly
     const { props } = usePage();
@@ -31,23 +34,10 @@ export default function Edit({ contact, companies, user }) { // Destructure prop
         <AuthenticatedLayout user={user} title={`Edit Contact: ${contact.name}`}>
             <Head title={`Edit ${contact.name}`} />
             <div className="py-8 px-4 sm:px-6 lg:px-8 w-full mx-auto">
-
-
-                {flash.success && (
-                    <div className="mb-5 p-4 bg-green-100 dark:bg-green-700/30 border border-green-300 dark:border-green-600 rounded-lg text-sm text-green-700 dark:text-green-200 flex items-center shadow" role="alert">
-                        <CheckCircle2 size={20} className="mr-2.5 flex-shrink-0" aria-hidden="true" />
-                        <span>{flash.success}</span>
-                    </div>
-                )}
-                {flash.error && (
-                    <div className="mb-5 p-4 bg-red-100 dark:bg-red-700/30 border border-red-300 dark:border-red-600 rounded-lg text-sm text-red-700 dark:text-red-200 flex items-center shadow" role="alert">
-                        <XCircle size={20} className="mr-2.5 flex-shrink-0" aria-hidden="true" />
-                        <span>{flash.error || 'An unexpected error occurred.'}</span>
-                    </div>
-                )}
-
+                <FlashMessages flash={flash} />
+                <ValidationErrors errors={errors} />
                 <form 
-                    onSubmit={handleSubmit} 
+                    onSubmit={handleSubmit}
                     className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 sm:p-8 space-y-6"
                 >
                     <div className="pb-4 border-b border-gray-200 dark:border-gray-700">
@@ -59,105 +49,20 @@ export default function Edit({ contact, companies, user }) { // Destructure prop
                             Update the details for <span className="font-medium text-gray-700 dark:text-gray-200">{contact.name}</span>.
                         </p>
                     </div>
-
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
-                            Full Name <span className="text-red-500 ml-1">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="name"
-                            value={data.name} 
-                            onChange={e => setData('name', e.target.value)} 
-                            className="block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md" 
-                            required 
-                            placeholder="e.g., Jane Doe"
-                        />
-                        {errors.name && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.name}</div>}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
-                                <MailIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Email Address
-                            </label>
-                            <input 
-                                type="email" 
-                                id="email"
-                                value={data.email} 
-                                onChange={e => setData('email', e.target.value)} 
-                                className="block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md" 
-                                placeholder="e.g., jane.doe@example.com"
-                            />
-                            {errors.email && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.email}</div>}
-                        </div>
-
-                        <div>
-                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
-                                <PhoneIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Phone Number
-                            </label>
-                            <input 
-                                type="text" 
-                                id="phone"
-                                value={data.phone} 
-                                onChange={e => setData('phone', e.target.value)} 
-                                className="block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md" 
-                                placeholder="e.g., (123) 456-7890"
-                            />
-                            {errors.phone && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.phone}</div>}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label htmlFor="company_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
-                                <Building size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Company <span className="text-red-500 ml-1">*</span>
-                            </label>
-                            <select 
-                                id="company_id"
-                                value={data.company_id || ''} 
-                                onChange={e => setData('company_id', e.target.value)} 
-                                className="block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md appearance-none"
-                                required
-                            >
-                                <option value="">Select a company</option>
-                                {companiesList.map(company => (
-                                    <option key={company.id} value={company.id}>{company.name}</option>
-                                ))}
-                            </select>
-                            {errors.company_id && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.company_id}</div>}
-                        </div>
-                        <div>
-                            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
-                                <BriefcaseIcon size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Job Title (Optional)
-                            </label>
-                            <input 
-                                type="text" 
-                                id="title"
-                                value={data.title} 
-                                onChange={e => setData('title', e.target.value)} 
-                                className="block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md" 
-                                placeholder="e.g., Marketing Manager"
-                            />
-                            {errors.title && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.title}</div>}
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
-                           <AlignLeft size={16} className="mr-2 text-gray-400 dark:text-gray-500" /> Notes (Optional)
-                        </label>
-                        <textarea 
-                            id="notes"
-                            rows="4"
-                            value={data.notes} 
-                            onChange={e => setData('notes', e.target.value)} 
-                            className="block w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md"
-                            placeholder="e.g., Met at the tech conference, interested in our new product..."
-                        ></textarea>
-                        {errors.notes && <div className="text-red-500 dark:text-red-400 text-xs mt-1.5">{errors.notes}</div>}
-                    </div>
-
+                    <ContactFormFields
+                        data={data}
+                        setData={setData}
+                        errors={errors}
+                        companies={companiesList}
+                        companyList={companiesList}
+                        showNewCompany={false}
+                        setShowNewCompany={() => {}}
+                        newCompanyName={''}
+                        setNewCompanyName={() => {}}
+                        creatingCompany={false}
+                        companyError={''}
+                        handleCreateCompany={() => {}}
+                    />
                     <div className="flex flex-row justify-end items-center space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <Link 
                             href={route('contacts.index')} 
