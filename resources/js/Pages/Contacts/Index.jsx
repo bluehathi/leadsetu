@@ -5,11 +5,11 @@ import {
 } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
-import FlashMessages from './partials/FlashMessages';
-import Toolbar from './partials/Toolbar';
-import SearchInput from './partials/SearchInput';
-import ContactGrid from './partials/ContactGrid';
-import ContactList from './partials/ContactList';
+import FlashMessages from './Partials/FlashMessages';
+import Toolbar from './Partials/Toolbar';
+import SearchInput from './Partials/SearchInput';
+import ContactGrid from './Partials/ContactGrid';
+import ContactList from './Partials/ContactList';
 import { getAvatarPlaceholder } from '@/Utils/Avatar';
 
 

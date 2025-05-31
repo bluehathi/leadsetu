@@ -2,9 +2,9 @@ import React from 'react';
 import { Head, useForm, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { CheckCircle2, XCircle, User, Mail as MailIcon, Phone as PhoneIcon, Briefcase as BriefcaseIcon, AlignLeft, Building, Save, ArrowLeft, Edit3 } from 'lucide-react'; // Added Edit3 icon
-import FlashMessages from './partials/FlashMessages';
-import ValidationErrors from './partials/ValidationErrors';
-import ContactFormFields from './partials/ContactFormFields';
+import FlashMessages from './Partials/FlashMessages';
+import ValidationErrors from './Partials/ValidationErrors';
+import ContactFormFields from './Partials/ContactFormFields';
 
 export default function Edit({ contact, companies, user }) { // Destructure props directly
     const { props } = usePage();

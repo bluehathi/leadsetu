@@ -4,7 +4,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { ChevronLeft, Edit2, Trash2, Send, Mail, Phone, Building, Briefcase, Globe, Info } from 'lucide-react'; 
 import ComposeEmailModal from './Partials/ComposeEmailModal';
-import FlashMessages from './partials/FlashMessages';
+import FlashMessages from './Partials/FlashMessages';
 import { getAvatarPlaceholder } from '@/Utils/Avatar';
 
 
