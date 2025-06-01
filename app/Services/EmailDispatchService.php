@@ -53,7 +53,10 @@ class EmailDispatchService
         // --- REFACTORED LOGIC STARTS HERE ---
 
         // Step 1: Generate our OWN unique ID for this transaction.
-        $ourMessageId = (string) Str::uuid();
+        $recipientDomain = substr($recipientContact->email, strpos($recipientContact->email, '@') + 1);
+        $uniqueHash = md5(time() . $recipientContact->email);
+        $ourMessageId = $uniqueHash . '@' . $recipientDomain;
+
 
         // Step 2: Create the EmailLog entry BEFORE sending the email.
         // We save our generated ID into the 'esp_message_id' column immediately.
@@ -81,17 +84,22 @@ class EmailDispatchService
             $mailable = new UserComposedEmail($emailLog);
 
             // Step 4: Send the email. We no longer need to capture the return value.
-            Mail::to($recipientContact->email)->send($mailable);
+            $mail = Mail::to($recipientContact->email)->send($mailable);
+
+            $retrievedMessageId = $mail->getMessageId();
+
+
 
             // Step 5: If sending was successful, update the log's status.
             $emailLog->update([
                 'status' => 'sent', // Or 'queued' if you use a queue
                 'sent_at' => now(),
+                'esp_message_id' => $retrievedMessageId
             ]);
 
             // Create the general success activity log
             if (class_exists(ActivityLog::class)) {
-                 ActivityLog::create([
+                ActivityLog::create([
                     'user_id' => $initiatingUser->id,
                     'workspace_id' => $workspaceId,
                     'action' => 'email_sent',
@@ -101,7 +109,6 @@ class EmailDispatchService
                     'properties' => ['email_log_id' => $emailLog->id],
                 ]);
             }
-
         } catch (Throwable $e) {
             // Step 6: If sending fails, update the existing log entry with the error.
             $emailLog->update([
@@ -114,7 +121,7 @@ class EmailDispatchService
                 "EmailDispatchService: Error sending email for EmailLog ID {$emailLog->id}: " . $e->getMessage(),
                 ['trace' => substr($e->getTraceAsString(), 0, 2000)]
             );
-            
+
             // Create the failure activity log
             if (class_exists(ActivityLog::class)) {
                 ActivityLog::create([
@@ -127,7 +134,7 @@ class EmailDispatchService
                     'properties' => ['email_log_id' => $emailLog->id, 'error' => $e->getMessage()],
                 ]);
             }
-            
+
             // Re-throw the exception so the calling controller knows about the failure.
             throw $e;
         }
