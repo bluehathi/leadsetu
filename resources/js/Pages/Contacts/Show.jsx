@@ -167,7 +167,7 @@ export default function ContactShow({ user, contact, smtpConfig, emailLogs = [] 
                         {!smtpConfig || !smtpConfig.from_address ? (
                             <p className="text-xs text-red-500 mt-3 text-center sm:text-left">
                                 Email sending is disabled. Please configure SMTP settings for this workspace. 
-                                <Link href={route('mailConfiguration.edit')} className="underline ml-1 hover:text-red-700">Configure now</Link>
+                                <Link href={route('smtp.index')} className="underline ml-1 hover:text-red-700">Configure now</Link>
                             </p>
                         ):''}
                        

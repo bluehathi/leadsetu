@@ -111,7 +111,7 @@ class ContactController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'company_id' => 'nullable|exists:companies,id|unique:contacts,company_id,' . $contact->id,
+            'company_id' => 'nullable|exists:companies,id',
             'title' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
