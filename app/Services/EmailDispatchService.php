@@ -2,16 +2,18 @@
 
 namespace App\Services;
 
-use App\Models\Contact; // Assuming you're emailing Contacts
-use App\Models\Lead; // If you also email Leads
+// --- Add the Str import ---
+use Illuminate\Support\Str;
+
+use App\Models\Contact;
 use App\Models\User;
 use App\Models\MailConfiguration;
 use App\Models\EmailLog;
-use App\Models\ActivityLog; // Your custom ActivityLog model
-use App\Mail\UserComposedEmail; // Your Mailable
+use App\Models\ActivityLog;
+use App\Mail\UserComposedEmail; // Your updated Mailable
 use Illuminate\Support\Facades\Log;
 use App\Helpers\SmtpConfigHelper;
-use Throwable; // For catching all types of exceptions/errors
+use Throwable;
 use Illuminate\Support\Facades\Mail;
 
 class EmailDispatchService
@@ -30,125 +32,124 @@ class EmailDispatchService
         User $initiatingUser,
         Contact $recipientContact,
         array $emailData,
-        MailConfiguration $workspaceConfig
+        MailConfiguration $workspaceConfig // You can remove this argument if you fetch it inside anyway
     ): EmailLog {
         $workspaceId =  $initiatingUser->workspace_id;
 
-
-         // Fetch Workspace MailConfiguration
+        // Fetch Workspace MailConfiguration if not passed or to ensure it's fresh
         $workspaceConfig = MailConfiguration::where('workspace_id', $workspaceId)->first();
 
-      
-
-      
-
         if (!$workspaceConfig || !$workspaceConfig->host) {
-            // Log this critical failure
             Log::error("EmailDispatchService: SMTP settings missing or incomplete for workspace {$workspaceId}.");
-            // Create a failed EmailLog entry
             return $this->createFailedEmailLog(
                 $initiatingUser,
                 $recipientContact,
                 $emailData,
-                $workspaceConfig, // Pass even if incomplete for context
+                null, // Config is null or invalid
                 'SMTP settings missing or incomplete.'
             );
-            // Optionally, re-throw a more specific exception if the controller shouldn't proceed
-            // throw new \RuntimeException('SMTP settings are not configured for this workspace.');
         }
 
-        $mailable = new UserComposedEmail(
-            $emailData['subject'],
-            $emailData['body'],
-            $workspaceConfig->from_address,
-            $workspaceConfig->from_name
-        );
+        // --- REFACTORED LOGIC STARTS HERE ---
 
+        // Step 1: Generate our OWN unique ID for this transaction.
+        $ourMessageId = (string) Str::uuid();
 
-          SmtpConfigHelper::applyMailConfig($workspaceConfig);
-
-        $espMessageId = null; // Placeholder for ESP message ID
+        // Step 2: Create the EmailLog entry BEFORE sending the email.
+        // We save our generated ID into the 'esp_message_id' column immediately.
+        $emailLog = EmailLog::create([
+            'workspace_id' => $workspaceId,
+            'user_id' => $initiatingUser->id,
+            'contact_id' => $recipientContact->id,
+            'mail_configuration_id' => $workspaceConfig->id,
+            'esp_message_id' => $ourMessageId, // <-- Save our generated ID right away
+            'recipient_email' => $recipientContact->email,
+            'recipient_name' => $recipientContact->name,
+            'from_address' => $workspaceConfig->from_address,
+            'from_name' => $workspaceConfig->from_name,
+            'subject' => $emailData['subject'],
+            'body_html' => $emailData['body'],
+            'status' => 'processing', // Initial status
+            'properties' => ['source' => 'one_to_one_contact_email'],
+        ]);
 
         try {
-         
-            // Send the email
-            $sentMessage = Mail::to($recipientContact->email)->send($mailable);
-            
-          
-            if ($sentMessage && method_exists($sentMessage, 'getMessageId')) {
-                $espMessageId = $sentMessage->getMessageId();
-            }
+            // Apply the dynamic SMTP configuration for this sending operation
+            SmtpConfigHelper::applyMailConfig($workspaceConfig);
 
+            // Step 3: Instantiate our updated Mailable, passing the entire log object to it.
+            $mailable = new UserComposedEmail($emailLog);
 
-            // 1. Create Detailed EmailLog for success
-            $emailLog = EmailLog::create([
-                'workspace_id' => $workspaceId,
-                'user_id' => $initiatingUser->id,
-                'contact_id' => $recipientContact->id,
-                'mail_configuration_id' => $workspaceConfig->id,
-                'recipient_email' => $recipientContact->email,
-                'recipient_name' => $recipientContact->name,
-                'from_address' => $workspaceConfig->from_address,
-                'from_name' => $workspaceConfig->from_name,
-                'subject' => $emailData['subject'],
-                'body_html' => $emailData['body'], // Assuming 'body' is the HTML content
-                'status' => 'sent', // Or 'queued' if your mailable uses ShouldQueue and queues are active
-                'esp_message_id' => $espMessageId,
+            // Step 4: Send the email. We no longer need to capture the return value.
+            Mail::to($recipientContact->email)->send($mailable);
+
+            // Step 5: If sending was successful, update the log's status.
+            $emailLog->update([
+                'status' => 'sent', // Or 'queued' if you use a queue
                 'sent_at' => now(),
-                'properties' => json_encode(['source' => 'one_to_one_contact_email']),
             ]);
 
-            // 2. Create General ActivityLog for success
+            // Create the general success activity log
             if (class_exists(ActivityLog::class)) {
-                ActivityLog::create([
+                 ActivityLog::create([
                     'user_id' => $initiatingUser->id,
                     'workspace_id' => $workspaceId,
                     'action' => 'email_sent',
                     'subject_type' => Contact::class,
                     'subject_id' => $recipientContact->id,
-                    'description' => "Email titled '{$emailData['subject']}' sent to contact {$recipientContact->name} ({$recipientContact->email}).",
-                    'properties' => json_encode([
-                        'email_log_id' => $emailLog->id,
-                        'email_subject' => $emailData['subject'],
-                    ]),
+                    'description' => "Email titled '{$emailData['subject']}' sent to contact {$recipientContact->name}.",
+                    'properties' => ['email_log_id' => $emailLog->id],
                 ]);
             }
 
-            return $emailLog;
+        } catch (Throwable $e) {
+            // Step 6: If sending fails, update the existing log entry with the error.
+            $emailLog->update([
+                'status' => 'failed',
+                'failed_at' => now(),
+                'error_message' => $e->getMessage(),
+            ]);
 
-        } catch (Throwable $e) { // Catching Throwable to be more comprehensive
             Log::error(
-                "EmailDispatchService: Error sending email for workspace {$workspaceId} to contact {$recipientContact->id}: " . $e->getMessage(),
-                ['trace' => $e->getTraceAsString()]
-            );
-
-            // Create a failed EmailLog entry
-            $emailLog = $this->createFailedEmailLog(
-                $initiatingUser,
-                $recipientContact,
-                $emailData,
-                $workspaceConfig,
-                $e->getMessage()
+                "EmailDispatchService: Error sending email for EmailLog ID {$emailLog->id}: " . $e->getMessage(),
+                ['trace' => substr($e->getTraceAsString(), 0, 2000)]
             );
             
-            // Re-throw the exception so the controller can handle the HTTP response
+            // Create the failure activity log
+            if (class_exists(ActivityLog::class)) {
+                ActivityLog::create([
+                    'user_id' => $initiatingUser->id,
+                    'workspace_id' => $workspaceId,
+                    'action' => 'email_failed',
+                    'subject_type' => Contact::class,
+                    'subject_id' => $recipientContact->id,
+                    'description' => "Failed to send email to contact {$recipientContact->name}.",
+                    'properties' => ['email_log_id' => $emailLog->id, 'error' => $e->getMessage()],
+                ]);
+            }
+            
+            // Re-throw the exception so the calling controller knows about the failure.
             throw $e;
         }
+
+        return $emailLog;
     }
 
     /**
-     * Helper method to create EmailLog and ActivityLog for failed email attempts.
+     * Helper method to create EmailLog for pre-flight failures (e.g., bad config).
+     * This method is now only used for failures that happen before we even attempt to send.
      */
     protected function createFailedEmailLog(
         User $initiatingUser,
         Contact $recipientContact,
         array $emailData,
-        ?MailConfiguration $workspaceConfig, // Can be null if config itself was the issue
+        ?MailConfiguration $workspaceConfig,
         string $errorMessage
     ): EmailLog {
-        $workspaceId = $initiatingUser->current_workspace_id ?? $initiatingUser->workspace_id;
+        // This helper's implementation is fine as is, but it's now only for edge cases.
+        $workspaceId = $initiatingUser->workspace_id;
 
-        $emailLog = EmailLog::create([
+        return EmailLog::create([
             'workspace_id' => $workspaceId,
             'user_id' => $initiatingUser->id,
             'contact_id' => $recipientContact->id,
@@ -162,24 +163,7 @@ class EmailDispatchService
             'status' => 'failed',
             'failed_at' => now(),
             'error_message' => $errorMessage,
-            'properties' => json_encode(['source' => 'one_to_one_contact_email_failure']),
+            'properties' => ['source' => 'pre_flight_failure'],
         ]);
-
-        if (class_exists(ActivityLog::class)) {
-            ActivityLog::create([
-                'user_id' => $initiatingUser->id,
-                'workspace_id' => $workspaceId,
-                'action' => 'email_failed',
-                'subject_type' => Contact::class,
-                'subject_id' => $recipientContact->id,
-                'description' => "Failed to send email titled '{$emailData['subject']}' to contact {$recipientContact->name} ({$recipientContact->email}). Error: " . substr($errorMessage, 0, 150) . "...",
-                'properties' => json_encode([
-                    'email_log_id' => $emailLog->id,
-                    'email_subject' => $emailData['subject'],
-                    'error' => $errorMessage,
-                ]),
-            ]);
-        }
-        return $emailLog;
     }
 }
