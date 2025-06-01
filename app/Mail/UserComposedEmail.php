@@ -13,7 +13,7 @@ use Illuminate\Mail\Mailables\Headers; // <-- Import the Headers class
 use Illuminate\Queue\SerializesModels;
 
 // Implementing ShouldQueue is good practice for responsiveness
-class UserComposedEmail extends Mailable implements ShouldQueue
+class UserComposedEmail extends Mailable 
 {
     use Queueable, SerializesModels;
 
@@ -66,7 +66,7 @@ class UserComposedEmail extends Mailable implements ShouldQueue
     public function headers(): Headers
     {
         return new Headers(
-            messageId: $this->emailLog->esp_message_id,
+           messageId: $this->emailLog->esp_message_id,
         );
     }
 
