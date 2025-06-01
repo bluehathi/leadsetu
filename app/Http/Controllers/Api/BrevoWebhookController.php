@@ -60,7 +60,7 @@ class BrevoWebhookController extends Controller
     protected function processEvent(array $event)
     {
         // Find the original email record using the unique message ID from Brevo.
-        $emailLog = EmailLog::where('esp_message_id', $event['message-id'])->first();
+        $emailLog = EmailLog::where('esp_message_id', trim($event['message-id'], '<>'))->first();
 
         if (!$emailLog) {
             Log::warning('Brevo Webhook: EmailLog not found for message-id: ' . $event['message-id']);
