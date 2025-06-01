@@ -1,120 +1,124 @@
-# LeadSetu SaaS Lead Management Platform
+# LeadSetu CRM
 
-LeadSetu is a modern, multi-tenant SaaS platform for managing leads, companies, contacts, users, roles, and permissions. Built with Laravel, Inertia.js, and React, it features a beautiful, responsive UI, workspace-based multi-tenancy, robust role/permission management, and full activity logging for all major actions.
+## Overview
+LeadSetu is a modular, modern CRM platform with robust contact management, lead management, workspace support, email/SaaS integration, and a React-based UI. The codebase is structured for maintainability, extensibility, and security.
 
-## Recent Improvements
-- **Modern UI/UX:** The entire application UI has been redesigned for a cleaner, more modern, and responsive experience. The sidebar, layouts, and all main pages use Tailwind CSS and Lucide icons for a consistent, professional look.
-- **Comprehensive Activity Logs:** All major CRUD operations (create, update, delete) for Leads, Companies, Contacts, Users, Roles, Permissions, and Workspaces are now tracked in the Activity Logs section. Seeder actions and email sends are also logged.
-- **Email Log History:** The Contact details page now displays a full email log history, showing all emails sent to a contact, their status, and any errors.
+---
 
-## Features
-- **Workspace-based Multi-Tenancy:**
-  - All data is scoped to workspaces (formerly organizations).
-  - Users, leads, contacts, companies, and permissions are managed per workspace.
-- **Leads Management:**
-  - Create, view, edit, and delete leads scoped to your workspace.
-  - Kanban and list views for leads.
-  - Lead fields: name, email, phone, company, website, notes, status, source, tags, etc.
-- **Company Management:**
-  - Manage companies per workspace.
-  - Associate leads and contacts with companies.
-- **Contact Management:**
-  - Manage contacts per workspace.
-  - Associate contacts with companies and leads.
-  - Send emails to contacts and view full email log history.
-- **User Management:**
-  - Invite, edit, and remove users from your workspace.
-  - Assign roles and permissions per user.
-- **Role & Permission Management:**
-  - Uses Spatie Laravel Permission for roles/permissions.
-  - UI and backend enforce access control everywhere.
-- **Workspace Owner Functionality:**
-  - Only users who are workspace owners and have the `workspace_owner` permission can manage workspace settings.
-- **Activity Logs:**
-  - Track all key actions (user created, lead created, contact created, company created, email sent, etc.)
-  - All activity logs are workspace-scoped and include workspace_id.
-  - Activity logs are created for all main entity actions and seeders.
-- **Authentication:**
-  - Modern registration, login, and password reset flows.
+## Key Features
 
-## Tech Stack
-- **Backend:** Laravel 10+, Spatie Permission
-- **Frontend:** React (via Inertia.js), Tailwind CSS, Lucide React Icons
-- **Database:** MySQL or PostgreSQL
+- **Contact & Lead Management**: Create, edit, search, and organize contacts and leads with a modern UI. Supports company associations, notes, and activity logs.
+- **Workspace Support**: Multi-tenant architecture. Each workspace has isolated contacts, leads, users, and email/SaaS settings. Workspace owners can manage members and settings.
+- **Modular React/JSX Contacts Pages**: Contacts Index, Create, and Edit pages are broken down into reusable partials:
+  - `FlashMessages`, `ValidationErrors`, `Toolbar`, `SearchInput`, `ContactGridCard`, `ContactListCard`, `ContactList`, `ContactFormFields` (see `resources/js/Pages/Contacts/partials/`).
+- **View Mode Persistence**: Contacts list/grid view preference is persisted per user using `localStorage`.
+- **Robust Email Sending**:
+  - SMTP settings are dynamically loaded per workspace and used for all outgoing emails.
+  - `mail.default` is set per request for correct workspace context.
+  - Custom Message-ID is generated, stored without angle brackets, and never used as an email address.
+- **Brevo Webhook Handling**:
+  - Webhook endpoint verifies a secret token for security.
+  - Incoming message-ids are normalized (angle brackets stripped) before DB lookup for reliable event matching.
+  - All major Brevo events are handled: delivered, opened, click, hard/soft bounce, blocked, spam, unsubscribed.
+  - Unsubscribed events can optionally update the associated Contact model.
+- **Error Handling & Flash Messages**: All forms/pages use modular, consistent error and flash message display.
+- **Best Practices**: All code follows modern Laravel and React best practices, with clear separation of concerns and robust validation.
 
-## Getting Started
+---
 
-### Prerequisites
-- PHP 8.1+
-- Composer
-- Node.js 18+
-- MySQL or PostgreSQL
+## Installation
 
-### Installation
-1. Clone the repository:
+1. **Clone the repository:**
    ```sh
    git clone https://github.com/your-org/leadsetu.git
    cd leadsetu
    ```
-2. Install PHP dependencies:
+2. **Install PHP dependencies:**
    ```sh
    composer install
    ```
-3. Install JS dependencies:
+3. **Install Node.js dependencies:**
    ```sh
    npm install
    ```
-4. Copy and configure your environment:
+4. **Copy and configure environment:**
    ```sh
    cp .env.example .env
-   # Edit .env for your DB and mail settings
+   # Edit .env and set database, mail, and Brevo webhook settings
+   ```
+5. **Generate application key:**
+   ```sh
    php artisan key:generate
    ```
-5. Run migrations and seeders:
+6. **Run migrations:**
    ```sh
-   php artisan migrate --seed
+   php artisan migrate
    ```
-6. Build frontend assets:
+7. **Build frontend assets:**
    ```sh
    npm run build
    ```
-7. Start the development servers:
+8. **Start the development server:**
    ```sh
    php artisan serve
-   npm run dev
    ```
 
-### Default Login
-- The seeder creates a default admin user. Check the database or seeder for credentials.
+---
 
-## Project Structure
-- `resources/js/Layouts/AuthenticatedLayout.jsx` — Main app layout (sidebar, header, dropdown)
-- `resources/js/Pages/Leads/` — Lead management (Kanban, List, Create, Edit, Show)
-- `resources/js/Pages/Companies/` — Company management
-- `resources/js/Pages/Contacts/` — Contact management and email log history
-- `resources/js/Pages/Users/` — User management
-- `resources/js/Pages/Roles/` — Role management
-- `resources/js/Pages/Permissions/` — Permission management
-- `resources/js/Pages/ActivityLogs/` — Activity log viewing and filtering
-- `resources/js/Components/parts/Sidebar.jsx` — Sidebar navigation
-- `app/Services/EmailDispatchService.php` — Email sending and logging logic
+## Usage
 
-## Customization
-- Update branding, colors, and logo in `AuthenticatedLayout.jsx` and Tailwind config.
-- Add or modify fields in migrations, models, and forms as needed.
+- Access the app at [http://localhost:8000](http://localhost:8000)
+- Log in or register a new user.
+- Create or join a workspace. Each workspace has its own contacts, leads, users, and settings.
+- Manage contacts, leads, companies, and activity logs within your workspace.
+- Configure SMTP and Brevo webhook settings per workspace for email features.
 
-## Testing
-- **PHPUnit** for backend tests:
-  ```sh
-  ./vendor/bin/phpunit
-  ```
-- **Dusk** for browser tests:
-  ```sh
-  php artisan dusk
-  ```
+---
 
-## Contributing
-PRs are welcome! Please follow PSR-12 and standard React best practices.
+## File Structure Highlights
 
-## License
-MIT
+- **React/JSX Components**:
+  - `resources/js/Pages/Contacts/index.jsx` (ContactsIndex)
+  - `resources/js/Pages/Contacts/Create.jsx`
+  - `resources/js/Pages/Contacts/Edit.jsx`
+  - `resources/js/Pages/Contacts/partials/` (all partials)
+- **Email & Webhook Logic**:
+  - `app/Services/EmailDispatchService.php`: Handles email sending, SMTP config, and Message-ID logic.
+  - `app/Http/Controllers/Api/BrevoWebhookController.php`: Handles secure webhook processing, event handling, and message-id normalization.
+- **Lead & Workspace Models**:
+  - `app/Models/Lead.php`, `app/Models/Workspace.php`, `app/Models/WorkspaceOwner.php`, `app/Models/Contact.php`, `app/Models/Company.php`, etc.
+  - `database/migrations/` for all schema definitions.
+
+---
+
+## Security & Best Practices
+
+- **SMTP**: Each workspace can have its own SMTP config. The system ensures the correct config is loaded and used for every outgoing email.
+- **Message-ID**: Always stored and compared without angle brackets. Never used as an email address. Only set as a header when needed.
+- **Webhook Security**: All Brevo webhook requests must include a secret token (see `config/services.php` under `brevo.webhook_secret`). Unauthorized requests are logged and rejected.
+- **Event Matching**: Webhook handler strips angle brackets from incoming message-ids before DB lookup, ensuring reliable event matching regardless of Brevo formatting.
+- **Validation**: All incoming webhook data is validated and sanitized.
+- **Logging**: Significant events are logged for audit and debugging.
+- **UI**: All error and flash message handling is modular and consistent.
+
+---
+
+## Extending & Customizing
+
+- **Add New Contact or Lead Views**: Create new partials in `resources/js/Pages/Contacts/partials/` and import them into the main pages.
+- **Add New Email Providers**: Implement a new service in `app/Services/`, following the pattern in `EmailDispatchService.php`.
+- **Custom Webhook Logic**: Extend `BrevoWebhookController` to handle additional events or update related models as needed.
+- **Workspace Customization**: Extend `Workspace` and related models/controllers for advanced multi-tenant features.
+
+---
+
+## Upgrading
+
+- If upgrading from a previous version, update your `.env` and `config/services.php` for the new `brevo.webhook_secret`.
+- Review all new partials and modular components for best practices.
+
+---
+
+## Questions & Support
+
+For questions, open an issue or contact the maintainers.
