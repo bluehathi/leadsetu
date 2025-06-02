@@ -15,7 +15,7 @@ use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\SMTPController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ContactEmailController;
-
+use App\Http\Controllers\Admin\ProspectListController;
 
 // Auth routes
 Route::get('/login', [AuthController::class, 'showLoginForm'])->middleware('guest')->name('login');
@@ -33,7 +33,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::resource('/roles', App\Http\Controllers\Admin\RoleController::class)->except(['show', 'create']);
     Route::resource('/permissions', App\Http\Controllers\Admin\PermissionController::class)->except(['show', 'edit', 'create']);
     Route::resource('/users', UserController::class);
-   
+
     Route::resource('/companies', CompanyController::class);
     Route::get('/profile', [UserController::class, 'profile'])->name('profile');
     Route::post('/profile', [UserController::class, 'updateProfile'])->name('profile.update');
@@ -48,22 +48,28 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::post('/store-company', [CompanyController::class, 'storeCompany'])->name('contact.company.store');
     // Route for fetching contacts by company (AJAX)
     Route::get('companies/{company}/contacts', [ContactController::class, 'contacts'])->name('company.contacts');
-    
+
     //setting index page
-    Route::get('settings',[SettingController::class,'index'])->name('settings.index');
-    
+    Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
+
     //smtp 
-    Route::get('settings/smtp',[SMTPController::class,'index'])->name('smtp.index');
+    Route::get('settings/smtp', [SMTPController::class, 'index'])->name('smtp.index');
     Route::post('settings/smtp', [SMTPController::class, 'save'])->name('settings.smtp.save');
     Route::post('settings/smtp/test', [SMTPController::class, 'test'])->name('settings.smtp.test');
 
     //for contacts
-    Route::post('/contacts/{contact}/send-email', [ContactEmailController::class, 'sendComposedEmail'])->name('contacts.sendComposedEmail'); 
+    Route::post('/contacts/{contact}/send-email', [ContactEmailController::class, 'sendComposedEmail'])->name('contacts.sendComposedEmail');
     Route::get('contacts/import-excel', [ContactController::class, 'import_excel'])->name('contacts.import_excel');
     Route::post('contacts/import-excel', [ContactController::class, 'import_excel_store'])->name('contacts.import_excel.store');
     Route::resource('/contacts', ContactController::class);
+
+    //Prospect List
+    Route::post('prospect-lists/{prospect_list}/add-contacts', [ProspectListController::class, 'addContacts'])
+        ->name('prospect-lists.add-contacts');
+    Route::post('prospect-lists/{prospect_list}/remove-contacts', [ProspectListController::class, 'removeContacts'])
+        ->name('prospect-lists.remove-contacts');
+    Route::resource('prospect-lists', ProspectListController::class);
 });
 
 // Home route
 Route::get('/', [HomeController::class, 'index'])->name('home');
-

@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 use App\Models\Scopes\WorkSpaceScope;
 
 class Contact extends Model
@@ -35,5 +37,11 @@ class Contact extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function prospectLists(): BelongsToMany
+    {
+        return $this->belongsToMany(ProspectList::class, 'contact_prospect_list')
+                    ->withPivot('subscribed_at');
     }
 }

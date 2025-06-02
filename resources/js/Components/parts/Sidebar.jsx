@@ -24,7 +24,7 @@ import {
     Globe,
     Contact2,
     X,
-    LogOut,Settings2
+    LogOut, Settings2
 } from 'lucide-react';
 
 const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
@@ -171,6 +171,8 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
                     <NavLink href={route('leads.index')} routeName="leads.index" icon={User2}>Leads</NavLink>
                     <NavLink href={route('contacts.index')} routeName="contacts.index" icon={Contact2}>Contacts</NavLink>
                     <NavLink href={route('companies.index')} routeName="companies.index" icon={BriefcaseBusiness}>Companies</NavLink>
+                    <NavLink href={route('prospect-lists.index')} routeName="prospect-lists.index" icon={ScrollText}>Prospect Lists</NavLink>
+
                     <NavLink href={route('workspaces.index')} routeName="workspaces.index" icon={Globe}>Workspaces</NavLink>
                     <NavLink href={route('settings.index')} routeName="settings.index" icon={Settings2}>Settings</NavLink>
                     {can('view_users') && (
@@ -180,16 +182,12 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
                         </>
                     )}
                     {can('view_roles') && (
-                         <NavLink href={route('roles.index')} routeName="roles.index" icon={Shield}>Roles</NavLink>
-                   
+                        <NavLink href={route('roles.index')} routeName="roles.index" icon={Shield}>Roles</NavLink>
+
                     )}
-                    {can('view_permissions') && (   
-                    <NavLink href={route('permissions.index')} routeName="permissions.index" icon={Key}>Permissions</NavLink>
+                    {can('view_permissions') && (
+                        <NavLink href={route('permissions.index')} routeName="permissions.index" icon={Key}>Permissions</NavLink>
                     )}
-                    {/* {showAccessControlSection && <SectionTitle>Access Control</SectionTitle>}
-                    {canViewUsers && <NavLink href={route('users.index')} routeName="users.index" icon={UsersIcon}>Users</NavLink>}
-                    {canViewRoles && <NavLink href={route('roles.index')} routeName="roles.index" icon={Shield}>Roles</NavLink>}
-                    {canViewPermissions && <NavLink href={route('permissions.index')} routeName="permissions.index" icon={Key}>Permissions</NavLink>} */}
 
                     <SectionTitle>Logs</SectionTitle>
                     <NavLink href={route('activity.logs')} routeName="activity.logs" icon={ScrollText}>Activity Logs</NavLink>
