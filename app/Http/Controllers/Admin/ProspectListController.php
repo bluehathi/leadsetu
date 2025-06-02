@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ProspectList;
 use App\Models\Contact;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -64,11 +65,21 @@ class ProspectListController extends Controller // Rename to ProspectListControl
         $workspaceId = Auth::user()->workspace_id;
         $userId = Auth::id();
 
-        ProspectList::create([
+        $prospectList = ProspectList::create([
             'workspace_id' => $workspaceId,
             'user_id' => $userId,
             'name' => $request->name,
             'description' => $request->description,
+        ]);
+
+        ActivityLog::create([
+            'user_id' => $userId,
+            'workspace_id' => $workspaceId,
+            'action' => 'created_prospect_list',
+            'description' => 'Created prospect list: ' . $prospectList->name,
+            'subject_type' => ProspectList::class,
+            'subject_id' => $prospectList->id,
+            'properties' => json_encode(['name' => $prospectList->name, 'description' => $prospectList->description]),
         ]);
 
         return Redirect::route('prospect-lists.index')->with('success', 'Prospect list created successfully.');
@@ -135,6 +146,16 @@ class ProspectListController extends Controller // Rename to ProspectListControl
 
         $prospectList->update($validated);
 
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'workspace_id' => Auth::user()->workspace_id,
+            'action' => 'updated_prospect_list',
+            'description' => 'Updated prospect list: ' . $prospectList->name,
+            'subject_type' => ProspectList::class,
+            'subject_id' => $prospectList->id,
+            'properties' => json_encode(['updated_fields' => $validated]),
+        ]);
+
         return Redirect::route('prospect-lists.show', $prospectList)->with('success', 'Prospect list updated successfully.');
     }
 
@@ -146,9 +167,20 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function destroy(ProspectList $prospectList)
     {
-        //$this->authorize('delete', $prospectList);
-
+        $name = $prospectList->name;
+        $id = $prospectList->id;
+        $workspaceId = $prospectList->workspace_id;
         $prospectList->delete();
+
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'workspace_id' => $workspaceId,
+            'action' => 'deleted_prospect_list',
+            'description' => 'Deleted prospect list: ' . $name,
+            'subject_type' => ProspectList::class,
+            'subject_id' => $id,
+            'properties' => json_encode(['name' => $name]),
+        ]);
 
         return Redirect::route('prospect-lists.index')->with('success', 'Prospect list deleted successfully.');
     }
@@ -181,6 +213,17 @@ class ProspectListController extends Controller // Rename to ProspectListControl
             $pivotData[$id] = ['subscribed_at' => $now];
         }
         $prospectList->contacts()->syncWithoutDetaching($pivotData);
+
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'workspace_id' => $workspaceId,
+            'action' => 'added_contacts_to_prospect_list',
+            'description' => 'Added contacts to prospect list: ' . $prospectList->name . ' (IDs: ' . implode(',', $validContacts) . ')',
+            'subject_type' => ProspectList::class,
+            'subject_id' => $prospectList->id,
+            'properties' => json_encode(['contact_ids' => $validContacts]),
+        ]);
+
         return Redirect::back()->with('success', 'Contacts added to list successfully.');
     }
 
@@ -193,9 +236,18 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function removeContacts(Request $request, ProspectList $prospectList)
     {
-       
         $contactIds = $request->input('contact_ids');
         $prospectList->contacts()->detach($contactIds);
+
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'workspace_id' => Auth::user()->workspace_id,
+            'action' => 'removed_contacts_from_prospect_list',
+            'description' => 'Removed contacts from prospect list: ' . $prospectList->name . ' (IDs: ' . (is_array($contactIds) ? implode(',', $contactIds) : $contactIds) . ')',
+            'subject_type' => ProspectList::class,
+            'subject_id' => $prospectList->id,
+            'properties' => json_encode(['contact_ids' => $contactIds]),
+        ]);
 
         return Redirect::back()->with('success', 'Contacts removed from list successfully.');
     }
