@@ -15,6 +15,12 @@ use Illuminate\Support\Facades\Log;
 use App\Helpers\SmtpConfigHelper;
 use Throwable;
 use Illuminate\Support\Facades\Mail;
+use App\Models\EmailCampaign;
+use App\Models\ProspectList;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Queue;
+use Carbon\Carbon;
 
 class EmailDispatchService
 {
@@ -32,12 +38,14 @@ class EmailDispatchService
         User $initiatingUser,
         Contact $recipientContact,
         array $emailData,
-        MailConfiguration $workspaceConfig // You can remove this argument if you fetch it inside anyway
+        MailConfiguration $workspaceConfig = null // Now optional
     ): EmailLog {
         $workspaceId =  $initiatingUser->workspace_id;
 
         // Fetch Workspace MailConfiguration if not passed or to ensure it's fresh
-        $workspaceConfig = MailConfiguration::where('workspace_id', $workspaceId)->first();
+        if (!$workspaceConfig) {
+            $workspaceConfig = MailConfiguration::where('workspace_id', $workspaceId)->first();
+        }
 
         if (!$workspaceConfig || !$workspaceConfig->host) {
             Log::error("EmailDispatchService: SMTP settings missing or incomplete for workspace {$workspaceId}.");
@@ -172,5 +180,47 @@ class EmailDispatchService
             'error_message' => $errorMessage,
             'properties' => ['source' => 'pre_flight_failure'],
         ]);
+    }
+
+    /**
+     * Dispatch all emails for a campaign immediately.
+     */
+    public static function dispatchCampaign(EmailCampaign $campaign)
+    {
+        $prospectList = $campaign->prospectList;
+        if (!$prospectList) return false;
+        $contacts = $prospectList->contacts()->get(); // Ensure this is a collection of Contact models
+        $user = \App\Models\User::find($campaign->user_id); // Ensure this is a single User
+        foreach ($contacts as $contact) {
+            try {
+                app(EmailDispatchService::class)->sendAndLog(
+                    $user,
+                    $contact,
+                    [
+                        'subject' => $campaign->subject,
+                        'body' => $campaign->body,
+                    ]
+                );
+            } catch (\Throwable $e) {
+                Log::error('Failed to send campaign email to contact ' . $contact->id . ': ' . $e->getMessage());
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Schedule campaign for future sending.
+     */
+    public static function scheduleCampaign(EmailCampaign $campaign)
+    {
+        $delay = Carbon::parse($campaign->scheduled_at)->diffInSeconds(now(), false);
+        if ($delay > 0) $delay = 0;
+        Queue::later(
+            now()->addSeconds($delay),
+            function () use ($campaign) {
+                self::dispatchCampaign($campaign->fresh());
+            }
+        );
+        return true;
     }
 }

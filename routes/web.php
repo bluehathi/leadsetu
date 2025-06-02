@@ -69,6 +69,11 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::post('prospect-lists/{prospect_list}/remove-contacts', [ProspectListController::class, 'removeContacts'])
         ->name('prospect-lists.remove-contacts');
     Route::resource('prospect-lists', ProspectListController::class);
+
+    // Email Campaign routes
+    Route::resource('email-campaigns', App\Http\Controllers\Admin\EmailCampaignController::class);
+    Route::post('email-campaigns/{email_campaign}/send', [App\Http\Controllers\Admin\EmailCampaignController::class, 'sendNow'])->name('email-campaigns.send');
+    Route::post('email-campaigns/{email_campaign}/schedule', [App\Http\Controllers\Admin\EmailCampaignController::class, 'schedule'])->name('email-campaigns.schedule');
 });
 
 // Home route

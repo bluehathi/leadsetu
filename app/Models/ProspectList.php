@@ -20,4 +20,12 @@ class ProspectList extends Model
         return $this->belongsToMany(Contact::class, 'contact_prospect_list')
                     ->withPivot('subscribed_at');
     }
+
+    /**
+     * The email campaigns that belong to this list.
+     */
+    public function emailCampaigns()
+    {
+        return $this->belongsToMany(EmailCampaign::class, 'email_campaign_prospect_list');
+    }
 }
