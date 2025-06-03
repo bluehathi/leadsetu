@@ -47,7 +47,7 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function create()
     {
-        return Inertia::render('ProspectLists/Create');
+        return Inertia::render('ProspectLists/Create',['user' => auth()->user()]);
     }
 
     /**
@@ -107,6 +107,7 @@ class ProspectListController extends Controller // Rename to ProspectListControl
             ->get(['id', 'name', 'email']); // Select only necessary fields
 
         return Inertia::render('ProspectLists/Show', [
+            'user' => auth()->user(),
             'prospectList' => $prospectList->loadCount('contacts'), // Load count again if needed for display
             'contactsInList' => $contacts,
             'workspaceContacts' => $workspaceContacts, // For a dropdown/modal to add contacts
@@ -126,6 +127,7 @@ class ProspectListController extends Controller // Rename to ProspectListControl
 
         return Inertia::render('ProspectLists/Edit', [
             'prospectList' => $prospectList,
+            'user' => auth()->user()
         ]);
     }
 

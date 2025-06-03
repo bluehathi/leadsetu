@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Queue;
 
 class EmailCampaignController extends Controller
 {
+
     public function index()
     {
         $campaigns = EmailCampaign::where('workspace_id', Auth::user()->workspace_id)
@@ -128,6 +129,8 @@ class EmailCampaignController extends Controller
                         'status' => $log->status,
                     ];
                 })->values();
+
+                var_dump($contacts);
             }
         }
 
@@ -213,17 +216,26 @@ class EmailCampaignController extends Controller
 
     public function sendNow(EmailCampaign $emailCampaign)
     {
+        
         if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
             abort(403, 'Unauthorized');
         }
         if ($emailCampaign->status !== 'draft' && $emailCampaign->status !== 'scheduled') {
             return Redirect::back()->with('error', 'Campaign cannot be sent.');
         }
+
+      
+
+       $service =  new EmailDispatchService();
+
+  
+
         $emailCampaign->status = 'sending';
         $emailCampaign->save();
-        // Dispatch job to send emails (pseudo-code, implement job as needed)
-        EmailDispatchService::dispatchCampaign($emailCampaign);
+       
+        $service->dispatchCampaign($emailCampaign);
         $emailCampaign->status = 'sent';
+        
         $emailCampaign->save();
         return Redirect::route('email-campaigns.show', $emailCampaign->id)->with('success', 'Campaign sent.');
     }

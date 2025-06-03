@@ -1,72 +1,127 @@
 import React from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { CheckCircle2, AlertTriangle } from 'lucide-react'; // Lucide React icons
+
+// Helper component for form field errors
+const InputError = ({ message, className = '' }) => {
+    return message ? <p className={`text-sm text-red-600 dark:text-red-500 mt-1.5 ${className}`}>{message}</p> : null;
+};
 
 export default function ProspectListsEdit({ user, prospectList }) {
     const { data, setData, put, processing, errors } = useForm({
         name: prospectList.name || '',
         description: prospectList.description || '',
     });
-    const { props } = usePage();
-    const flash = props.flash || {};
+    const { flash } = usePage().props;
 
     const handleSubmit = (e) => {
         e.preventDefault();
         put(route('prospect-lists.update', prospectList.id));
     };
 
+    // Common input styling (inspired by Create.jsx)
+    const commonInputStyles = "mt-1 block w-full px-3.5 py-2.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none transition duration-150 ease-in-out sm:text-sm";
+    const errorInputStyles = "border-red-500 dark:border-red-500 focus:border-red-500 dark:focus:border-red-500 focus:ring-red-500 dark:focus:ring-red-500";
+
     return (
-        <AuthenticatedLayout user={user} title="Edit Prospect List">
-            <Head title="Edit Prospect List" />
-            <div className="py-8 px-4 sm:px-6 lg:px-8 w-full mx-auto max-w-xl bg-white">
-                <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Edit Prospect List</h2>
-                {flash.success && (
-                    <div className="mb-5 p-4 bg-green-100 dark:bg-green-700/30 border border-green-300 dark:border-green-600 rounded-lg text-sm text-green-700 dark:text-green-200 flex items-center shadow" role="alert">
-                        <span>{flash.success}</span>
+        <AuthenticatedLayout
+            user={user}
+            header={
+                <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                    Edit Prospect List: {prospectList.name}
+                </h2>
+            }
+        >
+            <Head title={`Edit: ${prospectList.name}`} />
+
+            <div className="py-12 font-sans">
+                <div className="w-full mx-auto sm:px-6 lg:px-8">
+                    <div className="bg-white dark:bg-gray-800 shadow-xl overflow-hidden rounded-xl">
+                        <div className="px-6 py-8 sm:px-8">
+                            <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-8">
+                                Update Prospect List Details
+                            </h3>
+
+                            {/* Flash Messages */}
+                            {flash?.success && (
+                                <div
+                                    className="mb-6 p-4 bg-green-50 dark:bg-green-700/30 border border-green-400 dark:border-green-600 rounded-lg text-sm text-green-700 dark:text-green-100 flex items-start shadow"
+                                    role="alert"
+                                >
+                                    <CheckCircle2 className="h-5 w-5 mr-3 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                    <span>{flash.success}</span>
+                                </div>
+                            )}
+                            {flash?.error && (
+                                <div
+                                    className="mb-6 p-4 bg-red-50 dark:bg-red-700/30 border border-red-400 dark:border-red-600 rounded-lg text-sm text-red-700 dark:text-red-100 flex items-start shadow"
+                                    role="alert"
+                                >
+                                    <AlertTriangle className="h-5 w-5 mr-3 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                                    <span>{flash.error || 'An unexpected error occurred.'}</span>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmit} className="space-y-7">
+                                <div>
+                                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1.5">
+                                        List Name <span className="text-red-500 dark:text-red-400">*</span>
+                                    </label>
+                                    <input
+                                        id="name"
+                                        type="text"
+                                        value={data.name}
+                                        onChange={e => setData('name', e.target.value)}
+                                        className={`${commonInputStyles} ${errors.name ? errorInputStyles : ''}`}
+                                        required
+                                        placeholder="e.g., Newsletter Subscribers"
+                                    />
+                                    <InputError message={errors.name} />
+                                </div>
+
+                                <div>
+                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1.5">
+                                        Description <span className="text-xs text-gray-500 dark:text-gray-500">(Optional)</span>
+                                    </label>
+                                    <textarea
+                                        id="description"
+                                        value={data.description}
+                                        onChange={e => setData('description', e.target.value)}
+                                        rows={4}
+                                        className={`${commonInputStyles} min-h-[100px] ${errors.description ? errorInputStyles : ''}`}
+                                        placeholder="A brief description of this prospect list..."
+                                    />
+                                    <InputError message={errors.description} />
+                                </div>
+
+                                <div className="flex items-center justify-end gap-3 pt-5 border-t dark:border-gray-700/50 mt-8">
+                                    <Link
+                                        href={route('prospect-lists.index')}
+                                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-all duration-150 ease-in-out"
+                                    >
+                                        Cancel
+                                    </Link>
+                                    <button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="inline-flex items-center justify-center px-5 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150 ease-in-out"
+                                    >
+                                        {processing ? (
+                                            <>
+                                                <svg className="animate-spin -ml-0.5 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Saving...
+                                            </>
+                                        ) : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                )}
-                {flash.error && (
-                    <div className="mb-5 p-4 bg-red-100 dark:bg-red-700/30 border border-red-300 dark:border-red-600 rounded-lg text-sm text-red-700 dark:text-red-200 flex items-center shadow" role="alert">
-                        <span>{flash.error}</span>
-                    </div>
-                )}
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name<span className="text-red-500">*</span></label>
-                        <input
-                            id="name"
-                            type="text"
-                            value={data.name}
-                            onChange={e => setData('name', e.target.value)}
-                            className={`block w-full px-3 py-2 border ${errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md`}
-                            required
-                        />
-                        {errors.name && <div className="text-xs text-red-500 mt-1">{errors.name}</div>}
-                    </div>
-                    <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                        <textarea
-                            id="description"
-                            value={data.description}
-                            onChange={e => setData('description', e.target.value)}
-                            className={`block w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700/50 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100 transition-shadow shadow-sm focus:shadow-md`}
-                            rows={3}
-                        />
-                        {errors.description && <div className="text-xs text-red-500 mt-1">{errors.description}</div>}
-                    </div>
-                    <div className="flex items-center gap-3 mt-6">
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className="inline-flex items-center px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-                        >
-                            {processing ? 'Saving...' : 'Save'}
-                        </button>
-                        <Link href={route('prospect-lists.index')} className="inline-flex items-center px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 shadow-sm hover:shadow-md transition-all duration-150">
-                            Cancel
-                        </Link>
-                    </div>
-                </form>
+                </div>
             </div>
         </AuthenticatedLayout>
     );

@@ -1,3 +1,4 @@
+
 # LeadSetu
 
 LeadSetu is a modern, full-featured CRM (Customer Relationship Management) platform built with Laravel (PHP) for the backend and Inertia.js + React for the frontend. It is designed for teams and organizations to manage leads, contacts, companies, and prospect lists efficiently within workspaces. The platform is highly extensible, supports role-based access control, and provides a beautiful, responsive UI using Tailwind CSS.

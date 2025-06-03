@@ -34,10 +34,7 @@ class EmailCampaign extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function prospectList(): BelongsTo
-    {
-        return $this->belongsTo(ProspectList::class);
-    }
+    
 
     public function contacts(): BelongsToMany
     {

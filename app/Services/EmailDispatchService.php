@@ -39,9 +39,9 @@ class EmailDispatchService
         Contact $recipientContact,
         array $emailData,
         MailConfiguration $workspaceConfig = null // Now optional
-    ): EmailLog {
+    ): EmailLog 
+    {
         $workspaceId =  $initiatingUser->workspace_id;
-
         // Fetch Workspace MailConfiguration if not passed or to ensure it's fresh
         if (!$workspaceConfig) {
             $workspaceConfig = MailConfiguration::where('workspace_id', $workspaceId)->first();
@@ -88,6 +88,7 @@ class EmailDispatchService
             // Apply the dynamic SMTP configuration for this sending operation
             SmtpConfigHelper::applyMailConfig($workspaceConfig);
 
+            
             // Step 3: Instantiate our updated Mailable, passing the entire log object to it.
             $mailable = new UserComposedEmail($emailLog);
 
@@ -185,24 +186,30 @@ class EmailDispatchService
     /**
      * Dispatch all emails for a campaign immediately.
      */
-    public static function dispatchCampaign(EmailCampaign $campaign)
+    public  function dispatchCampaign(EmailCampaign $campaign)
     {
-        $prospectList = $campaign->prospectList;
-        if (!$prospectList) return false;
-        $contacts = $prospectList->contacts()->get(); // Ensure this is a collection of Contact models
+
+        $prospectLists = $campaign->prospectLists;
+
+        if (!$prospectLists) return false;
+        
         $user = \App\Models\User::find($campaign->user_id); // Ensure this is a single User
-        foreach ($contacts as $contact) {
-            try {
-                app(EmailDispatchService::class)->sendAndLog(
-                    $user,
-                    $contact,
-                    [
-                        'subject' => $campaign->subject,
-                        'body' => $campaign->body,
-                    ]
-                );
-            } catch (\Throwable $e) {
-                Log::error('Failed to send campaign email to contact ' . $contact->id . ': ' . $e->getMessage());
+        
+        foreach ($prospectLists as $list) {
+            $contacts = $list->contacts()->get();
+            foreach ($contacts as $contact) {
+                try {
+                    app(EmailDispatchService::class)->sendAndLog(
+                        $user,
+                        $contact,
+                        [
+                            'subject' => $campaign->subject,
+                            'body' => $campaign->body,
+                        ]
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send campaign email to contact ' . $contact->id . ': ' . $e->getMessage());
+                }
             }
         }
         return true;
