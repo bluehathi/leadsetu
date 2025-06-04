@@ -20,7 +20,7 @@ class BrevoWebhookController extends Controller
     {
         // Modern Security for Laravel 12: Verify the webhook is from Brevo
         // This checks for a secret token in the webhook URL.
-        $secretToken = $request->query('token');
+        $secretToken = $request->get('token');
         if ($secretToken !== config('services.brevo.webhook_secret')) {
             Log::warning('Unauthorized webhook attempt to Brevo endpoint.', [
                 'ip' => $request->ip(),
