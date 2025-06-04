@@ -10,6 +10,8 @@ export default function SmtpSettings() {
     const { props } = usePage();
     const user = props.auth?.user;
     const flash = props.flash || {};
+    const webhookUrl = props.webhookUrl;
+    
     const config = props.smtpConfig || {};
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -240,6 +242,20 @@ export default function SmtpSettings() {
                                         value={data.from_name}
                                         placeholder="e.g., Your Company Name"
                                         onChange={handleChange}
+                                        className={inputClasses}
+                                        required
+                                    />
+                                    {errors.from_name && <p className="text-xs text-red-500 mt-1.5">{errors.from_name}</p>}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="webhook_url" className={labelClasses}>Webhook Url</label>
+                                    <input
+                                        id="webhook_url"
+                                        
+                                        type="text"
+                                        disabled
+                                        value={webhookUrl}
                                         className={inputClasses}
                                         required
                                     />

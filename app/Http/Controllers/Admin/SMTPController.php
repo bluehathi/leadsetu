@@ -20,7 +20,8 @@ class SMTPController extends Controller
         $smtpConfig = \App\Models\MailConfiguration::where('workspace_id', $workspaceId)->first();
         return Inertia::render('Settings/SmtpSettings', [
             'smtpConfig' => $smtpConfig,
-            'auth' => ['user' => $user]
+            'auth' => ['user' => $user],
+            'webhookUrl' => url('/api/webhooks/brevo?token='.config('services.brevo.webhook_secret'))
         ]);
     }
 
