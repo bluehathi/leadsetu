@@ -246,7 +246,7 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
             )}
             {/* Assuming contacts are viewed with 'view_leads' permission as per routes/web.php */}
             {/* If you have a specific 'view_contacts' permission, use can("view_contacts") instead */}
-            {can("view_leads") && (
+            {can("view_contacts") && (
               <NavLink
                 href={route("contacts.index")}
                 routeName="contacts.index"

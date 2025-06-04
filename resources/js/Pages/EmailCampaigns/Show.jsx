@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react'; // Added usePage
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
-    ArrowLeft, Mail, Send, CalendarClock, Users, BarChart3, Eye, X, ListChecks, AlertCircle,
+    ArrowLeft, Mail, Send, CalendarClock, Users, BarChart3, Eye, X, ListChecks, AlertCircle, Copy,
     CheckCircle2, Info, ExternalLink, Edit3, Clock, MessageCircle, MousePointerClick, AlertOctagon, UserCheck, UserX
 } from 'lucide-react';
 
@@ -76,6 +76,7 @@ export default function EmailCampaignShow({ campaign, user, stats, contacts: ini
     const [actionError, setActionError] = useState(null); // Renamed from error to avoid conflict
     const [modalType, setModalType] = useState(null);
     const [modalContacts, setModalContacts] = useState([]);
+    const [copiedContent, setCopiedContent] = useState(false);
     const [isModalLoading, setIsModalLoading] = useState(false);
 
     const canSend = campaign.status === 'draft' || campaign.status === 'scheduled';
@@ -124,6 +125,31 @@ export default function EmailCampaignShow({ campaign, user, stats, contacts: ini
         });
     };
 
+    const handleViewRawContent = () => {
+        if (campaign.body_html) {
+            const newWindow = window.open();
+            newWindow.document.write(campaign.body_html);
+            newWindow.document.close();
+        } else if (campaign.body) { // Fallback for non-HTML body
+            const newWindow = window.open();
+            const pre = newWindow.document.createElement('pre');
+            pre.style.whiteSpace = 'pre-wrap'; // Ensure text wraps
+            pre.style.wordBreak = 'break-all'; // Ensure long strings break
+            pre.textContent = campaign.body;
+            newWindow.document.body.appendChild(pre);
+            newWindow.document.close();
+        }
+    };
+
+    const handleCopyContent = () => {
+        const contentToCopy = campaign.body_html || campaign.body;
+        if (contentToCopy) {
+            navigator.clipboard.writeText(contentToCopy).then(() => {
+                setCopiedContent(true);
+                setTimeout(() => setCopiedContent(false), 2500);
+            }).catch(err => console.error('Failed to copy content: ', err));
+        }
+    };
     const fetchContacts = (type) => {
         setModalType(type);
         setModalContacts([]); // Clear previous contacts
@@ -208,19 +234,23 @@ export default function EmailCampaignShow({ campaign, user, stats, contacts: ini
                     <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">{campaign.name}</h1>
-                            <div className="mt-2 flex items-center gap-x-4">
+                            <div className="mt-2">
                                 <CampaignStatusBadge status={campaign.status} />
-                                <Link href={route('email-campaigns.edit', campaign.id)} className="inline-flex items-center text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium">
-                                    <Edit3 size={14} className="mr-1.5" /> Edit Campaign
-                                </Link>
                             </div>
                         </div>
-                        <Link
-                            href={route('email-campaigns.index')}
-                            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 transition-all"
-                        >
-                            <ArrowLeft size={16} className="mr-2" /> Back to Campaigns
-                        </Link>
+                        <div className="flex items-center gap-3 mt-3 sm:mt-0">
+                            {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
+                                <Link href={route('email-campaigns.edit', campaign.id)} className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 transition-all">
+                                    <Edit3 size={16} className="mr-2" /> Edit Campaign
+                                </Link>
+                            )}
+                            <Link
+                                href={route('email-campaigns.index')}
+                                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 transition-all"
+                            >
+                                <ArrowLeft size={16} className="mr-2" /> Back to Campaigns
+                            </Link>
+                        </div>
                     </div>
 
 
@@ -324,13 +354,47 @@ export default function EmailCampaignShow({ campaign, user, stats, contacts: ini
                             )}
 
 
-                            <div>
-                                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Email Preview</h3>
-                                <div className="p-4 sm:p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50 min-h-[200px]">
-                                    <div
-                                        className="prose prose-sm sm:prose-base dark:prose-invert max-w-none"
-                                        dangerouslySetInnerHTML={{ __html: campaign.body_html || campaign.body }} // Prefer body_html if available
-                                    />
+                            <div className="mt-10">
+                                <div className="flex flex-col sm:flex-row justify-between items-center mb-3">
+                                    <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center">
+                                        <MessageCircle size={20} className="mr-2 text-indigo-500" /> Email Content
+                                    </h3>
+                                    <div className="flex items-center space-x-3 mt-2 sm:mt-0">
+                                        {(campaign.body_html || campaign.body) && (
+                                            <button
+                                                onClick={handleCopyContent}
+                                                title={campaign.body_html ? "Copy HTML to Clipboard" : "Copy Text to Clipboard"}
+                                                className="flex items-center text-xs text-indigo-600 dark:text-indigo-400 hover:underline focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                                disabled={copiedContent}
+                                            >
+                                                <Copy size={14} className="mr-1" />
+                                                {copiedContent ? 'Copied!' : (campaign.body_html ? 'Copy HTML' : 'Copy Text')}
+                                            </button>
+                                        )}
+                                        {(campaign.body_html || campaign.body) && (
+                                            <button
+                                                onClick={handleViewRawContent}
+                                                title="View Raw Content in New Tab"
+                                                className="flex items-center text-xs text-indigo-600 dark:text-indigo-400 hover:underline focus:outline-none"
+                                            >
+                                                <ExternalLink size={14} className="mr-1" />
+                                                View Raw
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="p-4 sm:p-6 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/50 min-h-[300px] max-h-[70vh] overflow-auto shadow-inner">
+                                    { (campaign.body_html || campaign.body) ? (
+                                        <div
+                                            className="prose prose-sm sm:prose-base dark:prose-invert max-w-none"
+                                            dangerouslySetInnerHTML={{ __html: campaign.body_html || campaign.body }}
+                                        />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400 py-10">
+                                            <Mail size={32} className="mb-3 opacity-50"/>
+                                            <p className="text-sm">No email body content available for this campaign.</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

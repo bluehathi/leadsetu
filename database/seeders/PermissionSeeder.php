@@ -12,6 +12,10 @@ class PermissionSeeder extends Seeder
         $permissions = [
             // Leads
             'view_leads', 'create_leads', 'edit_leads', 'delete_leads',
+            // Companies
+            'view_companies', 'create_companies', 'edit_companies', 'delete_companies',
+            // Contacts
+            'view_contacts', 'create_contacts', 'edit_contacts', 'delete_contacts',
             // Users
             'view_users', 'create_users', 'edit_users', 'delete_users',
             // Workspaces

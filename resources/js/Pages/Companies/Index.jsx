@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Head, usePage } from '@inertiajs/react';
 import CompanyLayout from './_CompanyLayout'; // Assuming this path is correct
-import AutheticatedLayout from '@/Layouts/AuthenticatedLayout'; // Assuming this path is correct
-import { PlusCircle, Edit3, Search, Briefcase, Filter as FilterIcon, Link as LinkIcon } from 'lucide-react'; // Added LinkIcon
+import AutheticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { PlusCircle, Edit3, Search, Link as LinkIcon, CheckCircle2, XCircle } from 'lucide-react'; // Added CheckCircle2, XCircle, removed unused Briefcase, FilterIcon
 
 // Helper function to generate a placeholder logo style (remains the same)
 const getLogoPlaceholder = (name) => {
@@ -78,21 +78,21 @@ export default function CompaniesIndex({ user, companies: initialCompanies = [] 
                     </div>
 
                     {flash.success && (
-                    <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md flex items-center justify-between" role="alert">
+                    <div className="mb-4 p-4 bg-green-100 dark:bg-green-700/30 border border-green-300 dark:border-green-600 text-green-700 dark:text-green-200 rounded-lg flex items-center justify-between shadow" role="alert">
                         <div className="flex items-center">
                             <CheckCircle2 size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
                             <span>{flash.success}</span>
                         </div>
                     </div>
-                )}
-                {flash.error && (
-                    <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md flex items-center justify-between" role="alert">
+                    )}
+                    {flash.error && (
+                    <div className="mb-4 p-4 bg-red-100 dark:bg-red-700/30 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-200 rounded-lg flex items-center justify-between shadow" role="alert">
                         <div className="flex items-center">
                             <XCircle size={20} className="mr-2 flex-shrink-0" aria-hidden="true" />
                             <span>{flash.error}</span>
                         </div>
                     </div>
-                )}
+                    )}
 
                     {/* Companies List Area */}
                     <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-3 sm:p-4">
@@ -141,7 +141,7 @@ export default function CompaniesIndex({ user, companies: initialCompanies = [] 
                                             </div>
 
                                             {/* Right Part (Grid Column 2 on sm+ screens, or stacks below on xs): Actions (Edit Link) */}
-                                            <div className="flex-shrink-0 w-full sm:w-auto flex justify-end  sm:col-start-2"> {/* sm:col-start-2 to ensure it's in the second column on larger screens */}
+                                            <div className="flex-shrink-0 w-full sm:w-auto flex justify-end">
                                                 <Link 
                                                     href={route('companies.edit', company.id)} 
                                                     className="inline-flex items-center text-xs font-medium px-3.5 py-1.5 rounded-md text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-30"
@@ -157,7 +157,7 @@ export default function CompaniesIndex({ user, companies: initialCompanies = [] 
                             </div>
                         ) : (
                             <div className="text-center py-16 px-6 bg-gray-50 dark:bg-gray-800/40 rounded-lg">
-                                <Search size={52} className="mx-auto mb-5 text-blue-400 dark:text-blue-500" />
+                                <Search size={52} className="mx-auto mb-5 text-gray-400 dark:text-gray-500" />
                                 <h3 className="mt-2 text-xl font-semibold text-gray-800 dark:text-gray-100">
                                     {searchTerm ? 'No Companies Found' : 'No Companies Yet'}
                                 </h3>

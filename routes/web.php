@@ -70,6 +70,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::resource('prospect-lists', ProspectListController::class)->middleware('permission:view_prospect_lists'); // Assuming prospect lists are related to leads
 
     // Email Campaign routes
+    Route::post('email-campaigns/bulk-destroy', [App\Http\Controllers\Admin\EmailCampaignController::class, 'bulkDestroy'])->name('email-campaigns.bulk-destroy');
     Route::resource('email-campaigns', App\Http\Controllers\Admin\EmailCampaignController::class)->middleware('permission:view_campaigns');
     Route::post('email-campaigns/{email_campaign}/send', [App\Http\Controllers\Admin\EmailCampaignController::class, 'sendNow'])->name('email-campaigns.send')->middleware('permission:send_campaign');
     Route::post('email-campaigns/{email_campaign}/schedule', [App\Http\Controllers\Admin\EmailCampaignController::class, 'schedule'])->name('email-campaigns.schedule')->middleware('permission:create_campaign');

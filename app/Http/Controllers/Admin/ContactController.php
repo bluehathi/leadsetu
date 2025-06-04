@@ -14,17 +14,57 @@ use App\Models\MailConfiguration;
 
 class ContactController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $contacts = Contact::with('company')
-            ->where('workspace_id', auth()->user()->workspace_id)
-            ->orderByDesc('id')
-            ->paginate(10)
-            ->withQueryString();
+        $query = Contact::query()
+            ->where('workspace_id', Auth::user()->workspace_id) // Scope by workspace
+            ->with('company'); // Eager load company if you display it
+
+        // Search
+        if ($request->filled('search')) {
+            $searchTerm = $request->input('search');
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%")
+                  ->orWhere('phone', 'like', "%{$searchTerm}%")
+                  ->orWhere('title', 'like', "%{$searchTerm}%")
+                  ->orWhereHas('company', function ($cq) use ($searchTerm) {
+                      $cq->where('name', 'like', "%{$searchTerm}%");
+                  });
+            });
+        }
+
+        // Sorting
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+
+        // Validate sortBy to prevent arbitrary column sorting and handle related table sorting
+        $allowedSorts = ['name', 'email', 'created_at', 'company_name']; // Add more as needed
+        
+        if (in_array($sortBy, $allowedSorts)) {
+            if ($sortBy === 'company_name') {
+                // Ensure you have a 'companies' table and 'company_id' on 'contacts'
+                // This assumes 'company' relationship is defined in Contact model
+                // For direct sorting on related table column, a join is often more efficient
+                $query->leftJoin('companies', 'contacts.company_id', '=', 'companies.id')
+                      ->orderBy('companies.name', $sortDirection)
+                      ->select('contacts.*'); // Important to avoid ambiguous column errors
+            } else {
+                $query->orderBy($sortBy, $sortDirection);
+            }
+        } else {
+            // Default sort if sortBy is not allowed or invalid
+            $query->orderBy('created_at', 'desc');
+        }
+        
+        $contacts = $query->paginate($request->input('per_page', 15)) // Default to 15 per page
+                           ->withQueryString(); // Appends current query string to pagination links
 
         return Inertia::render('Contacts/Index', [
+            'user' => Auth::user(),
             'contacts' => $contacts,
-             'user' => Auth::user(),
+            // 'workspaces' => ... // Pass workspaces if needed by your view
+            'filters' => $request->only(['search', 'sort_by', 'sort_direction', 'per_page']), // Pass active filters back
         ]);
     }
 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import { 
+import {
     Plus, RotateCcw, UserCircle, Briefcase, Phone, Mail, Building, LayoutGrid, List, Send
 } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -13,14 +13,16 @@ import ContactList from './Partials/ContactList';
 import { getAvatarPlaceholder } from '@/Utils/Avatar';
 
 
-export default function ContactsIndex({ user, contacts, workspaces }) { 
+export default function ContactsIndex({ user, contacts: initialContacts, workspaces, filters: initialFilters }) {
     const { props } = usePage();
     const flash = props.flash || {};
+    const contacts = props.contacts || initialContacts; // Prefer props if updated by Inertia partial reload
+    const filters = props.filters || initialFilters; // Prefer props for filters
 
-    const queryParams = new URLSearchParams(window.location.search);
-    const initialSearchText = queryParams.get('search') || '';
+    const [searchText, setSearchText] = useState(filters?.search || '');
+    const [sortBy, setSortBy] = useState(filters?.sort_by || 'created_at');
+    const [sortDirection, setSortDirection] = useState(filters?.sort_direction || 'desc');
 
-    const [searchText, setSearchText] = useState(initialSearchText);
     const [isListMounted, setIsListMounted] = useState(false);
     // View mode: persist in localStorage
     const [viewMode, setViewMode] = useState(() => {
@@ -41,42 +43,46 @@ export default function ContactsIndex({ user, contacts, workspaces }) {
         const timer = setTimeout(() => setIsListMounted(true), 50);
         return () => clearTimeout(timer);
     }, []);
-    
-    const displayedContacts = useMemo(() => {
-        let data = contacts && contacts.data ? [...contacts.data] : [];
-        if (searchText && data.length > 0 && !queryParams.has('search')) {
-            const s = searchText.toLowerCase();
-            data = data.filter(c =>
-                (c.name && c.name.toLowerCase().includes(s)) ||
-                (c.email && c.email.toLowerCase().includes(s)) ||
-                (c.phone && String(c.phone).includes(s)) ||
-                (c.title && c.title.toLowerCase().includes(s)) ||
-                (c.company && c.company.name && c.company.name.toLowerCase().includes(s))
-            );
-        }
-        return data;
-    }, [contacts, searchText, queryParams]);
 
-    const handleSearchInputChange = (e) => {
-        setSearchText(e.target.value);
-    };
+    useEffect(() => {
+        setSearchText(filters?.search || '');
+        setSortBy(filters?.sort_by || 'created_at');
+        setSortDirection(filters?.sort_direction || 'desc');
+    }, [filters]);
+
+    // Data to display is now directly from props, as server handles filtering/sorting
+    const displayedContacts = contacts?.data || [];
 
     const applySearch = () => {
-        const params = {};
-        if (searchText) {
-            params.search = searchText;
-        }
-        router.get(route('contacts.index'), params, {
+        fetchContacts({ search: searchText, page: 1 }); // Reset to page 1 on new search
+    };
+
+    const handleSort = (newSortBy) => {
+        const newSortDirection = sortBy === newSortBy && sortDirection === 'asc' ? 'desc' : 'asc';
+        fetchContacts({ sort_by: newSortBy, sort_direction: newSortDirection });
+    };
+
+    const fetchContacts = (params = {}) => {
+        const query = {
+            search: params.search !== undefined ? params.search : searchText,
+            sort_by: params.sort_by !== undefined ? params.sort_by : sortBy,
+            sort_direction: params.sort_direction !== undefined ? params.sort_direction : sortDirection,
+            page: params.page !== undefined ? params.page : (new URLSearchParams(window.location.search)).get('page') || 1,
+            // Add other filters like per_page if you have them
+        };
+
+        router.get(route('contacts.index'), query, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
         });
     };
-    
+
     const handleDelete = (contactId, contactName) => {
         if (confirm(`Are you sure you want to delete the contact "${contactName}"? This action cannot be undone.`)) {
             router.delete(route('contacts.destroy', contactId), {
                 preserveScroll: true,
+                // onSuccess: () => fetchContacts(), // Optionally refetch to ensure data consistency
             });
         }
     };
@@ -116,6 +122,9 @@ export default function ContactsIndex({ user, contacts, workspaces }) {
                                 displayedContacts={displayedContacts}
                                 getAvatarPlaceholder={getAvatarPlaceholder}
                                 handleDelete={handleDelete}
+                                sortBy={sortBy}
+                                sortDirection={sortDirection}
+                                onSort={handleSort}
                                 isListMounted={isListMounted}
                             />
                         )}
@@ -125,6 +134,9 @@ export default function ContactsIndex({ user, contacts, workspaces }) {
                                 displayedContacts={displayedContacts}
                                 getAvatarPlaceholder={getAvatarPlaceholder}
                                 handleDelete={handleDelete}
+                                sortBy={sortBy}
+                                sortDirection={sortDirection}
+                                onSort={handleSort}
                                 isListMounted={isListMounted}
                             />
                         )}
@@ -133,12 +145,12 @@ export default function ContactsIndex({ user, contacts, workspaces }) {
                      <div className="text-center py-16 px-6 bg-white dark:bg-gray-800 shadow-xl rounded-xl">
                         <Search size={56} className="mx-auto mb-5 text-gray-400 dark:text-gray-500" />
                         <p className="text-xl font-semibold text-gray-700 dark:text-gray-300">
-                            {initialSearchText || searchText ? 'No contacts match your search.' : 'No contacts found.'}
+                            {searchText ? 'No contacts match your search.' : 'No contacts found.'}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            {initialSearchText || searchText ? 'Try adjusting your search term.' : 'Get started by adding a new contact.'}
+                            {searchText ? 'Try adjusting your search term or clear the search.' : 'Get started by adding a new contact.'}
                         </p>
-                        {!(initialSearchText || searchText) && (
+                        {!searchText && (
                             <Link
                                 href={route('contacts.create')}
                                 className="mt-6 inline-flex items-center px-5 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
