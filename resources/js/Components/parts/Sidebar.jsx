@@ -76,18 +76,10 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
     return name.length > 0 ? name.charAt(0).toUpperCase() : "?";
   };
 
-  // Placeholder for user permission checking logic
-  // Replace this with your actual permission checking implementation
-  // For example, if user object has a 'permissions' array: user.permissions.includes('view users')
-  // Or if user object has a 'can' method: user.can('view users')
-  const canViewUsers = user && user.can ? user.can("view users") : false; // Default to false if 'can' method doesn't exist
-  const canViewRoles = user && user.can ? user.can("view roles") : false;
-  const canViewPermissions =
-    user && user.can ? user.can("view permissions") : false;
-
   const showAccessControlSection =
-    canViewUsers || canViewRoles || canViewPermissions;
+    can("view_users") || can("view_roles") || can("view_permissions");
 
+   
   const NavLink = ({ href, routeName, icon: Icon, children }) => {
     const active = isActive(routeName);
     return (
@@ -234,95 +226,117 @@ const Sidebar = ({ user, sidebarOpen = false, setSidebarOpen }) => {
             >
               Dashboard
             </NavLink>
-            <NavLink
-              href={route("email-campaigns.index")}
-              routeName="email-campaigns.index"
-              icon={Mail}
-            >
-              Campaigns
-            </NavLink>
-            <NavLink
-              href={route("leads.index")}
-              routeName="leads.index"
-              icon={User2}
-            >
-              Leads
-            </NavLink>
-            <NavLink
-              href={route("contacts.index")}
-              routeName="contacts.index"
-              icon={Contact2}
-            >
-              Contacts
-            </NavLink>
-            <NavLink
-              href={route("companies.index")}
-              routeName="companies.index"
-              icon={BriefcaseBusiness}
-            >
-              Companies
-            </NavLink>
-            <NavLink
-              href={route("prospect-lists.index")}
-              routeName="prospect-lists.index"
-              icon={ScrollText}
-            >
-              Prospect Lists
-            </NavLink>
+            {can("view_campaigns") && (
+              <NavLink
+                href={route("email-campaigns.index")}
+                routeName="email-campaigns.index"
+                icon={Mail}
+              >
+                Campaigns
+              </NavLink>
+            )}
+            {can("view_leads") && (
+              <NavLink
+                href={route("leads.index")}
+                routeName="leads.index"
+                icon={User2}
+              >
+                Leads
+              </NavLink>
+            )}
+            {/* Assuming contacts are viewed with 'view_leads' permission as per routes/web.php */}
+            {/* If you have a specific 'view_contacts' permission, use can("view_contacts") instead */}
+            {can("view_leads") && (
+              <NavLink
+                href={route("contacts.index")}
+                routeName="contacts.index"
+                icon={Contact2}
+              >
+                Contacts
+              </NavLink>
+            )}
+            {can("view_companies") && (
+              <NavLink
+                href={route("companies.index")}
+                routeName="companies.index"
+                icon={BriefcaseBusiness}
+              >
+                Companies
+              </NavLink>
+            )}
+            {can("view_prospect_lists") && (
+              <NavLink
+                href={route("prospect-lists.index")}
+                routeName="prospect-lists.index"
+                icon={ScrollText}
+              >
+                Prospect Lists
+              </NavLink>
+            )}
+            {can("view_workspaces") && (
+              <NavLink
+                href={route("workspaces.index")}
+                routeName="workspaces.index"
+                icon={Globe}
+              >
+                Workspaces
+              </NavLink>
+            )}
+            {can("manage_settings") && (
+              <NavLink
+                href={route("settings.index")}
+                routeName="settings.index"
+                icon={Settings2}
+              >
+                Settings
+              </NavLink>
+            )}
 
-            <NavLink
-              href={route("workspaces.index")}
-              routeName="workspaces.index"
-              icon={Globe}
-            >
-              Workspaces
-            </NavLink>
-            <NavLink
-              href={route("settings.index")}
-              routeName="settings.index"
-              icon={Settings2}
-            >
-              Settings
-            </NavLink>
-            {can("view_users") && (
+            {showAccessControlSection && (
               <>
                 <SectionTitle>Access Control</SectionTitle>
+                {can("view_users") && (
+                  <NavLink
+                    href={route("users.index")}
+                    routeName="users.index"
+                    icon={UsersIcon}
+                  >
+                    Users
+                  </NavLink>
+                )}
+                {can("view_roles") && (
+                  <NavLink
+                    href={route("roles.index")}
+                    routeName="roles.index"
+                    icon={Shield}
+                  >
+                    Roles
+                  </NavLink>
+                )}
+                {can("view_permissions") && (
+                  <NavLink
+                    href={route("permissions.index")}
+                    routeName="permissions.index"
+                    icon={Key}
+                  >
+                    Permissions
+                  </NavLink>
+                )}
+              </>
+            )}
+
+            {can("view_activity_logs") && (
+              <>
+                <SectionTitle>Logs</SectionTitle>
                 <NavLink
-                  href={route("users.index")}
-                  routeName="users.index"
-                  icon={UsersIcon}
+                  href={route("activity.logs")}
+                  routeName="activity.logs"
+                  icon={ScrollText}
                 >
-                  Users
+                  Activity Logs
                 </NavLink>
               </>
             )}
-            {can("view_roles") && (
-              <NavLink
-                href={route("roles.index")}
-                routeName="roles.index"
-                icon={Shield}
-              >
-                Roles
-              </NavLink>
-            )}
-            {can("view_permissions") && (
-              <NavLink
-                href={route("permissions.index")}
-                routeName="permissions.index"
-                icon={Key}
-              >
-                Permissions
-              </NavLink>
-            )}
-
-            <SectionTitle>Logs</SectionTitle>
-            <NavLink
-              href={route("activity.logs")}
-              routeName="activity.logs"
-              icon={ScrollText}
-            >
-              Activity Logs
-            </NavLink>
           </nav>
 
           <div

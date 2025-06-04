@@ -22,10 +22,14 @@ class PermissionSeeder extends Seeder
             'view_permissions', 'create_permissions', 'edit_permissions', 'delete_permissions',
             // Activity Logs
             'view_activity_logs',
+            // Prospect Lists
+            'view_prospect_lists', 'create_prospect_lists', 'edit_prospect_lists', 'delete_prospect_lists',
             // Dashboard
             'view_dashboard','workspace_owner',
             //settings
-            'manage_settings','manage_smtp_settings'
+            'manage_settings','manage_smtp_settings',
+            //email campaigns
+            'view_campaigns','create_campaign','edit_campaign','delete_campaign','send_campaign'
         ];
         foreach ($permissions as $permission) {
             $perm = Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);

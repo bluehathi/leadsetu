@@ -1,14 +1,17 @@
 
 # LeadSetu
 
-LeadSetu is a modern, full-featured CRM (Customer Relationship Management) platform built with Laravel (PHP) for the backend and Inertia.js + React for the frontend. It is designed for teams and organizations to manage leads, contacts, companies, and prospect lists efficiently within workspaces. The platform is highly extensible, supports role-based access control, and provides a beautiful, responsive UI using Tailwind CSS.
+LeadSetu is a robust, full-featured Customer Relationship Management (CRM) platform engineered for modern sales and marketing teams. Built with a powerful Laravel (PHP) backend and a dynamic Inertia.js + React frontend, LeadSetu offers an intuitive and efficient solution for managing leads, contacts, companies, and prospect lists within collaborative workspaces.
+
+The platform emphasizes extensibility, granular role-based access control (RBAC), and a sleek, responsive user interface powered by Tailwind CSS, enabling organizations to streamline their customer interaction workflows and drive growth.
 
 ---
 
 ## Table of Contents
 - [Features](#features)
 - [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
+- [Core Concepts](#core-concepts)
+- [Project Structure Overview](#project-structure-overview)
 - [Setup & Installation](#setup--installation)
 - [Environment Configuration](#environment-configuration)
 - [Database Migrations & Seeding](#database-migrations--seeding)
@@ -34,8 +37,8 @@ LeadSetu is a modern, full-featured CRM (Customer Relationship Management) platf
 - **Role & Permission Management:** Fine-grained access control using roles and permissions (spatie/laravel-permission).
 - **Responsive UI:** Modern, mobile-friendly design using Tailwind CSS.
 - **SPA Experience:** Inertia.js + React for fast, seamless navigation and interactivity.
-- **Import/Export:** (Planned) Import contacts/companies from CSV/Excel; export data for reporting.
-- **Email Integration:** (Planned) Send and log emails to leads/contacts directly from the platform.
+- **Import/Export:** Import contacts/companies from CSV/Excel; export data for reporting.
+- **Email Integration:**  Send and log emails to leads/contacts directly from the platform.
 
 ---
 
