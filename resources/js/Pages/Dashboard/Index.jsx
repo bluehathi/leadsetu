@@ -17,7 +17,7 @@ import {
 import { Users, TrendingUp, Briefcase, Activity, CalendarDays, User as UserIcon, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
 
 import StatCard
- from '../../Components/ui/StatCard';
+ from '../../Components/Ui/StatCard';
 ChartJS.register(
     CategoryScale,
     LinearScale,
