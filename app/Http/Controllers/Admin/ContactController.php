@@ -17,8 +17,8 @@ class ContactController extends Controller
     public function index(Request $request)
     {
         $query = Contact::query()
-            ->where('workspace_id', Auth::user()->workspace_id) // Scope by workspace
-            ->with('company'); // Eager load company if you display it
+            ->where('workspace_id', Auth::user()->workspace_id)
+            ->with(['company', 'prospectLists:id,name']); // Eager load company and prospect lists (id, name)
 
         // Search
         if ($request->filled('search')) {
@@ -57,14 +57,14 @@ class ContactController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         
-        $contacts = $query->paginate($request->input('per_page', 15)) // Default to 15 per page
+        $contacts = $query->paginate($request->input('per_page', 15))
                            ->withQueryString(); // Appends current query string to pagination links
 
         return Inertia::render('Contacts/Index', [
             'user' => Auth::user(),
             'contacts' => $contacts,
             // 'workspaces' => ... // Pass workspaces if needed by your view
-            'filters' => $request->only(['search', 'sort_by', 'sort_direction', 'per_page']), // Pass active filters back
+            'filters' => $request->only(['search', 'sort_by', 'sort_direction', 'per_page']),
         ]);
     }
 
@@ -97,15 +97,15 @@ class ContactController extends Controller
         }
 
        $data = $request->all();
-       $data['workspace_id'] = auth()->user()->workspace_id;
+       $data['workspace_id'] = Auth::user()->workspace_id;
 
         $contact = Contact::create($data);
 
         // Log activity for contact creation
         if (class_exists('App\\Models\\ActivityLog')) {
             \App\Models\ActivityLog::create([
-                'user_id' => auth()->id(),
-                'workspace_id' => auth()->user()->workspace_id,
+                'user_id' => Auth::id(),
+                'workspace_id' => Auth::user()->workspace_id,
                 'action' => 'contact_created',
                 'subject_type' => Contact::class,
                 'subject_id' => $contact->id,
@@ -168,8 +168,8 @@ class ContactController extends Controller
         // Log activity for contact update
         if (class_exists('App\\Models\\ActivityLog')) {
             \App\Models\ActivityLog::create([
-                'user_id' => auth()->id(),
-                'workspace_id' => auth()->user()->workspace_id,
+                'user_id' => Auth::id(),
+                'workspace_id' => Auth::user()->workspace_id,
                 'action' => 'contact_updated',
                 'subject_type' => Contact::class,
                 'subject_id' => $contact->id,
@@ -191,8 +191,8 @@ class ContactController extends Controller
         // Log activity for contact deletion
         if (class_exists('App\\Models\\ActivityLog')) {
             \App\Models\ActivityLog::create([
-                'user_id' => auth()->id(),
-                'workspace_id' => auth()->user()->workspace_id,
+                'user_id' => Auth::id(),
+                'workspace_id' => Auth::user()->workspace_id,
                 'action' => 'contact_deleted',
                 'subject_type' => Contact::class,
                 'subject_id' => $contactId,
@@ -209,7 +209,7 @@ class ContactController extends Controller
     public function contacts($companyId)
     {
         $contacts = \App\Models\Contact::where('company_id', $companyId)
-            ->where('workspace_id', auth()->user()->workspace_id)
+            ->where('workspace_id', Auth::user()->workspace_id)
             ->get();
         return response()->json(['contacts' => $contacts]);
     }

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import {
-    Plus, RotateCcw, UserCircle, Briefcase, Phone, Mail, Building, LayoutGrid, List, Send
+    Plus, RotateCcw, UserCircle, Briefcase, Phone, Mail, Building, LayoutGrid, List, Send, Users, Search, ListPlus
 } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
@@ -10,7 +10,9 @@ import Toolbar from './Partials/Toolbar';
 import SearchInput from './Partials/SearchInput';
 import ContactGrid from './Partials/ContactGrid';
 import ContactList from './Partials/ContactList';
+import AddContactsToProspectListModal from './Partials/AddContactsToProspectListModal';
 import { getAvatarPlaceholder } from '@/Utils/Avatar';
+import axios from 'axios';
 
 
 export default function ContactsIndex({ user, contacts: initialContacts, workspaces, filters: initialFilters }) {
@@ -22,6 +24,11 @@ export default function ContactsIndex({ user, contacts: initialContacts, workspa
     const [searchText, setSearchText] = useState(filters?.search || '');
     const [sortBy, setSortBy] = useState(filters?.sort_by || 'created_at');
     const [sortDirection, setSortDirection] = useState(filters?.sort_direction || 'desc');
+
+    const [selectedContactIds, setSelectedContactIds] = useState([]);
+    const [isProspectModalOpen, setIsProspectModalOpen] = useState(false);
+    const [userProspectLists, setUserProspectLists] = useState([]); // Will hold lists fetched for the modal
+    const [initialSelectedListIds, setInitialSelectedListIds] = useState([]); // For pre-selecting lists in the modal
 
     const [isListMounted, setIsListMounted] = useState(false);
     // View mode: persist in localStorage
@@ -87,6 +94,39 @@ export default function ContactsIndex({ user, contacts: initialContacts, workspa
         }
     };
 
+    const handleSelectContact = (contactId) => {
+        setSelectedContactIds(prevSelected =>
+            prevSelected.includes(contactId)
+                ? prevSelected.filter(id => id !== contactId)
+                : [...prevSelected, contactId]
+        );
+    };
+
+    const openProspectModalAndFetchLists = async (idsToSelect = selectedContactIds) => {
+        if (idsToSelect.length === 0) {
+            alert("Please select at least one contact.");
+            return;
+        }
+        setSelectedContactIds(idsToSelect);
+        try {
+            const [listsRes, contactListsRes] = await Promise.all([
+                axios.get(route('prospect-lists.modal-list')),
+                idsToSelect.length === 1
+                    ? axios.get(route('prospect-lists.contact-lists', idsToSelect[0]))
+                    : Promise.resolve({ data: { list_ids: [] } })
+            ]);
+            setUserProspectLists(listsRes.data.lists);
+            setInitialSelectedListIds((contactListsRes.data.list_ids || []).map(String));
+            setIsProspectModalOpen(true);
+        } catch (error) {
+            console.error("Failed to fetch prospect lists:", error);
+            alert("Could not load prospect lists. Please try again.");
+        }
+    };
+
+    const handleAddToPlaylistClickForCard = (contactId) => {
+        openProspectModalAndFetchLists([contactId]);
+    };
     const baseButtonClasses = "p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200";
     const activeViewButtonClasses = "bg-blue-600 text-white focus:ring-blue-500 shadow-md";
     const inactiveViewButtonClasses = "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:ring-gray-400";
@@ -104,6 +144,16 @@ export default function ContactsIndex({ user, contacts: initialContacts, workspa
                         activeViewButtonClasses={activeViewButtonClasses}
                         inactiveViewButtonClasses={inactiveViewButtonClasses}
                     />
+                    {/* Add to Prospect List Button - appears when contacts are selected (for list view primarily) */}
+                    {/* {selectedContactIds.length > 0 && viewMode === 'list' && ( // Show only in list view or if you want it globally
+                        <button
+                            onClick={() => openProspectModalAndFetchLists()}
+                            className="ml-auto sm:ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        >
+                            <Users size={16} className="mr-2" />
+                            Add to List ({selectedContactIds.length})
+                        </button>
+                    )} */}
                     {/* Right side: Search Input */}
                     <SearchInput
                         searchText={searchText}
@@ -125,6 +175,7 @@ export default function ContactsIndex({ user, contacts: initialContacts, workspa
                                 sortBy={sortBy}
                                 sortDirection={sortDirection}
                                 onSort={handleSort}
+                                onAddToPlaylistClick={handleAddToPlaylistClickForCard} // Pass the handler
                                 isListMounted={isListMounted}
                             />
                         )}
@@ -137,6 +188,8 @@ export default function ContactsIndex({ user, contacts: initialContacts, workspa
                                 sortBy={sortBy}
                                 sortDirection={sortDirection}
                                 onSort={handleSort}
+                                selectedContactIds={selectedContactIds} // For checkbox selection in list view
+                                onSelectContact={handleSelectContact}   // For checkbox selection in list view
                                 isListMounted={isListMounted}
                             />
                         )}
@@ -166,6 +219,18 @@ export default function ContactsIndex({ user, contacts: initialContacts, workspa
                         <Pagination links={contacts.links} />
                     </div>
                 )}
+                <AddContactsToProspectListModal
+                    isOpen={isProspectModalOpen}
+                    onClose={() => setIsProspectModalOpen(false)}
+                    contactIds={selectedContactIds}
+                    userProspectLists={userProspectLists}
+                    initialSelectedListIds={initialSelectedListIds}
+                    onListUpdated={() => {
+                        setSelectedContactIds([]);
+                        // Optionally, show a flash message
+                        // router.reload({ only: ['flash'] });
+                    }}
+                />
             </div>
         </AuthenticatedLayout>
     );

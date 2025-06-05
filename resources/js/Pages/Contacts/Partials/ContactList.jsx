@@ -91,6 +91,20 @@ const ContactList = ({ displayedContacts, getAvatarPlaceholder, handleDelete, so
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                         {new Date(contact.created_at).toLocaleDateString()}
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                                        {/* Prospect Lists Display */}
+                                        {Array.isArray(contact.prospectLists) && contact.prospectLists.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                                {contact.prospectLists.map(list => (
+                                                    <span key={list.id} className="inline-block bg-indigo-100 dark:bg-indigo-700 text-indigo-700 dark:text-indigo-100 text-xs font-medium px-2 py-0.5 rounded mr-1 mb-1">
+                                                        {list.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-400 dark:text-gray-600">—</span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                         <div className="flex items-center justify-end space-x-2"> {/* Removed opacity classes */}
                                             <Link href={route('contacts.edit', contact.id)} className="p-1.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 rounded-md hover:bg-blue-100 dark:hover:bg-gray-700" title="Edit">

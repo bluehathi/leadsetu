@@ -66,8 +66,17 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     //Prospect List
     Route::post('prospect-lists/{prospect_list}/add-contacts', [ProspectListController::class, 'addContacts'])
         ->name('prospect-lists.add-contacts')->middleware('permission:create_leads'); // Assuming managing prospect lists is related to lead/contact management
+    Route::post('prospect-lists/store-and-add-contacts', [ProspectListController::class, 'storeAndAddContacts'])
+        ->name('prospect-lists.store-and-add-contacts')->middleware('permission:create_prospect_lists'); // Adjust permission as needed
     Route::post('prospect-lists/{prospect_list}/remove-contacts', [ProspectListController::class, 'removeContacts'])->name('prospect-lists.remove-contacts')->middleware('permission:edit_prospect_lists'); // Assuming managing prospect lists is related to lead/contact management
+    Route::get('/prospect-lists/modal-list', [ProspectListController::class, 'listForModal'])->name('prospect-lists.modal-list');
+    
+    Route::post('prospect-lists/add-contacts-multi', [ProspectListController::class, 'addContactsToMultipleLists'])
+        ->name('prospect-lists.add-contacts-multi')->middleware('permission:create_leads'); // New route for adding contacts to multiple lists
+    
     Route::resource('prospect-lists', ProspectListController::class)->middleware('permission:view_prospect_lists'); // Assuming prospect lists are related to leads
+    Route::get('prospect-lists/contact/{contact}/lists', [ProspectListController::class, 'contactLists'])
+        ->name('prospect-lists.contact-lists');
 
     // Email Campaign routes
     Route::post('email-campaigns/bulk-destroy', [App\Http\Controllers\Admin\EmailCampaignController::class, 'bulkDestroy'])->name('email-campaigns.bulk-destroy');

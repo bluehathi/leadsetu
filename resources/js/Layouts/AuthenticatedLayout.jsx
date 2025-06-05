@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import Sidebar from '@/Components/parts/Sidebar'; // Assuming this path is correct
+import Sidebar from '@/Components/LayoutParts/Sidebar'; // Assuming this path is correct
 import { Head, Link, router } from '@inertiajs/react';
 import { User2, LogOut, Building2, Menu } from 'lucide-react';
 import { LogoLS } from '@/Components/Logo'; // Ensure LogoLS is imported

@@ -1,8 +1,21 @@
-import React from 'react';
-import { Edit2, Trash2, Mail, Phone, Building, Globe } from 'lucide-react'; // Replaced Filter with Globe, removed Send
+import React, { useState, useEffect, useRef } from 'react';
+import { Edit2, Trash2, Mail, Phone, Building, Globe, MoreVertical, ListPlus } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 
-export default function ContactGridCard({ contact, avatar, handleDelete }) {
+export default function ContactGridCard({ contact, avatar, handleDelete, onAddToPlaylistClick }) {
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     return (
         <div 
             className={`bg-white dark:bg-gray-800 shadow-lg rounded-xl p-5 flex flex-col justify-between transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-1 border border-gray-200 dark:border-gray-700/60`}
@@ -65,14 +78,54 @@ export default function ContactGridCard({ contact, avatar, handleDelete }) {
                         </p>
                     )}
                 </div>
+                {/* Prospect Lists Display */}
+                {Array.isArray(contact.prospectLists) && contact.prospectLists.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        {contact.prospectLists.map(list => (
+                            <span key={list.id} className="inline-block bg-indigo-100 dark:bg-indigo-700 text-indigo-700 dark:text-indigo-100 text-xs font-medium px-2 py-0.5 rounded mr-1 mb-1">
+                                {list.name}
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
-            <div className="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-2.5">
-                <Link href={route('contacts.edit', contact.id)} className="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-300 transition-colors p-2 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-700/50" title="Edit Contact">
+            <div className="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-1">
+                 <Link href={route('contacts.edit', contact.id)} onClick={e => e.stopPropagation()} className="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-300 transition-colors p-2 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-700/50" title="Edit Contact">
                     <Edit2 size={18} />
                 </Link>
-                <button onClick={() => handleDelete(contact.id, contact.name)} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-300 transition-colors p-2 rounded-md hover:bg-red-100 dark:hover:bg-red-700/50" title="Delete Contact">
+                <button onClick={(e) => {e.stopPropagation(); handleDelete(contact.id, contact.name);}} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-300 transition-colors p-2 rounded-md hover:bg-red-100 dark:hover:bg-red-700/50" title="Delete Contact">
                     <Trash2 size={18} />
                 </button>
+                 <div className="relative" ref={dropdownRef}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsDropdownOpen(prev => !prev);
+                        }}
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                        title="More options"
+                    >
+                        <MoreVertical size={18} />
+                    </button>
+                    {isDropdownOpen && (
+                        <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700">
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (typeof onAddToPlaylistClick === 'function') {
+                                        onAddToPlaylistClick(contact.id);
+                                    }
+                                    setIsDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                            >
+                                <ListPlus size={16} className="mr-2" /> Add to Playlist
+                            </button>
+                        </div>
+                    )}
+                </div>
+               
             </div>
         </div>
     );

@@ -26,13 +26,17 @@ class ProspectListController extends Controller // Rename to ProspectListControl
     public function index(Request $request)
     {
         $workspaceId = Auth::user()->workspace_id;
+        // When fetching for the modal, pagination might not be desired,
+        // but for the main ProspectLists/Index page it is.
+        // The modal call doesn't pass 'per_page', so it will use the default.
+        // Consider if a separate, non-paginated endpoint for the modal is better long-term.
         $lists = ProspectList::where('workspace_id', $workspaceId)
             ->withCount('contacts')
             ->orderBy('name', 'asc')
             ->paginate($request->input('per_page', 15))
             ->withQueryString(); // Preserve query string parameters for pagination
 
-        return Inertia::render('ProspectLists/Index', [
+        return Inertia::render('ProspectLists/Index', [ // This is for the main prospect list index page
             'lists' => $lists,
             'filters' => $request->only(['per_page']),
             'user' => auth()->user()
@@ -230,6 +234,38 @@ class ProspectListController extends Controller // Rename to ProspectListControl
     }
 
     /**
+     * Store a new prospect list and add specified contacts to it.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeAndAddContacts(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|unique:prospect_lists,name,NULL,id,workspace_id,' . Auth::user()->workspace_id,
+            'contact_ids' => 'required|array|min:1',
+            'contact_ids.*' => 'integer|exists:contacts,id',
+        ]);
+
+        $workspaceId = Auth::user()->workspace_id;
+        $userId = Auth::id();
+
+        $prospectList = ProspectList::create([
+            'workspace_id' => $workspaceId,
+            'user_id' => $userId,
+            'name' => $request->name,
+        ]);
+
+        // Ensure contacts belong to the same workspace before attaching
+        $validContactIds = Contact::where('workspace_id', $workspaceId)
+                                   ->whereIn('id', $request->contact_ids)
+                                   ->pluck('id');
+
+        $prospectList->contacts()->syncWithoutDetaching($validContactIds);
+
+        return redirect()->back()->with('success', 'Contacts added to new list: ' . $prospectList->name);
+    }
+    /**
      * Remove specified contacts from the prospect list.
      *
      * @param  \App\Http\Requests\ManageContactsInListRequest  $request  // Re-using the same request for simplicity
@@ -253,5 +289,74 @@ class ProspectListController extends Controller // Rename to ProspectListControl
 
         return Redirect::back()->with('success', 'Contacts removed from list successfully.');
     }
-}
 
+    /**
+     * Return all prospect lists for the current workspace as JSON (for modal use).
+     */
+    public function listForModal(Request $request)
+    {
+        $workspaceId = Auth::user()->workspace_id;
+        $lists = ProspectList::where('workspace_id', $workspaceId)
+            ->orderBy('name', 'asc')
+            ->get(['id', 'name']);
+        return response()->json(['lists' => $lists]);
+    }
+
+    /**
+     * Add specified contacts to multiple prospect lists.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function addContactsToMultipleLists(Request $request)
+    {
+        $request->validate([
+            'contact_ids' => 'required|array|min:1',
+            'contact_ids.*' => 'integer|exists:contacts,id',
+            'prospect_list_ids' => 'required|array|min:1',
+            'prospect_list_ids.*' => 'integer|exists:prospect_lists,id',
+        ]);
+        $workspaceId = Auth::user()->workspace_id;
+        $contactIds = $request->input('contact_ids', []);
+        $listIds = $request->input('prospect_list_ids', []);
+        $now = now()->toDateString();
+        $validContacts = Contact::where('workspace_id', $workspaceId)
+            ->whereIn('id', $contactIds)
+            ->pluck('id')
+            ->toArray();
+        if (empty($validContacts)) {
+            return Redirect::back()->with('error', 'No valid contacts selected for this workspace.');
+        }
+        foreach ($listIds as $listId) {
+            $prospectList = ProspectList::where('workspace_id', $workspaceId)->find($listId);
+            if ($prospectList) {
+                $pivotData = [];
+                foreach ($validContacts as $id) {
+                    $pivotData[$id] = ['subscribed_at' => $now];
+                }
+                $prospectList->contacts()->syncWithoutDetaching($pivotData);
+                ActivityLog::create([
+                    'user_id' => Auth::id(),
+                    'workspace_id' => $workspaceId,
+                    'action' => 'added_contacts_to_prospect_list',
+                    'description' => 'Added contacts to prospect list: ' . $prospectList->name . ' (IDs: ' . implode(',', $validContacts) . ')',
+                    'subject_type' => ProspectList::class,
+                    'subject_id' => $prospectList->id,
+                    'properties' => json_encode(['contact_ids' => $validContacts]),
+                ]);
+            }
+        }
+        return Redirect::back()->with('success', 'Contacts added to selected lists successfully.');
+    }
+
+    /**
+     * Get all prospect list IDs for a contact (for modal pre-check).
+     */
+    public function contactLists(Request $request, $contactId)
+    {
+        $workspaceId = Auth::user()->workspace_id;
+        $contact = Contact::where('workspace_id', $workspaceId)->findOrFail($contactId);
+        $listIds = $contact->prospectLists()->pluck('prospect_lists.id');
+        return response()->json(['list_ids' => $listIds]);
+    }
+}
