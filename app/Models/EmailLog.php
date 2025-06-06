@@ -26,14 +26,16 @@ class EmailLog extends Model
         'workspace_id',
         'user_id', // The user who initiated the email send
         'contact_id', // The contact this email was sent to
-        // 'lead_id', // Uncomment if you also associate emails with Leads
+        'lead_id', // Uncomment if you also associate emails with Leads
         'mail_configuration_id', // The SMTP/mail configuration used
         'recipient_email',
         'recipient_name',
         'from_address',
         'from_name',
         'subject',
-        'body_html', // The actual HTML content of the email (can be large)
+        'body_html',
+        'campaign_id',
+        // The actual HTML content of the email (can be large)
         'status', // e.g., 'queued', 'sent', 'failed', 'delivered', 'opened', 'clicked', 'bounced', 'spam'
         'esp_message_id', // Unique message ID from the Email Service Provider (e.g., Brevo)
         'sent_at',

@@ -120,11 +120,14 @@ class EmailCampaignController extends Controller
             abort(403);
         }
 
-        $emailCampaign->load('prospectLists', 'contacts', 'emailLogs.contact'); 
+        $emailCampaign->load('prospectLists', 'contacts','emailLogs.contact'); 
         
-        $totalContacts = $emailCampaign->contacts->count();
-        $sentCount = $emailCampaign->emailLogs()->where('status', 'sent')->count();
-        $failedCount = $emailCampaign->emailLogs()->where('status', 'failed')->count();
+        
+        $totalContacts =   $emailCampaign->contacts->count();
+        
+        $sentCount = $emailCampaign->emailLogs()->whereNotNull('sent_at')->count();
+        $deliveredCount = $emailCampaign->emailLogs()->whereNotNull('delivered_at')->count();
+        $failedCount = $emailCampaign->emailLogs()->WhereNotNull('failed_at')->count();
         $openedCount = $emailCampaign->emailLogs()->whereNotNull('opened_at')->count();
         $clickedCount = $emailCampaign->emailLogs()->whereNotNull('clicked_at')->count();
         $stats = [
@@ -133,6 +136,7 @@ class EmailCampaignController extends Controller
             'failed' => $failedCount,
             'opened' => $openedCount,
             'clicked' => $clickedCount,
+            'delivered' => $deliveredCount
         ];
 
         $contactsForModal = [];
@@ -144,8 +148,9 @@ class EmailCampaignController extends Controller
                 })->values();
             } else {
                 $query = $emailCampaign->emailLogs();
-                if ($filter === 'sent') $query->where('status', 'sent');
-                if ($filter === 'failed') $query->where('status', 'failed');
+                if ($filter === 'sent') $query->whereNotNull('sent_at');
+                if ($filter === 'delivered') $query->whereNotNull('delivered_at');
+                if ($filter === 'failed') $query->whereNotNull('failed_at');
                 if ($filter === 'opened') $query->whereNotNull('opened_at');
                 if ($filter === 'clicked') $query->whereNotNull('clicked_at');
                 
@@ -308,8 +313,8 @@ class EmailCampaignController extends Controller
         
         // The status should ideally be updated by the job/service after actual sending.
         // For now, if dispatchCampaign is synchronous and successful:
-        // $emailCampaign->status = 'sent'; 
-        // $emailCampaign->save();
+        $emailCampaign->status = 'sent'; 
+        $emailCampaign->save();
 
         return Redirect::route('email-campaigns.show', $emailCampaign->id)->with('success', 'Campaign sending process initiated.');
     }

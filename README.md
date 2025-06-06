@@ -1,210 +1,82 @@
-
 # LeadSetu
 
-LeadSetu is a robust, full-featured Customer Relationship Management (CRM) platform engineered for modern sales and marketing teams. Built with a powerful Laravel (PHP) backend and a dynamic Inertia.js + React frontend, LeadSetu offers an intuitive and efficient solution for managing leads, contacts, companies, and prospect lists within collaborative workspaces.
-
-The platform emphasizes extensibility, granular role-based access control (RBAC), and a sleek, responsive user interface powered by Tailwind CSS, enabling organizations to streamline their customer interaction workflows and drive growth.
-
----
-
-## Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Core Concepts](#core-concepts)
-- [Project Structure Overview](#project-structure-overview)
-- [Setup & Installation](#setup--installation)
-- [Environment Configuration](#environment-configuration)
-- [Database Migrations & Seeding](#database-migrations--seeding)
-- [Running the Application](#running-the-application)
-- [Development Workflow](#development-workflow)
-- [Testing](#testing)
-- [Customization & Extending](#customization--extending)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
-
----
+LeadSetu is a workspace-based CRM and outreach platform for managing contacts, companies, prospect lists, and email campaigns. It is built with Laravel, Inertia.js, and React, and supports multi-user workspaces, advanced filtering, and SMTP-based email sending.
 
 ## Features
-- **User Authentication:** Secure login, registration, password reset, and email verification.
-- **Workspace Management:** Multi-tenant support; users can belong to one or more workspaces.
-- **Leads Management:** Create, view, update, delete, and filter leads. Assign owners, set status, and track progress.
-- **Contacts Management:** Manage contacts, associate them with companies and prospect lists.
-- **Companies Management:** CRUD for companies, with contact and lead associations.
-- **Prospect Lists:** Create lists, bulk add/remove contacts, and manage list membership with ease.
-- **Activity Logs:** Track user actions and changes for auditing and transparency.
-- **Role & Permission Management:** Fine-grained access control using roles and permissions (spatie/laravel-permission).
-- **Responsive UI:** Modern, mobile-friendly design using Tailwind CSS.
-- **SPA Experience:** Inertia.js + React for fast, seamless navigation and interactivity.
-- **Import/Export:** Import contacts/companies from CSV/Excel; export data for reporting.
-- **Email Integration:**  Send and log emails to leads/contacts directly from the platform.
 
----
+- **Contacts & Companies**: Manage contacts and their associated companies. Import via CSV.
+- **Prospect Lists**: Organize contacts into multiple lists for targeted outreach.
+- **Email Campaigns**: Create, schedule, and send campaigns to prospect lists using workspace-specific SMTP settings.
+- **One-to-One Email**: Send and log individual emails to contacts, with full tracking and activity logging.
+- **Activity Logging**: All major actions are logged for audit and reporting.
+- **Multi-Workspace**: Each user belongs to a workspace; all data is scoped accordingly.
+- **Advanced Filtering & Sorting**: Powerful search and sort for contacts, companies, and campaigns.
+- **Modern UI**: Built with React, Tailwind CSS, and Inertia.js for a fast, SPA-like experience.
 
 ## Tech Stack
-- **Backend:** Laravel 10+ (PHP 8.1+)
-- **Frontend:** React 18+ (with Inertia.js)
-- **Styling:** Tailwind CSS
-- **Database:** MySQL (or compatible)
-- **Authorization:** spatie/laravel-permission
-- **Build Tools:** Vite, npm
-- **Testing:** PHPUnit, Laravel Dusk (for browser tests)
 
----
+- **Backend**: Laravel 10+
+- **Frontend**: React (with Inertia.js)
+- **Database**: MySQL (or compatible)
+- **Queue**: Laravel Queue (for scheduled/sent emails)
+- **Mail**: SMTP (per workspace)
 
-## Project Structure
-```
-leadsetu/
-├── app/                # Laravel backend (models, controllers, services, policies)
-├── bootstrap/          # Laravel bootstrap files
-├── config/             # Application configuration
-├── database/           # Migrations, seeders, factories
-├── public/             # Public assets and entry point
-├── resources/
-│   ├── css/            # Tailwind and custom CSS
-│   ├── js/             # React (Inertia) pages and components
-│   └── views/          # Blade templates (minimal, mostly for Inertia root)
-├── routes/             # Route definitions (web.php, api.php)
-├── storage/            # Logs, cache, file uploads
-├── tests/              # Unit and feature tests
-├── vite.config.js      # Vite build config
-├── tailwind.config.js  # Tailwind CSS config
-├── package.json        # JS dependencies
-├── composer.json       # PHP dependencies
-└── README.md           # Project documentation
-```
+## Setup
 
----
-
-## Setup & Installation
-
-### Prerequisites
-- PHP 8.1 or higher
-- Composer
-- Node.js (18+) and npm
-- MySQL or compatible database
-- (Optional) Mail server for email features
-
-### Installation Steps
-1. **Clone the repository:**
+1. **Clone the repository**
    ```sh
-   git clone <your-repo-url> leadsetu
+   git clone <your-repo-url>
    cd leadsetu
    ```
-2. **Install PHP dependencies:**
+2. **Install PHP dependencies**
    ```sh
    composer install
    ```
-3. **Install JavaScript dependencies:**
+3. **Install JS dependencies**
    ```sh
    npm install
    ```
-4. **Copy and configure environment:**
+4. **Copy and edit environment files**
    ```sh
    cp .env.example .env
-   # Edit .env for your DB, mail, and app settings
+   # Edit .env for your DB, mail, etc.
    ```
-5. **Generate application key:**
+5. **Generate app key**
    ```sh
    php artisan key:generate
    ```
-6. **Run database migrations and seeders:**
+6. **Run migrations and seeders**
    ```sh
    php artisan migrate --seed
    ```
-7. **Build frontend assets:**
+7. **Build frontend assets**
    ```sh
    npm run build
    ```
-8. **Start the development server:**
+8. **Start the development server**
    ```sh
    php artisan serve
    ```
 
----
-
-## Environment Configuration
-- **Database:** Set `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` in `.env`.
-- **Mail:** Configure `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` for email features.
-- **App URL:** Set `APP_URL` to your local or production URL.
-- **Other:** See `.env.example` for all options.
-
----
-
-## Database Migrations & Seeding
-- Migrations are in `database/migrations/` and define all tables (users, workspaces, leads, contacts, companies, prospect lists, etc).
-- Seeders in `database/seeders/` provide demo data for development/testing.
-- Factories in `database/factories/` help generate fake data for tests.
-
----
-
-## Running the Application
-- **Development:**
-  - Start backend: `php artisan serve`
-  - Start frontend (hot reload): `npm run dev`
-- **Production:**
-  - Build assets: `npm run build`
-  - Use a web server (Nginx/Apache) pointing to `public/`
-
----
-
-## Development Workflow
-- **Frontend:** Edit React pages/components in `resources/js/Pages` and `resources/js/Components`.
-- **Backend:** Edit controllers, models, and services in `app/`.
-- **Routes:** Define web routes in `routes/web.php` (Inertia pages) and API routes in `routes/api.php`.
-- **Policies:** Use Laravel policies for resource authorization.
-- **Testing:**
-  - Run all tests: `php artisan test`
-  - Feature tests: `tests/Feature/`
-  - Unit tests: `tests/Unit/`
-
----
-
-## Customization & Extending
-- **Add a new resource:**
-  1. Create a model, migration, and controller in `app/`.
-  2. Add routes in `routes/web.php`.
-  3. Create Inertia React pages in `resources/js/Pages/`.
-  4. Add policies for authorization if needed.
-- **UI Customization:**
-  - Edit Tailwind config in `tailwind.config.js`.
-  - Add/modify components in `resources/js/Components/`.
-- **Permissions:**
-  - Use spatie/laravel-permission for roles and permissions.
-  - Assign permissions to roles and users via the UI or tinker.
-
----
-
-## Deployment
-- Set `APP_ENV=production` and `APP_DEBUG=false` in `.env`.
-- Use a production web server (Nginx/Apache) and point to `public/`.
-- Set up a queue worker for queued jobs (emails, etc):
+## Email & Queue
+- Configure SMTP settings per workspace in the UI or via the database.
+- For scheduled campaigns, ensure your queue worker is running:
   ```sh
   php artisan queue:work
   ```
-- Use a process manager (Supervisor, systemd) for queue workers.
-- Set up SSL for secure access.
 
----
-
-## Troubleshooting
-- **Blank page or 500 error:** Check `storage/logs/laravel.log` for details.
-- **Database errors:** Ensure `.env` DB settings are correct and migrations have run.
-- **Asset issues:** Run `npm run build` or `npm run dev` and clear browser cache.
-- **Permission errors:** Check roles/permissions in the UI or via tinker.
-- **Mail not sending:** Verify mail settings in `.env` and check mail server logs.
-
----
+## Testing
+- Run backend tests:
+  ```sh
+  php artisan test
+  ```
+- Run frontend tests (if present):
+  ```sh
+  npm test
+  ```
 
 ## Contributing
-- Fork the repository and create a feature branch.
-- Write clear, descriptive commit messages.
-- Add tests for new features or bug fixes.
-- Submit a pull request with a detailed description.
-- For major changes, open an issue first to discuss your proposal.
-
----
+Pull requests are welcome! Please open issues for bugs or feature requests.
 
 ## License
 MIT

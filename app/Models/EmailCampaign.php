@@ -44,7 +44,7 @@ class EmailCampaign extends Model
     public function emailLogs()
     {
         // Email logs for this campaign (using properties->campaign_id)
-        return $this->hasMany(EmailLog::class, 'properties->campaign_id');
+        return $this->hasMany(EmailLog::class, 'campaign_id');
     }
 
     public function prospectLists()

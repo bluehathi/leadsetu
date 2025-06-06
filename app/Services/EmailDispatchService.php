@@ -80,6 +80,7 @@ class EmailDispatchService
             'from_name' => $workspaceConfig->from_name,
             'subject' => $emailData['subject'],
             'body_html' => $emailData['body'],
+            'campaign_id' => $emailData['campaign_id']??null,
             'status' => 'processing', // Initial status
             'properties' => ['source' => 'one_to_one_contact_email'],
         ]);
@@ -176,6 +177,7 @@ class EmailDispatchService
             'from_name' => $workspaceConfig?->from_name ?? 'N/A',
             'subject' => $emailData['subject'] ?? 'N/A',
             'body_html' => $emailData['body'] ?? null,
+            'campaign_id' => $emailData['campaign_id']??null,
             'status' => 'failed',
             'failed_at' => now(),
             'error_message' => $errorMessage,
@@ -205,6 +207,7 @@ class EmailDispatchService
                         [
                             'subject' => $campaign->subject,
                             'body' => $campaign->body,
+                            'campaign_id' => $campaign->id
                         ]
                     );
                 } catch (\Throwable $e) {

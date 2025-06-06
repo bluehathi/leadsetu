@@ -207,7 +207,7 @@ export default function EmailCampaignShow({ campaign, user, stats, contacts: ini
             <Head title={campaign.name} />
 
             <div className="py-12 font-sans">
-                <div className="max-w-5xl mx-auto sm:px-6 lg:px-8"> {/* Wider layout */}
+                <div className="w-full mx-auto sm:px-6 lg:px-8"> {/* Wider layout */}
 
                     {/* Global Flash Messages */}
                     {flash.success && (
@@ -260,9 +260,11 @@ export default function EmailCampaignShow({ campaign, user, stats, contacts: ini
                             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                                 <BarChart3 size={20} className="mr-2 text-indigo-500" /> Performance Overview
                             </h2>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                {console.log(stats)}
                                 <StatCard title="Total Recipients" value={stats.total_contacts || 0} icon={Users} colorClass="text-gray-700 dark:text-gray-200" onClick={() => fetchContacts('total')} />
                                 <StatCard title="Sent" value={stats.sent || 0} icon={UserCheck} colorClass="text-blue-600 dark:text-blue-400" onClick={() => fetchContacts('sent')} />
+                                <StatCard title="Delivered" value={stats.delivered || 0} icon={Users} colorClass="text-gray-700 dark:text-gray-200" onClick={() => fetchContacts('delivered')} />
                                 <StatCard title="Opened" value={stats.opened || 0} icon={Eye} colorClass="text-green-600 dark:text-green-400" onClick={() => fetchContacts('opened')} />
                                 <StatCard title="Clicked" value={stats.clicked || 0} icon={MousePointerClick} colorClass="text-purple-600 dark:text-purple-400" onClick={() => fetchContacts('clicked')} />
                                 <StatCard title="Failed" value={stats.failed || 0} icon={UserX} colorClass="text-red-600 dark:text-red-400" onClick={() => fetchContacts('failed')} />

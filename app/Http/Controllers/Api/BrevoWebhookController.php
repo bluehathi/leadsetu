@@ -75,6 +75,7 @@ class BrevoWebhookController extends Controller
                 break;
 
             case 'opened':
+            case 'unique_opened':
                 $emailLog->status = 'opened';
                 // Only set the first opened_at timestamp
                 if (is_null($emailLog->opened_at)) {
