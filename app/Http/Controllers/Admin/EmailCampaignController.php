@@ -15,25 +15,18 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Queue;
-// Add this if you implement Form Requests and Policies
-// use App\Http\Requests\StoreEmailCampaignRequest;
-// use App\Http\Requests\UpdateEmailCampaignRequest;
-// use App\Policies\EmailCampaignPolicy;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Validation\Rule;
 
 
 class EmailCampaignController extends Controller
 {
-
-    // Example of how you might use policies if implemented
-    // public function __construct()
-    // {
-    //     $this->authorizeResource(EmailCampaign::class, 'emailCampaign');
-    // }
+    use AuthorizesRequests;
 
     public function index(Request $request)
     {
-        // $this->authorize('viewAny', EmailCampaign::class); // Policy example
+        $this->authorize('viewAny', EmailCampaign::class);
+
         $query = EmailCampaign::where('workspace_id', Auth::user()->workspace_id)
             ->with('prospectLists') 
             ->orderByDesc('updated_at'); 
@@ -54,26 +47,24 @@ class EmailCampaignController extends Controller
 
         return Inertia::render('EmailCampaigns/Index', [
             'campaigns' => $campaigns,
-            'user' => Auth::user(),
-            'filters' => $request->only(['search', 'status']), 
+            'filters' => $request->only(['search', 'status']),
         ]);
     }
 
     public function create()
     {
-        // $this->authorize('create', EmailCampaign::class); // Policy example
+        $this->authorize('create', EmailCampaign::class);
+
         $prospectLists = ProspectList::where('workspace_id', Auth::user()->workspace_id)->get();
         return Inertia::render('EmailCampaigns/Create', [
             'prospectLists' => $prospectLists,
-            'user' => Auth::user(),
         ]);
     }
 
-    // Example with StoreEmailCampaignRequest
-    // public function store(StoreEmailCampaignRequest $request)
     public function store(Request $request)
     {
-        // Authorization is handled by FormRequest or Policy if used
+        $this->authorize('create', EmailCampaign::class);
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
@@ -115,7 +106,8 @@ class EmailCampaignController extends Controller
 
     public function show(Request $request, EmailCampaign $emailCampaign)
     {
-        // $this->authorize('view', $emailCampaign); // Policy example
+        $this->authorize('view', $emailCampaign);
+
         if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
             abort(403);
         }
@@ -167,16 +159,16 @@ class EmailCampaignController extends Controller
 
         return Inertia::render('EmailCampaigns/Show', [
             'campaign' => $emailCampaign,
-            'user' => Auth::user(),
             'stats' => $stats,
-            'contacts' => $contactsForModal, // Pass filtered contacts for modal
-            'filters' => ['filter' => $filter] // Pass back filter for consistency
+            'contacts' => $contactsForModal,
+            'filters' => ['filter' => $filter]
         ]);
     }
 
     public function edit(EmailCampaign $emailCampaign)
     {
-        // $this->authorize('update', $emailCampaign); // Policy example
+        $this->authorize('update', $emailCampaign);
+
         if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
             abort(403);
         }
@@ -186,16 +178,14 @@ class EmailCampaignController extends Controller
             'campaign' => $emailCampaign,
             'prospectLists' => $prospectLists,
             'selectedProspectListIds' => $selectedProspectListIds,
-            'user' => Auth::user(),
             'isEdit' => true,
         ]);
     }
 
-    // Example with UpdateEmailCampaignRequest
-    // public function update(UpdateEmailCampaignRequest $request, EmailCampaign $emailCampaign)
     public function update(Request $request, EmailCampaign $emailCampaign)
     {
-        // Authorization is handled by FormRequest or Policy if used
+        $this->authorize('update', $emailCampaign);
+
         if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
             abort(403);
         }
@@ -236,7 +226,8 @@ class EmailCampaignController extends Controller
 
     public function destroy(EmailCampaign $emailCampaign)
     {
-        // $this->authorize('delete', $emailCampaign); // Policy example
+        $this->authorize('delete', $emailCampaign);
+
         if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
             abort(403);
         }
@@ -257,6 +248,8 @@ class EmailCampaignController extends Controller
 
     public function bulkDestroy(Request $request)
     {
+        $this->authorize('deleteAny', EmailCampaign::class);
+
         $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'integer|exists:email_campaigns,id',
@@ -296,7 +289,8 @@ class EmailCampaignController extends Controller
 
     public function sendNow(EmailCampaign $emailCampaign)
     {
-        // $this->authorize('sendNow', $emailCampaign); // Policy example
+        $this->authorize('send', $emailCampaign);
+
         if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
             abort(403);
         }
@@ -321,7 +315,8 @@ class EmailCampaignController extends Controller
 
     public function schedule(Request $request, EmailCampaign $emailCampaign)
     {
-        // $this->authorize('schedule', $emailCampaign); // Policy example or use 'update'
+        $this->authorize('update', $emailCampaign);
+
         if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
             abort(403);
         }

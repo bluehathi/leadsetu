@@ -8,14 +8,19 @@ use App\Models\Workspace;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class CompanyController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Display a listing of the companies for the current workspace.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $this->authorize('viewAny', Company::class);
+
         $user = Auth::user();
         $companies = Company::where('workspace_id', $user->workspace_id)->get();
         return Inertia::render('Companies/Index', [
@@ -29,8 +34,9 @@ class CompanyController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Companies/Create', [
+        $this->authorize('create', Company::class);
 
+        return Inertia::render('Companies/Create', [
             'user' => Auth::user()
         ]);
     }
@@ -43,6 +49,8 @@ class CompanyController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Company::class);
+
         $user = Auth::user();
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -74,7 +82,8 @@ class CompanyController extends Controller
      */
     public function edit(Company $company)
     {
-        //$this->authorize('update', $company);
+        $this->authorize('update', $company);
+
         return Inertia::render('Companies/Edit', [
             'company' => $company,
              'user' => Auth::user()
@@ -90,6 +99,8 @@ class CompanyController extends Controller
      */
     public function update(Request $request, Company $company)
     {
+        $this->authorize('update', $company);
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -119,6 +130,8 @@ class CompanyController extends Controller
      */
     public function destroy(Company $company)
     {
+        $this->authorize('delete', $company);
+
         $companyId = $company->id;
         $companyData = $company->toArray();
         $company->delete();

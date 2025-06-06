@@ -10,11 +10,16 @@ use App\Models\MailConfiguration;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Helpers\SmtpConfigHelper;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class SMTPController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index()
     {
+        $this->authorize('view', MailConfiguration::class);
+
         $user = Auth::user();
         $workspaceId = $user->workspace_id;
         $smtpConfig = \App\Models\MailConfiguration::where('workspace_id', $workspaceId)->first();
@@ -27,6 +32,8 @@ class SMTPController extends Controller
 
     public function save(Request $request)
     {
+        $this->authorize('update', MailConfiguration::class);
+
         $user = Auth::user();
         $workspaceId = $user->workspace_id;
         $validated = $request->validate([

@@ -11,9 +11,12 @@ use Illuminate\Support\Facades\Route as LaravelRoute; // Alias to avoid naming c
 use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Contact;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class LeadsController extends Controller
 {
+    use AuthorizesRequests;
+
     public function __construct()
     {
         //     $this->middleware('permission:view leads')->only(['index', 'show']);
@@ -25,8 +28,9 @@ class LeadsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $this->authorize('viewAny', Lead::class);
 
         $leads = Lead::query()
             ->latest() // Order by latest first (optional)
@@ -48,6 +52,8 @@ class LeadsController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Lead::class);
+
         $data = $request->validate([
             'name' => 'required|string|max:180',
             'company_id' => 'nullable|exists:companies,id',
@@ -138,9 +144,9 @@ class LeadsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Lead $lead)
     {
-        $lead = Lead::findOrFail($id); // Find the lead by ID or fail
+        $this->authorize('view', $lead);
 
         return Inertia::render('Leads/Show', [
             'user' => Auth::user(),
@@ -153,6 +159,8 @@ class LeadsController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Lead::class);
+
         $user = Auth::user();
         $companies = Company::where('workspace_id', $user->workspace_id)->get();
         $users = \App\Models\User::where('workspace_id', $user->workspace_id)->get();
@@ -167,9 +175,11 @@ class LeadsController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Lead $lead)
     {
-        $lead = Lead::with(['company', 'contact'])->findOrFail($id);
+        $this->authorize('update', $lead);
+
+        $lead = Lead::with(['company', 'contact'])->findOrFail($lead->id);
         $companies = Company::where('workspace_id', Auth::user()->workspace_id)->get();
         $contacts = Contact::where('workspace_id', Auth::user()->workspace_id)->get();
         return Inertia::render('Leads/Edit', [
@@ -185,6 +195,8 @@ class LeadsController extends Controller
      */
     public function update(Request $request, Lead $lead)
     {
+        $this->authorize('update', $lead);
+
         $data = $request->validate([
             'name' => 'required|string|max:180',
             'notes' => 'required|string|max:180',
@@ -236,6 +248,8 @@ class LeadsController extends Controller
      */
     public function destroy(Lead $lead)
     {
+        $this->authorize('delete', $lead);
+
         $lead->delete();
         $this->logActivity('lead_deleted', $lead, 'Lead deleted');
         // Redirect back to the leads index page with a success message
@@ -269,6 +283,7 @@ class LeadsController extends Controller
      */
     public function kanban()
     {
+        $this->authorize('viewAny', Lead::class);
 
         $user = Auth::user();
         $leads = Lead::with('company')

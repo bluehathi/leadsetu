@@ -11,11 +11,16 @@ use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ContactCompanyImport;
 use App\Models\MailConfiguration;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ContactController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Contact::class);
+
         $query = Contact::query()
             ->where('workspace_id', Auth::user()->workspace_id)
             ->with(['company', 'prospectLists:id,name']); // Eager load company and prospect lists (id, name)
@@ -70,6 +75,8 @@ class ContactController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Contact::class);
+
         $companies = Company::all();
 
         return Inertia::render('Contacts/Create', [
@@ -80,6 +87,8 @@ class ContactController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', Contact::class);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -120,6 +129,8 @@ class ContactController extends Controller
 
     public function show(Contact $contact)
     {
+        $this->authorize('view', $contact);
+
         $user = Auth::user();
         // Fetch email logs for this contact, most recent first
         $emailLogs = \App\Models\EmailLog::where('contact_id', $contact->id)
@@ -136,6 +147,8 @@ class ContactController extends Controller
 
     public function edit(Contact $contact)
     {
+        $this->authorize('update', $contact);
+
         $companies = Company::all();
 
         return Inertia::render('Contacts/Edit', [
@@ -147,6 +160,8 @@ class ContactController extends Controller
 
     public function update(Request $request, Contact $contact)
     {
+        $this->authorize('update', $contact);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -184,6 +199,8 @@ class ContactController extends Controller
 
     public function destroy(Contact $contact)
     {
+        $this->authorize('delete', $contact);
+
         $contactId = $contact->id;
         $contactData = $contact->toArray();
         $contact->delete();
@@ -216,6 +233,8 @@ class ContactController extends Controller
 
     public function import_excel()
     {
+        $this->authorize('create', Contact::class);
+
         return Inertia::render('Contacts/ImportExcel', [
             'user' => Auth::user(),
         ]);
@@ -223,6 +242,8 @@ class ContactController extends Controller
 
     public function import_excel_store(Request $request)
     {
+        $this->authorize('create', Contact::class);
+
         $request->validate([
             'file' => 'required|file|mimes:xls,xlsx',
         ]);

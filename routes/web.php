@@ -45,12 +45,12 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::post('/user/settings', [UserController::class, 'setSettings'])->name('user.settings.set');
 
     // Minimal company creation for AJAX (from contact form)
- Route::post('/store-company', [CompanyController::class, 'storeCompany'])->name('contact.company.store')->middleware('permission:create_companies');
+    Route::post('/store-company', [CompanyController::class, 'storeCompany'])->name('contact.company.store')->middleware('permission:create_companies');
     // Route for fetching contacts by company (AJAX)
     Route::get('companies/{company}/contacts', [ContactController::class, 'contacts'])->name('company.contacts');
 
     //setting index page
- Route::get('settings', [SettingController::class, 'index'])->name('settings.index')->middleware('permission:manage_settings');;
+    Route::get('settings', [SettingController::class, 'index'])->name('settings.index')->middleware('permission:manage_settings');;
 
     //smtp 
     Route::get('settings/smtp', [SMTPController::class, 'index'])->name('smtp.index')->middleware('permission:manage_smtp_settings');
@@ -70,10 +70,10 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
         ->name('prospect-lists.store-and-add-contacts')->middleware('permission:create_prospect_lists'); // Adjust permission as needed
     Route::post('prospect-lists/{prospect_list}/remove-contacts', [ProspectListController::class, 'removeContacts'])->name('prospect-lists.remove-contacts')->middleware('permission:edit_prospect_lists'); // Assuming managing prospect lists is related to lead/contact management
     Route::get('/prospect-lists/modal-list', [ProspectListController::class, 'listForModal'])->name('prospect-lists.modal-list');
-    
+
     Route::post('prospect-lists/add-contacts-multi', [ProspectListController::class, 'addContactsToMultipleLists'])
         ->name('prospect-lists.add-contacts-multi')->middleware('permission:create_leads'); // New route for adding contacts to multiple lists
-    
+
     Route::resource('prospect-lists', ProspectListController::class)->middleware('permission:view_prospect_lists'); // Assuming prospect lists are related to leads
     Route::get('prospect-lists/contact/{contact}/lists', [ProspectListController::class, 'contactLists'])
         ->name('prospect-lists.contact-lists');

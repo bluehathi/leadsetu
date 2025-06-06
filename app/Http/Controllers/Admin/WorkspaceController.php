@@ -5,12 +5,15 @@ use App\Http\Controllers\Controller;
 
 use App\Models\ActivityLog;
 use App\Models\Workspace;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class WorkspaceController extends Controller
 {
+    use AuthorizesRequests;
+
     public function __construct()
     {
         // $this->middleware('permission:view workspaces')->only(['index']);
@@ -19,8 +22,10 @@ class WorkspaceController extends Controller
         // $this->middleware('permission:delete workspaces')->only(['destroy']);
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $this->authorize('viewAny', Workspace::class);
+
         $user = Auth::user();
         $workspaces = [];
         if ($user && $user->workspace_id) {
@@ -38,8 +43,17 @@ class WorkspaceController extends Controller
         ]);
     }
 
+    public function create()
+    {
+        $this->authorize('create', Workspace::class);
+
+        return Inertia::render('Workspaces/Create');
+    }
+
     public function store(Request $request)
     {
+        $this->authorize('create', Workspace::class);
+
         $data = $request->validate([
             'name' => 'required|string|max:180',
             'description' => 'nullable|string',
@@ -56,8 +70,28 @@ class WorkspaceController extends Controller
         return redirect()->route('workspaces.index')->with('success', 'Workspace created.');
     }
 
+    public function show(Workspace $workspace)
+    {
+        $this->authorize('view', $workspace);
+
+        return Inertia::render('Workspaces/Show', [
+            'workspace' => $workspace,
+        ]);
+    }
+
+    public function edit(Workspace $workspace)
+    {
+        $this->authorize('update', $workspace);
+
+        return Inertia::render('Workspaces/Edit', [
+            'workspace' => $workspace,
+        ]);
+    }
+
     public function update(Request $request, Workspace $workspace)
     {
+        $this->authorize('update', $workspace);
+
         $data = $request->validate([
             'name' => 'required|string|max:180',
             'description' => 'nullable|string',
@@ -76,6 +110,8 @@ class WorkspaceController extends Controller
 
     public function destroy(Workspace $workspace)
     {
+        $this->authorize('delete', $workspace);
+
         // Prevent workspace deletion
         return redirect()->route('workspaces.index')->with('error', 'Workspace deletion is not allowed.');
     }

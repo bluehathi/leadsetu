@@ -11,11 +11,16 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class DashboardController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index(Request $request)
     {
+        $this->authorize('view', 'dashboard');
+
         // Total leads
         $totalLeads = Lead::count();
         // Conversion rate: leads with status 'won' / total leads

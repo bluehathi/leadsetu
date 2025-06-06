@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia; // Import Inertia
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // Import AuthorizesRequests trait
 
 // Form Requests for validation
 use App\Http\Requests\StoreProspectListRequest;
@@ -18,6 +19,8 @@ use App\Http\Requests\ManageContactsInListRequest;
 
 class ProspectListController extends Controller // Rename to ProspectListController if not API
 {
+    use AuthorizesRequests; // Use the AuthorizesRequests trait
+
     /**
      * Display a listing of the prospect lists for the authenticated user's workspace.
      *
@@ -25,6 +28,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function index(Request $request)
     {
+        $this->authorize('viewAny', ProspectList::class);
+
         $workspaceId = Auth::user()->workspace_id;
         // When fetching for the modal, pagination might not be desired,
         // but for the main ProspectLists/Index page it is.
@@ -39,8 +44,6 @@ class ProspectListController extends Controller // Rename to ProspectListControl
         return Inertia::render('ProspectLists/Index', [ // This is for the main prospect list index page
             'lists' => $lists,
             'filters' => $request->only(['per_page']),
-            'user' => auth()->user()
-            // Pass any filters back for UI
         ]);
     }
 
@@ -51,7 +54,9 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function create()
     {
-        return Inertia::render('ProspectLists/Create',['user' => auth()->user()]);
+        $this->authorize('create', ProspectList::class);
+
+        return Inertia::render('ProspectLists/Create');
     }
 
     /**
@@ -62,6 +67,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function store(Request $request)
     {
+        $this->authorize('create', ProspectList::class);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
@@ -97,7 +104,7 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function show(Request $request, ProspectList $prospectList)
     {
-        //$this->authorize('view', $prospectList);
+        $this->authorize('view', $prospectList);
 
         // Eager load contacts with pagination
         $contacts = $prospectList->contacts()
@@ -111,8 +118,7 @@ class ProspectListController extends Controller // Rename to ProspectListControl
             ->get(['id', 'name', 'email']); // Select only necessary fields
 
         return Inertia::render('ProspectLists/Show', [
-            'user' => auth()->user(),
-            'prospectList' => $prospectList->loadCount('contacts'), // Load count again if needed for display
+            'prospectList' => $prospectList->loadCount('contacts'),
             'contactsInList' => $contacts,
             'workspaceContacts' => $workspaceContacts, // For a dropdown/modal to add contacts
             'filters' => $request->only(['per_page_contacts']),
@@ -127,11 +133,10 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function edit(ProspectList $prospectList)
     {
-        // $this->authorize('update', $prospectList);
+        $this->authorize('update', $prospectList);
 
         return Inertia::render('ProspectLists/Edit', [
             'prospectList' => $prospectList,
-            'user' => auth()->user()
         ]);
     }
 
@@ -144,6 +149,7 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function update(Request $request, ProspectList $prospectList)
     {
+        $this->authorize('update', $prospectList);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -173,6 +179,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function destroy(ProspectList $prospectList)
     {
+        $this->authorize('delete', $prospectList);
+
         $name = $prospectList->name;
         $id = $prospectList->id;
         $workspaceId = $prospectList->workspace_id;
@@ -200,6 +208,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function addContacts(Request $request, ProspectList $prospectList)
     {
+        $this->authorize('update', $prospectList);
+
         $request->validate([
             'contact_ids' => 'required|array|min:1',
             'contact_ids.*' => 'integer|exists:contacts,id',
@@ -241,6 +251,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function storeAndAddContacts(Request $request)
     {
+        $this->authorize('create', ProspectList::class);
+
         $request->validate([
             'name' => 'required|string|max:255|unique:prospect_lists,name,NULL,id,workspace_id,' . Auth::user()->workspace_id,
             'contact_ids' => 'required|array|min:1',
@@ -274,6 +286,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function removeContacts(Request $request, ProspectList $prospectList)
     {
+        $this->authorize('update', $prospectList);
+
         $contactIds = $request->input('contact_ids');
         $prospectList->contacts()->detach($contactIds);
 
@@ -295,6 +309,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function listForModal(Request $request)
     {
+        $this->authorize('viewAny', ProspectList::class);
+
         $workspaceId = Auth::user()->workspace_id;
         $lists = ProspectList::where('workspace_id', $workspaceId)
             ->orderBy('name', 'asc')
@@ -310,6 +326,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function addContactsToMultipleLists(Request $request)
     {
+        $this->authorize('updateAny', ProspectList::class);
+
         $request->validate([
             'contact_ids' => 'required|array|min:1',
             'contact_ids.*' => 'integer|exists:contacts,id',
@@ -354,6 +372,8 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      */
     public function contactLists(Request $request, $contactId)
     {
+        $this->authorize('viewAny', ProspectList::class);
+
         $workspaceId = Auth::user()->workspace_id;
         $contact = Contact::where('workspace_id', $workspaceId)->findOrFail($contactId);
         $listIds = $contact->prospectLists()->pluck('prospect_lists.id');

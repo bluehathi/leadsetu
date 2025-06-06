@@ -8,22 +8,38 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Inertia\Inertia;
 use Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class RoleController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index()
     {
+        $this->authorize('viewAny', Role::class);
+
         $roles = Role::with('permissions')->get();
         $permissions = Permission::all();
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
             'permissions' => $permissions,
-            'user' => Auth::user()
+        ]);
+    }
+
+    public function create()
+    {
+        $this->authorize('create', Role::class);
+
+        $permissions = Permission::all();
+        return Inertia::render('Roles/Create', [
+            'permissions' => $permissions,
         ]);
     }
 
     public function store(Request $request)
     {
+        $this->authorize('create', Role::class);
+
         $request->validate([
             'name' => 'required|unique:roles,name',
             'permissions' => 'array',
@@ -36,8 +52,34 @@ class RoleController extends Controller
         return redirect()->route('roles.index')->with('success', 'Role created.');
     }
 
+    public function show(Role $role)
+    {
+        $this->authorize('view', $role);
+
+        $role->load('permissions');
+        $permissions = Permission::all();
+        return Inertia::render('Roles/Show', [
+            'role' => $role,
+            'permissions' => $permissions,
+        ]);
+    }
+
+    public function edit(Role $role)
+    {
+        $this->authorize('update', $role);
+
+        $role->load('permissions');
+        $permissions = Permission::all();
+        return Inertia::render('Roles/Edit', [
+            'role' => $role,
+            'permissions' => $permissions,
+        ]);
+    }
+
     public function update(Request $request, Role $role)
     {
+        $this->authorize('update', $role);
+
         // Prevent editing the Admin role
         if ($role->name === 'Admin') {
             return redirect()->route('roles.index')->with('error', 'The Admin role cannot be edited.');
@@ -56,6 +98,8 @@ class RoleController extends Controller
 
     public function destroy(Role $role)
     {
+        $this->authorize('delete', $role);
+
         // Prevent deleting default roles
         $defaultRoles = ['Admin', 'Manager', 'Sales', 'Viewer'];
         if (in_array($role->name, $defaultRoles)) {
@@ -63,25 +107,5 @@ class RoleController extends Controller
         }
         $role->delete();
         return redirect()->route('roles.index')->with('success', 'Role deleted.');
-    }
-
-    public function create()
-    {
-        $permissions = Permission::all();
-        return Inertia::render('Roles/Create', [
-            'permissions' => $permissions,
-            'user' => Auth::user()
-        ]);
-    }
-
-    public function edit(Role $role)
-    {
-        $role->load('permissions');
-        $permissions = Permission::all();
-        return Inertia::render('Roles/Edit', [
-            'role' => $role,
-            'permissions' => $permissions,
-            'user' => Auth::user()
-        ]);
     }
 }
