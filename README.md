@@ -12,6 +12,8 @@ LeadSetu is a workspace-based CRM and outreach platform for managing contacts, c
 - **Multi-Workspace**: Each user belongs to a workspace; all data is scoped accordingly.
 - **Advanced Filtering & Sorting**: Powerful search and sort for contacts, companies, and campaigns.
 - **Modern UI**: Built with React, Tailwind CSS, and Inertia.js for a fast, SPA-like experience.
+- **Role & Permission Management**: Fine-grained access control using roles and permissions.
+- **Policy-Based Authorization**: All major models and controllers enforce Laravel policies for security.
 
 ## Tech Stack
 
@@ -57,6 +59,14 @@ LeadSetu is a workspace-based CRM and outreach platform for managing contacts, c
    ```sh
    php artisan serve
    ```
+
+## Authorization & Permissions
+
+- **Policies**: All major models (ProspectList, Contact, Company, Lead, EmailCampaign, Workspace, ActivityLog, MailConfiguration, Role, Permission, Dashboard, Settings) have Laravel policies registered and enforced in their controllers.
+- **Controller Enforcement**: All resource and custom controller actions use `$this->authorize()` or resource authorization to enforce permissions.
+- **Permission Seeder**: Permissions are seeded and mapped to roles. Update `database/seeders/PermissionSeeder.php` to add or change permissions.
+- **UI Enforcement**: The frontend uses the user's permissions (shared via Inertia) to show/hide actions and navigation.
+- **Routes**: All admin routes are protected by both middleware and policy checks for defense-in-depth.
 
 ## Email & Queue
 - Configure SMTP settings per workspace in the UI or via the database.
