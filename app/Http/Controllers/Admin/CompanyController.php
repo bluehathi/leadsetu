@@ -11,10 +11,21 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Http\Requests\Company\StoreCompanyRequest;
 use App\Http\Requests\Company\UpdateCompanyRequest;
+use App\Services\CompanyService;
+use App\Services\ActivityLogService;
 
 class CompanyController extends Controller
 {
     use AuthorizesRequests;
+
+    protected $companyService;
+    protected $activityLogService;
+
+    public function __construct(CompanyService $companyService, ActivityLogService $activityLogService)
+    {
+        $this->companyService = $companyService;
+        $this->activityLogService = $activityLogService;
+    }
 
     /**
      * Display a listing of the companies for the current workspace.
@@ -52,23 +63,11 @@ class CompanyController extends Controller
     public function store(StoreCompanyRequest $request)
     {
         $this->authorize('create', Company::class);
-
         $user = Auth::user();
         $data = $request->validated();
         $data['workspace_id'] = $user->workspace_id;
-        $company = Company::create($data);
-        // Log activity for company creation
-        if (class_exists('App\\Models\\ActivityLog')) {
-            \App\Models\ActivityLog::create([
-                'user_id' => $user->id,
-                'workspace_id' => $user->workspace_id,
-                'action' => 'company_created',
-                'subject_type' => Company::class,
-                'subject_id' => $company->id,
-                'description' => 'Company created',
-                'properties' => json_encode($data),
-            ]);
-        }
+        $company = $this->companyService->createCompany($data);
+        $this->activityLogService->log('company_created', $company, 'Company created', $data);
         return redirect()->route('companies.index')->with('success', 'Company created.');
     }
 
@@ -98,21 +97,9 @@ class CompanyController extends Controller
     public function update(UpdateCompanyRequest $request, Company $company)
     {
         $this->authorize('update', $company);
-
         $data = $request->validated();
-        $company->update($data);
-        // Log activity for company update
-        if (class_exists('App\\Models\\ActivityLog')) {
-            \App\Models\ActivityLog::create([
-                'user_id' => Auth::id(),
-                'workspace_id' => Auth::user()->workspace_id,
-                'action' => 'company_updated',
-                'subject_type' => Company::class,
-                'subject_id' => $company->id,
-                'description' => 'Company updated',
-                'properties' => json_encode($data),
-            ]);
-        }
+        $this->companyService->updateCompany($company, $data);
+        $this->activityLogService->log('company_updated', $company, 'Company updated', $data);
         return redirect()->route('companies.index')->with('success', 'Company updated.');
     }
 
@@ -125,22 +112,10 @@ class CompanyController extends Controller
     public function destroy(Company $company)
     {
         $this->authorize('delete', $company);
-
         $companyId = $company->id;
         $companyData = $company->toArray();
-        $company->delete();
-        // Log activity for company deletion
-        if (class_exists('App\\Models\\ActivityLog')) {
-            \App\Models\ActivityLog::create([
-                'user_id' => Auth::id(),
-                'workspace_id' => Auth::user()->workspace_id,
-                'action' => 'company_deleted',
-                'subject_type' => Company::class,
-                'subject_id' => $companyId,
-                'description' => 'Company deleted',
-                'properties' => json_encode($companyData),
-            ]);
-        }
+        $this->companyService->deleteCompany($company);
+        $this->activityLogService->log('company_deleted', (object)['id' => $companyId], 'Company deleted', $companyData);
         return redirect()->route('companies.index')->with('success', 'Company deleted.');
     }
 

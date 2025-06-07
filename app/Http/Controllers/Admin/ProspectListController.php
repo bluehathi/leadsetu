@@ -16,10 +16,21 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // Import AuthorizesRe
 use App\Http\Requests\ProspectList\StoreProspectListRequest;
 use App\Http\Requests\ProspectList\UpdateProspectListRequest;
 use App\Http\Requests\ManageContactsInListRequest;
+use App\Services\ProspectListService;
+use App\Services\ActivityLogService;
 
 class ProspectListController extends Controller // Rename to ProspectListController if not API
 {
     use AuthorizesRequests; // Use the AuthorizesRequests trait
+
+    protected $prospectListService;
+    protected $activityLogService;
+
+    public function __construct(ProspectListService $prospectListService, ActivityLogService $activityLogService)
+    {
+        $this->prospectListService = $prospectListService;
+        $this->activityLogService = $activityLogService;
+    }
 
     /**
      * Display a listing of the prospect lists for the authenticated user's workspace.
@@ -71,19 +82,9 @@ class ProspectListController extends Controller // Rename to ProspectListControl
         $user = Auth::user();
         $data = $request->validated();
         $data['workspace_id'] = $user->workspace_id;
-        $prospectList = ProspectList::create($data);
-
-        ActivityLog::create([
-            'user_id' => $user->id,
-            'workspace_id' => $user->workspace_id,
-            'action' => 'created_prospect_list',
-            'description' => 'Created prospect list: ' . $prospectList->name,
-            'subject_type' => ProspectList::class,
-            'subject_id' => $prospectList->id,
-            'properties' => json_encode(['name' => $prospectList->name, 'description' => $prospectList->description]),
-        ]);
-
-        return Redirect::route('prospect-lists.index')->with('success', 'Prospect list created successfully.');
+        $prospectList = $this->prospectListService->createProspectList($data);
+        $this->activityLogService->log('prospect_list_created', $prospectList, 'Prospect List created', $data);
+        return redirect()->route('prospect-lists.index')->with('success', 'Prospect List created.');
     }
 
     /**
@@ -141,19 +142,9 @@ class ProspectListController extends Controller // Rename to ProspectListControl
     {
         $this->authorize('update', $prospectList);
         $data = $request->validated();
-        $prospectList->update($data);
-
-        ActivityLog::create([
-            'user_id' => Auth::id(),
-            'workspace_id' => Auth::user()->workspace_id,
-            'action' => 'updated_prospect_list',
-            'description' => 'Updated prospect list: ' . $prospectList->name,
-            'subject_type' => ProspectList::class,
-            'subject_id' => $prospectList->id,
-            'properties' => json_encode(['updated_fields' => $data]),
-        ]);
-
-        return Redirect::route('prospect-lists.show', $prospectList)->with('success', 'Prospect list updated successfully.');
+        $this->prospectListService->updateProspectList($prospectList, $data);
+        $this->activityLogService->log('prospect_list_updated', $prospectList, 'Prospect List updated', $data);
+        return redirect()->route('prospect-lists.index')->with('success', 'Prospect List updated.');
     }
 
     /**
@@ -165,23 +156,11 @@ class ProspectListController extends Controller // Rename to ProspectListControl
     public function destroy(ProspectList $prospectList)
     {
         $this->authorize('delete', $prospectList);
-
-        $name = $prospectList->name;
-        $id = $prospectList->id;
-        $workspaceId = $prospectList->workspace_id;
-        $prospectList->delete();
-
-        ActivityLog::create([
-            'user_id' => Auth::id(),
-            'workspace_id' => $workspaceId,
-            'action' => 'deleted_prospect_list',
-            'description' => 'Deleted prospect list: ' . $name,
-            'subject_type' => ProspectList::class,
-            'subject_id' => $id,
-            'properties' => json_encode(['name' => $name]),
-        ]);
-
-        return Redirect::route('prospect-lists.index')->with('success', 'Prospect list deleted successfully.');
+        $prospectListId = $prospectList->id;
+        $prospectListData = $prospectList->toArray();
+        $this->prospectListService->deleteProspectList($prospectList);
+        $this->activityLogService->log('prospect_list_deleted', (object)['id' => $prospectListId], 'Prospect List deleted', $prospectListData);
+        return redirect()->route('prospect-lists.index')->with('success', 'Prospect List deleted.');
     }
 
     /**

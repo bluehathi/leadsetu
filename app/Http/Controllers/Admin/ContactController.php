@@ -14,10 +14,21 @@ use App\Models\MailConfiguration;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Http\Requests\Contact\StoreContactRequest;
 use App\Http\Requests\Contact\UpdateContactRequest;
+use App\Services\ContactService;
+use App\Services\ActivityLogService;
 
 class ContactController extends Controller
 {
     use AuthorizesRequests;
+
+    protected $contactService;
+    protected $activityLogService;
+
+    public function __construct(ContactService $contactService, ActivityLogService $activityLogService)
+    {
+        $this->contactService = $contactService;
+        $this->activityLogService = $activityLogService;
+    }
 
     public function index(Request $request)
     {
@@ -93,21 +104,8 @@ class ContactController extends Controller
         $user = Auth::user();
         $data = $request->validated();
         $data['workspace_id'] = $user->workspace_id;
-        $contact = Contact::create($data);
-
-        // Log activity for contact creation
-        if (class_exists('App\\Models\\ActivityLog')) {
-            \App\Models\ActivityLog::create([
-                'user_id' => Auth::id(),
-                'workspace_id' => Auth::user()->workspace_id,
-                'action' => 'contact_created',
-                'subject_type' => Contact::class,
-                'subject_id' => $contact->id,
-                'description' => 'Contact created',
-                'properties' => json_encode($data),
-            ]);
-        }
-
+        $contact = $this->contactService->createContact($data);
+        $this->activityLogService->log('contact_created', $contact, 'Contact created', $data);
         return redirect()->route('contacts.index')
             ->with('success', 'Contact created successfully.');
     }
@@ -147,21 +145,8 @@ class ContactController extends Controller
     {
         $this->authorize('update', $contact);
         $data = $request->validated();
-        $contact->update($data);
-
-        // Log activity for contact update
-        if (class_exists('App\\Models\\ActivityLog')) {
-            \App\Models\ActivityLog::create([
-                'user_id' => Auth::id(),
-                'workspace_id' => Auth::user()->workspace_id,
-                'action' => 'contact_updated',
-                'subject_type' => Contact::class,
-                'subject_id' => $contact->id,
-                'description' => 'Contact updated',
-                'properties' => json_encode($request->all()),
-            ]);
-        }
-
+        $this->contactService->updateContact($contact, $data);
+        $this->activityLogService->log('contact_updated', $contact, 'Contact updated', $data);
         return redirect()->route('contacts.index')
             ->with('success', 'Contact updated successfully.');
     }
@@ -169,24 +154,10 @@ class ContactController extends Controller
     public function destroy(Contact $contact)
     {
         $this->authorize('delete', $contact);
-
         $contactId = $contact->id;
         $contactData = $contact->toArray();
-        $contact->delete();
-
-        // Log activity for contact deletion
-        if (class_exists('App\\Models\\ActivityLog')) {
-            \App\Models\ActivityLog::create([
-                'user_id' => Auth::id(),
-                'workspace_id' => Auth::user()->workspace_id,
-                'action' => 'contact_deleted',
-                'subject_type' => Contact::class,
-                'subject_id' => $contactId,
-                'description' => 'Contact deleted',
-                'properties' => json_encode($contactData),
-            ]);
-        }
-
+        $this->contactService->deleteContact($contact);
+        $this->activityLogService->log('contact_deleted', (object)['id' => $contactId], 'Contact deleted', $contactData);
         return redirect()->route('contacts.index')
             ->with('success', 'Contact deleted successfully.');
     }

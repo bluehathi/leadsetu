@@ -11,10 +11,21 @@ use Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Http\Requests\Role\StoreRoleRequest;
 use App\Http\Requests\Role\UpdateRoleRequest;
+use App\Services\RoleService;
+use App\Services\ActivityLogService;
 
 class RoleController extends Controller
 {
     use AuthorizesRequests;
+
+    protected $roleService;
+    protected $activityLogService;
+
+    public function __construct(RoleService $roleService, ActivityLogService $activityLogService)
+    {
+        $this->roleService = $roleService;
+        $this->activityLogService = $activityLogService;
+    }
 
     public function index()
     {
@@ -42,10 +53,8 @@ class RoleController extends Controller
     {
         $this->authorize('create', Role::class);
         $data = $request->validated();
-        $role = Role::create($data);
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
+        $role = $this->roleService->createRole($data);
+        $this->activityLogService->log('role_created', $role, 'Role created', $data);
         return redirect()->route('roles.index')->with('success', 'Role created.');
     }
 
@@ -77,10 +86,8 @@ class RoleController extends Controller
     {
         $this->authorize('update', $role);
         $data = $request->validated();
-        $role->update($data);
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
+        $this->roleService->updateRole($role, $data);
+        $this->activityLogService->log('role_updated', $role, 'Role updated', $data);
         return redirect()->route('roles.index')->with('success', 'Role updated.');
     }
 
@@ -93,7 +100,10 @@ class RoleController extends Controller
         if (in_array($role->name, $defaultRoles)) {
             return redirect()->route('roles.index')->with('error', 'Default roles cannot be deleted.');
         }
-        $role->delete();
+        $roleId = $role->id;
+        $roleData = $role->toArray();
+        $this->roleService->deleteRole($role);
+        $this->activityLogService->log('role_deleted', (object)['id' => $roleId], 'Role deleted', $roleData);
         return redirect()->route('roles.index')->with('success', 'Role deleted.');
     }
 }

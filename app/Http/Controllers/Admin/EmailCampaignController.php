@@ -19,11 +19,22 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Validation\Rule;
 use App\Http\Requests\EmailCampaign\StoreEmailCampaignRequest;
 use App\Http\Requests\EmailCampaign\UpdateEmailCampaignRequest;
+use App\Services\EmailCampaignService;
+use App\Services\ActivityLogService;
 
 
 class EmailCampaignController extends Controller
 {
     use AuthorizesRequests;
+
+    protected $emailCampaignService;
+    protected $activityLogService;
+
+    public function __construct(EmailCampaignService $emailCampaignService, ActivityLogService $activityLogService)
+    {
+        $this->emailCampaignService = $emailCampaignService;
+        $this->activityLogService = $activityLogService;
+    }
 
     public function index(Request $request)
     {
@@ -69,27 +80,9 @@ class EmailCampaignController extends Controller
         $user = Auth::user();
         $data = $request->validated();
         $data['workspace_id'] = $user->workspace_id;
-        $data['user_id'] = Auth::id();
-        $data['status'] = 'draft';
-        
-        if (!empty($data['prospect_list_ids'])) {
-            // $data['prospect_list_id'] = $data['prospect_list_ids'][0]; // If you still need this field
-        }
-        
-        $campaign = EmailCampaign::create($data);
-        $campaign->prospectLists()->attach($data['prospect_list_ids']);
-        $this->syncContactsFromProspectLists($campaign, $data['prospect_list_ids']);
-
-        \App\Models\ActivityLog::create([
-            'user_id' => Auth::id(),
-            'workspace_id' => Auth::user()->workspace_id,
-            'action' => 'created',
-            'subject_type' => EmailCampaign::class,
-            'subject_id' => $campaign->id,
-            'properties' => ['name' => $campaign->name, 'prospect_list_ids' => $data['prospect_list_ids']],
-            'description' => 'Created Email Campaign: ' . $campaign->name,
-        ]);
-        return Redirect::route('email-campaigns.index')->with('success', 'Email campaign created.');
+        $emailCampaign = $this->emailCampaignService->createEmailCampaign($data);
+        $this->activityLogService->log('email_campaign_created', $emailCampaign, 'Email Campaign created', $data);
+        return redirect()->route('email-campaigns.index')->with('success', 'Email Campaign created.');
     }
 
     public function show(Request $request, EmailCampaign $emailCampaign)
@@ -173,47 +166,20 @@ class EmailCampaignController extends Controller
     public function update(UpdateEmailCampaignRequest $request, EmailCampaign $emailCampaign)
     {
         $this->authorize('update', $emailCampaign);
-
-        if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
-            abort(403);
-        }
         $data = $request->validated();
-        $emailCampaign->update($data);
-        $emailCampaign->prospectLists()->sync($data['prospect_list_ids']);
-        $this->syncContactsFromProspectLists($emailCampaign, $data['prospect_list_ids']);
-
-        \App\Models\ActivityLog::create([
-            'user_id' => Auth::id(),
-            'workspace_id' => Auth::user()->workspace_id,
-            'action' => 'updated',
-            'subject_type' => EmailCampaign::class,
-            'subject_id' => $emailCampaign->id,
-            'properties' => ['name' => $emailCampaign->name, 'prospect_list_ids' => $data['prospect_list_ids']],
-            'description' => 'Updated Email Campaign: ' . $emailCampaign->name,
-        ]);
-        return Redirect::route('email-campaigns.show', $emailCampaign->id)->with('success', 'Email campaign updated.');
+        $this->emailCampaignService->updateEmailCampaign($emailCampaign, $data);
+        $this->activityLogService->log('email_campaign_updated', $emailCampaign, 'Email Campaign updated', $data);
+        return redirect()->route('email-campaigns.index')->with('success', 'Email Campaign updated.');
     }
 
     public function destroy(EmailCampaign $emailCampaign)
     {
         $this->authorize('delete', $emailCampaign);
-
-        if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
-            abort(403);
-        }
-        $campaignName = $emailCampaign->name;
-        $campaignId = $emailCampaign->id;
-        $emailCampaign->delete();
-
-        \App\Models\ActivityLog::create([
-            'user_id' => Auth::id(),
-            'workspace_id' => Auth::user()->workspace_id,
-            'action' => 'deleted',
-            'subject_type' => EmailCampaign::class,
-            'subject_id' => $campaignId,
-            'description' => 'Deleted Email Campaign: ' . $campaignName,
-        ]);
-        return Redirect::route('email-campaigns.index')->with('success', 'Email campaign deleted.');
+        $emailCampaignId = $emailCampaign->id;
+        $emailCampaignData = $emailCampaign->toArray();
+        $this->emailCampaignService->deleteEmailCampaign($emailCampaign);
+        $this->activityLogService->log('email_campaign_deleted', (object)['id' => $emailCampaignId], 'Email Campaign deleted', $emailCampaignData);
+        return redirect()->route('email-campaigns.index')->with('success', 'Email Campaign deleted.');
     }
 
     public function bulkDestroy(Request $request)
