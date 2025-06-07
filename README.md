@@ -1,6 +1,6 @@
 # LeadSetu
 
-LeadSetu is a workspace-based CRM and outreach platform for managing contacts, companies, prospect lists, and email campaigns. It is built with Laravel, Inertia.js, and React, and supports multi-user workspaces, advanced filtering, and SMTP-based email sending.
+LeadSetu is a workspace-based CRM and outreach platform for managing contacts, companies, prospect lists, and email campaigns. Built with Laravel, Inertia.js, and React, it supports multi-user workspaces, advanced filtering, and SMTP-based email sending.
 
 ## Features
 
@@ -14,6 +14,7 @@ LeadSetu is a workspace-based CRM and outreach platform for managing contacts, c
 - **Modern UI**: Built with React, Tailwind CSS, and Inertia.js for a fast, SPA-like experience.
 - **Role & Permission Management**: Fine-grained access control using roles and permissions.
 - **Policy-Based Authorization**: All major models and controllers enforce Laravel policies for security.
+- **Domain-Organized Form Requests**: All validation logic is handled by Form Request classes, organized by domain for clarity and maintainability.
 
 ## Tech Stack
 
@@ -62,11 +63,18 @@ LeadSetu is a workspace-based CRM and outreach platform for managing contacts, c
 
 ## Authorization & Permissions
 
-- **Policies**: All major models (ProspectList, Contact, Company, Lead, EmailCampaign, Workspace, ActivityLog, MailConfiguration, Role, Permission, Dashboard, Settings) have Laravel policies registered and enforced in their controllers.
-- **Controller Enforcement**: All resource and custom controller actions use `$this->authorize()` or resource authorization to enforce permissions.
+- **Policies**: All major models (ProspectList, Contact, Company, Lead, EmailCampaign, Workspace, ActivityLog, MailConfiguration, Role, Permission, Dashboard, Settings) have Laravel policies registered and enforced in their controllers via `$this->authorize()` calls.
+- **Controller Enforcement**: All resource and custom controller actions use explicit policy-based authorization.
 - **Permission Seeder**: Permissions are seeded and mapped to roles. Update `database/seeders/PermissionSeeder.php` to add or change permissions.
 - **UI Enforcement**: The frontend uses the user's permissions (shared via Inertia) to show/hide actions and navigation.
 - **Routes**: All admin routes are protected by both middleware and policy checks for defense-in-depth.
+
+## Validation & Form Requests
+
+- **Form Requests**: All validation logic is handled by Laravel Form Request classes.
+- **Organization**: Form Requests are organized into domain-specific subfolders under `app/Http/Requests/` (e.g., `Company/StoreCompanyRequest.php`, `User/UpdateUserRequest.php`).
+- **Controller Usage**: Controllers type-hint the appropriate Form Request for each action, ensuring consistent validation and authorization.
+- **Cleanup**: Obsolete Form Request files outside their subfolders have been removed for clarity.
 
 ## Email & Queue
 - Configure SMTP settings per workspace in the UI or via the database.

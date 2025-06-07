@@ -12,6 +12,8 @@ use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Contact;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Http\Requests\Lead\StoreLeadRequest;
+use App\Http\Requests\Lead\UpdateLeadRequest;
 
 class LeadsController extends Controller
 {
@@ -50,90 +52,13 @@ class LeadsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreLeadRequest $request)
     {
         $this->authorize('create', Lead::class);
-
-        $data = $request->validate([
-            'name' => 'required|string|max:180',
-            'company_id' => 'nullable|exists:companies,id',
-            'contact_id' => 'nullable|exists:contacts,id',
-            'notes' => 'required|string|max:180',
-            'status' => 'required|string|max:180',
-            'source' => 'required|string|max:180',
-            'deal_value' => 'nullable|integer',
-            'expected_close' => 'nullable|date',
-            'lead_score' => 'nullable|integer',
-            'lead_owner' => 'nullable|string|max:180',
-            'priority' => 'required|string|max:20',
-            'title' => 'nullable|string|max:180',
-            'positions' => 'nullable|string|max:180',
-            'tags' => 'nullable|string',
-        ]);
-
-        // Handle company: Only use selected company_id, do not create new company
-        $companyId = $request->company_id;
-        if ($companyId) {
-            $company = Company::where('id', $companyId)
-                ->where('workspace_id', Auth::user()->workspace_id)
-                ->first();
-            if ($company) {
-                $data['company_name'] = $company->name;
-                $data['company_website'] = $company->website;
-            }
-        } else {
-            $company = null;
-            $data['company_name'] = null;
-            $data['company_website'] = null;
-        }
-
-        // Handle contact: Only use selected contact_id, do not create new contact
-        $contactId = $request->contact_id;
-        if ($contactId) {
-            $contact = Contact::where('id', $contactId)
-                ->where('workspace_id', Auth::user()->workspace_id)
-                ->first();
-            if ($contact) {
-                $data['contact_name'] = $contact->name;
-                $data['contact_email'] = $contact->email;
-                $data['contact_phone'] = $contact->phone;
-            }
-        } else {
-            $contact = null;
-            $data['contact_name'] = null;
-            $data['contact_email'] = null;
-            $data['contact_phone'] = null;
-        }
-
-        // Parse tags if string (comma separated)
-        $tags = $request->tags;
-        if (is_string($tags)) {
-            $tags = collect(explode(',', $tags))->map(fn($t) => trim($t))->filter()->values()->all();
-        }
-
-        $lead = Lead::create([
-            'name' => $request->name,
-            'email' => $data['contact_email'],
-            'phone' => $data['contact_phone'],
-            'company_id' => $companyId,
-            'contact_id' => $contactId,
-            'website' => $data['company_website'],
-            'company' => $data['company_name'],
-            'notes' => $request->notes,
-            'status' => $request->status,
-            'source' => $request->source,
-            'deal_value' => $request->deal_value,
-            'expected_close' => $request->expected_close,
-            'lead_score' => $request->lead_score,
-            'lead_owner' => $request->lead_owner,
-            'priority' => $request->priority,
-            'title' => $request->title,
-            'positions' => $request->positions,
-            'tags' => $tags,
-            'user_id' => Auth::id(),
-            'workspace_id' => Auth::user()->workspace_id,
-            
-        ]);
+        $user = Auth::user();
+        $data = $request->validated();
+        $data['workspace_id'] = $user->workspace_id;
+        $lead = Lead::create($data);
 
         $this->logActivity('lead_created', $lead, 'Lead created', ['data' => $data]);
 
@@ -193,46 +118,11 @@ class LeadsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Lead $lead)
+    public function update(UpdateLeadRequest $request, Lead $lead)
     {
         $this->authorize('update', $lead);
-
-        $data = $request->validate([
-            'name' => 'required|string|max:180',
-            'notes' => 'required|string|max:180',
-            'status' => 'required|string|max:180',
-            'source' => 'required|string|max:180',
-            'deal_value' => 'nullable|integer',
-            'expected_close' => 'nullable|date',
-            'lead_score' => 'nullable|integer',
-            'priority' => 'nullable|string|max:20',
-            'title' => 'nullable|string|max:180',
-            'positions' => 'nullable|string|max:180',
-            'tags' => 'nullable|string',
-        ]);
-
-        
-       
-        // Parse tags if string (comma separated)
-        $tags = $request->tags;
-        if (is_string($tags)) {
-            $tags = collect(explode(',', $tags))->map(fn($t) => trim($t))->filter()->values()->all();
-        }
-
-        $lead->update([
-            'name' => $request->name,
-            'notes' => $request->notes,
-            'status' => $request->status,
-            'source' => $request->source,
-            'deal_value' => $request->deal_value,
-            'expected_close' => $request->expected_close,
-            'lead_score' => $request->lead_score,
-            'lead_owner' => $request->lead_owner,
-            'priority' => $request->priority,
-            'title' => $request->title,
-            'positions' => $request->positions,
-            'tags' => $tags,
-        ]);
+        $data = $request->validated();
+        $lead->update($data);
 
         $this->logActivity('lead_updated', $lead, 'Lead updated', ['data' => $data]);
 

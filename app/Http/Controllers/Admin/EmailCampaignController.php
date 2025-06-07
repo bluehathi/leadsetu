@@ -17,6 +17,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Validation\Rule;
+use App\Http\Requests\EmailCampaign\StoreEmailCampaignRequest;
+use App\Http\Requests\EmailCampaign\UpdateEmailCampaignRequest;
 
 
 class EmailCampaignController extends Controller
@@ -61,26 +63,12 @@ class EmailCampaignController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreEmailCampaignRequest $request)
     {
         $this->authorize('create', EmailCampaign::class);
-
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'subject' => 'required|string|max:255',
-            'body' => 'required|string',
-            'prospect_list_ids' => 'required|array|min:1',
-            'prospect_list_ids.*' => [
-                'required',
-                'integer',
-                Rule::exists('prospect_lists', 'id')->where(function ($query) {
-                    $query->where('workspace_id', Auth::user()->workspace_id);
-                }),
-            ],
-            'scheduled_at' => 'nullable|date|after_or_equal:now',
-        ]);
-
-        $data['workspace_id'] = Auth::user()->workspace_id;
+        $user = Auth::user();
+        $data = $request->validated();
+        $data['workspace_id'] = $user->workspace_id;
         $data['user_id'] = Auth::id();
         $data['status'] = 'draft';
         
@@ -182,32 +170,14 @@ class EmailCampaignController extends Controller
         ]);
     }
 
-    public function update(Request $request, EmailCampaign $emailCampaign)
+    public function update(UpdateEmailCampaignRequest $request, EmailCampaign $emailCampaign)
     {
         $this->authorize('update', $emailCampaign);
 
         if ($emailCampaign->workspace_id !== Auth::user()->workspace_id) {
             abort(403);
         }
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'subject' => 'required|string|max:255',
-            'body' => 'required|string',
-            'prospect_list_ids' => 'required|array|min:1',
-            'prospect_list_ids.*' => [
-                'required',
-                'integer',
-                Rule::exists('prospect_lists', 'id')->where(function ($query) {
-                    $query->where('workspace_id', Auth::user()->workspace_id);
-                }),
-            ],
-            'scheduled_at' => 'nullable|date|after_or_equal:now',
-        ]);
-        
-        // if (!empty($data['prospect_list_ids'])) {
-        //     $data['prospect_list_id'] = $data['prospect_list_ids'][0]; 
-        // }
-
+        $data = $request->validated();
         $emailCampaign->update($data);
         $emailCampaign->prospectLists()->sync($data['prospect_list_ids']);
         $this->syncContactsFromProspectLists($emailCampaign, $data['prospect_list_ids']);

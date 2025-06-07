@@ -9,6 +9,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use App\Http\Requests\Workspace\StoreWorkspaceRequest;
+use App\Http\Requests\Workspace\UpdateWorkspaceRequest;
 
 class WorkspaceController extends Controller
 {
@@ -50,18 +52,10 @@ class WorkspaceController extends Controller
         return Inertia::render('Workspaces/Create');
     }
 
-    public function store(Request $request)
+    public function store(StoreWorkspaceRequest $request)
     {
         $this->authorize('create', Workspace::class);
-
-        $data = $request->validate([
-            'name' => 'required|string|max:180',
-            'description' => 'nullable|string',
-            'contact_email' => 'nullable|email',
-            'contact_phone' => 'nullable|string|max:50',
-            'address' => 'nullable|string|max:255',
-            'logo' => 'nullable|image|max:2048',
-        ]);
+        $data = $request->validated();
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('logos', 'public');
         }
@@ -88,18 +82,10 @@ class WorkspaceController extends Controller
         ]);
     }
 
-    public function update(Request $request, Workspace $workspace)
+    public function update(UpdateWorkspaceRequest $request, Workspace $workspace)
     {
         $this->authorize('update', $workspace);
-
-        $data = $request->validate([
-            'name' => 'required|string|max:180',
-            'description' => 'nullable|string',
-            'contact_email' => 'nullable|email',
-            'contact_phone' => 'nullable|string|max:50',
-            'address' => 'nullable|string|max:255',
-            'logo' => 'nullable|image|max:2048',
-        ]);
+        $data = $request->validated();
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('logos', 'public');
         }

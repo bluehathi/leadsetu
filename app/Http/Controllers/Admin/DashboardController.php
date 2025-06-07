@@ -19,7 +19,7 @@ class DashboardController extends Controller
 
     public function index(Request $request)
     {
-        $this->authorize('view', 'dashboard');
+        //$this->authorize('view', 'dashboard');
 
         // Total leads
         $totalLeads = Lead::count();

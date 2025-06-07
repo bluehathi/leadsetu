@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Helpers\SmtpConfigHelper;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Http\Requests\SMTP\StoreSMTPRequest;
+use App\Http\Requests\SMTP\UpdateSMTPRequest;
 
 class SMTPController extends Controller
 {
@@ -18,7 +20,9 @@ class SMTPController extends Controller
 
     public function index()
     {
-        $this->authorize('view', MailConfiguration::class);
+        $user = Auth::user();
+        
+        $this->authorize('view', $user, MailConfiguration::class);
 
         $user = Auth::user();
         $workspaceId = $user->workspace_id;
@@ -30,39 +34,20 @@ class SMTPController extends Controller
         ]);
     }
 
-    public function save(Request $request)
+    public function store(StoreSMTPRequest $request)
     {
-        $this->authorize('update', MailConfiguration::class);
+        $this->authorize('create', MailConfiguration::class);
+        $data = $request->validated();
+        $smtp = MailConfiguration::create($data);
 
-        $user = Auth::user();
-        $workspaceId = $user->workspace_id;
-        $validated = $request->validate([
-            'driver' => 'required|string',
-            'host' => 'required|string',
-            'port' => 'required|string',
-            'username' => 'required|string',
-            'password' => 'nullable|string',
-            'encryption' => 'nullable|string',
-            'from_address' => 'required|email',
-            'from_name' => 'required|string',
-        ]);
+        return redirect()->back()->with('success', 'SMTP settings saved successfully.');
+    }
 
-        $config = MailConfiguration::where('workspace_id', $workspaceId)->first();
-        if (!$config) {
-            $config = new MailConfiguration();
-            $config->workspace_id = $workspaceId;
-        }
-        $config->driver = $validated['driver'];
-        $config->host = $validated['host'];
-        $config->port = $validated['port'];
-        $config->username = $validated['username'];
-        if (!empty($validated['password'])) {
-            $config->password = $validated['password'];
-        }
-        $config->encryption = $validated['encryption'] ?? null;
-        $config->from_address = $validated['from_address'];
-        $config->from_name = $validated['from_name'];
-        $config->save();
+    public function update(UpdateSMTPRequest $request, MailConfiguration $smtp)
+    {
+        $this->authorize('update', $smtp);
+        $data = $request->validated();
+        $smtp->update($data);
 
         return redirect()->back()->with('success', 'SMTP settings updated successfully.');
     }

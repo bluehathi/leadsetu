@@ -13,8 +13,8 @@ use Inertia\Inertia; // Import Inertia
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // Import AuthorizesRequests trait
 
 // Form Requests for validation
-use App\Http\Requests\StoreProspectListRequest;
-use App\Http\Requests\UpdateProspectListRequest;
+use App\Http\Requests\ProspectList\StoreProspectListRequest;
+use App\Http\Requests\ProspectList\UpdateProspectListRequest;
 use App\Http\Requests\ManageContactsInListRequest;
 
 class ProspectListController extends Controller // Rename to ProspectListController if not API
@@ -65,27 +65,17 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      * @param  \App\Http\Requests\StoreProspectListRequest  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
+    public function store(StoreProspectListRequest $request)
     {
         $this->authorize('create', ProspectList::class);
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-        ]);
-        $workspaceId = Auth::user()->workspace_id;
-        $userId = Auth::id();
-
-        $prospectList = ProspectList::create([
-            'workspace_id' => $workspaceId,
-            'user_id' => $userId,
-            'name' => $request->name,
-            'description' => $request->description,
-        ]);
+        $user = Auth::user();
+        $data = $request->validated();
+        $data['workspace_id'] = $user->workspace_id;
+        $prospectList = ProspectList::create($data);
 
         ActivityLog::create([
-            'user_id' => $userId,
-            'workspace_id' => $workspaceId,
+            'user_id' => $user->id,
+            'workspace_id' => $user->workspace_id,
             'action' => 'created_prospect_list',
             'description' => 'Created prospect list: ' . $prospectList->name,
             'subject_type' => ProspectList::class,
@@ -147,16 +137,11 @@ class ProspectListController extends Controller // Rename to ProspectListControl
      * @param  \App\Models\ProspectList  $prospectList
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, ProspectList $prospectList)
+    public function update(UpdateProspectListRequest $request, ProspectList $prospectList)
     {
         $this->authorize('update', $prospectList);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-        ]);
-
-        $prospectList->update($validated);
+        $data = $request->validated();
+        $prospectList->update($data);
 
         ActivityLog::create([
             'user_id' => Auth::id(),
@@ -165,7 +150,7 @@ class ProspectListController extends Controller // Rename to ProspectListControl
             'description' => 'Updated prospect list: ' . $prospectList->name,
             'subject_type' => ProspectList::class,
             'subject_id' => $prospectList->id,
-            'properties' => json_encode(['updated_fields' => $validated]),
+            'properties' => json_encode(['updated_fields' => $data]),
         ]);
 
         return Redirect::route('prospect-lists.show', $prospectList)->with('success', 'Prospect list updated successfully.');

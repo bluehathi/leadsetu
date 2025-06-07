@@ -12,6 +12,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ContactCompanyImport;
 use App\Models\MailConfiguration;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Http\Requests\Contact\StoreContactRequest;
+use App\Http\Requests\Contact\UpdateContactRequest;
 
 class ContactController extends Controller
 {
@@ -85,29 +87,12 @@ class ContactController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreContactRequest $request)
     {
         $this->authorize('create', Contact::class);
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'company_id' => 'required|exists:companies,id',
-            'title' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-        ]);
-
-        // Require at least one of phone or email
-        if (empty($request->input('email')) && empty($request->input('phone'))) {
-            return redirect()->back()
-                ->withErrors(['email' => 'Either email or phone is required.', 'phone' => 'Either phone or email is required.'])
-                ->withInput();
-        }
-
-       $data = $request->all();
-       $data['workspace_id'] = Auth::user()->workspace_id;
-
+        $user = Auth::user();
+        $data = $request->validated();
+        $data['workspace_id'] = $user->workspace_id;
         $contact = Contact::create($data);
 
         // Log activity for contact creation
@@ -158,27 +143,11 @@ class ContactController extends Controller
         ]);
     }
 
-    public function update(Request $request, Contact $contact)
+    public function update(UpdateContactRequest $request, Contact $contact)
     {
         $this->authorize('update', $contact);
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'company_id' => 'nullable|exists:companies,id',
-            'title' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-        ]);
-
-        // Require at least one of phone or email
-        if (empty($request->input('email')) && empty($request->input('phone'))) {
-            return redirect()->back()
-                ->withErrors(['email' => 'Either email or phone is required.', 'phone' => 'Either phone or email is required.'])
-                ->withInput();
-        }
-
-        $contact->update($request->all());
+        $data = $request->validated();
+        $contact->update($data);
 
         // Log activity for contact update
         if (class_exists('App\\Models\\ActivityLog')) {

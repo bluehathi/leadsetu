@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Http\Requests\Company\StoreCompanyRequest;
+use App\Http\Requests\Company\UpdateCompanyRequest;
 
 class CompanyController extends Controller
 {
@@ -47,16 +49,12 @@ class CompanyController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
+    public function store(StoreCompanyRequest $request)
     {
         $this->authorize('create', Company::class);
 
         $user = Auth::user();
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'website' => 'nullable|string|max:255',
-        ]);
+        $data = $request->validated();
         $data['workspace_id'] = $user->workspace_id;
         $company = Company::create($data);
         // Log activity for company creation
@@ -97,15 +95,11 @@ class CompanyController extends Controller
      * @param  \App\Models\Company  $company
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, Company $company)
+    public function update(UpdateCompanyRequest $request, Company $company)
     {
         $this->authorize('update', $company);
 
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'website' => 'nullable|string|max:255',
-        ]);
+        $data = $request->validated();
         $company->update($data);
         // Log activity for company update
         if (class_exists('App\\Models\\ActivityLog')) {

@@ -9,6 +9,8 @@ use Spatie\Permission\Models\Permission;
 use Inertia\Inertia;
 use Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Http\Requests\Role\StoreRoleRequest;
+use App\Http\Requests\Role\UpdateRoleRequest;
 
 class RoleController extends Controller
 {
@@ -36,16 +38,11 @@ class RoleController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreRoleRequest $request)
     {
         $this->authorize('create', Role::class);
-
-        $request->validate([
-            'name' => 'required|unique:roles,name',
-            'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,id',
-        ]);
-        $role = Role::create(['name' => $request->name]);
+        $data = $request->validated();
+        $role = Role::create($data);
         if ($request->has('permissions')) {
             $role->syncPermissions($request->permissions);
         }
@@ -76,20 +73,11 @@ class RoleController extends Controller
         ]);
     }
 
-    public function update(Request $request, Role $role)
+    public function update(UpdateRoleRequest $request, Role $role)
     {
         $this->authorize('update', $role);
-
-        // Prevent editing the Admin role
-        if ($role->name === 'Admin') {
-            return redirect()->route('roles.index')->with('error', 'The Admin role cannot be edited.');
-        }
-        $request->validate([
-            'name' => 'required|unique:roles,name,' . $role->id,
-            'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,id',
-        ]);
-        $role->update(['name' => $request->name]);
+        $data = $request->validated();
+        $role->update($data);
         if ($request->has('permissions')) {
             $role->syncPermissions($request->permissions);
         }

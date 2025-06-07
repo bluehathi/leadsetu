@@ -8,6 +8,8 @@ use Spatie\Permission\Models\Permission;
 use Inertia\Inertia;
 use Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Http\Requests\Permission\StorePermissionRequest;
+use App\Http\Requests\Permission\UpdatePermissionRequest;
 
 class PermissionController extends Controller
 {
@@ -20,19 +22,19 @@ class PermissionController extends Controller
         return Inertia::render('Permissions/Index', ['permissions' => $permissions]);
     }
 
-    public function store(Request $request)
+    public function store(StorePermissionRequest $request)
     {
         $this->authorize('create', Permission::class);
-        $request->validate(['name' => 'required|unique:permissions,name']);
-        Permission::create(['name' => $request->name]);
+        $data = $request->validated();
+        $permission = Permission::create($data);
         return redirect()->route('permissions.index')->with('success', 'Permission created.');
     }
 
-    public function update(Request $request, Permission $permission)
+    public function update(UpdatePermissionRequest $request, Permission $permission)
     {
         $this->authorize('update', $permission);
-        $request->validate(['name' => 'required|unique:permissions,name,' . $permission->id]);
-        $permission->update(['name' => $request->name]);
+        $data = $request->validated();
+        $permission->update($data);
         return redirect()->route('permissions.index')->with('success', 'Permission updated.');
     }
 
