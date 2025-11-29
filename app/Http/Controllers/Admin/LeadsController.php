@@ -14,17 +14,20 @@ use App\Models\Contact;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Http\Requests\Lead\StoreLeadRequest;
 use App\Http\Requests\Lead\UpdateLeadRequest;
+use App\Services\LeadService;
+use App\Services\ActivityLogService;
 
 class LeadsController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct()
+    protected $leadService;
+    protected $activityLogService;
+
+    public function __construct(LeadService $leadService, ActivityLogService $activityLogService)
     {
-        //     $this->middleware('permission:view leads')->only(['index', 'show']);
-        //     $this->middleware('permission:create leads')->only(['store']);
-        //     $this->middleware('permission:edit leads')->only(['update']);
-        //     $this->middleware('permission:delete leads')->only(['destroy']);
+        $this->leadService = $leadService;
+        $this->activityLogService = $activityLogService;
     }
 
     /**
@@ -58,12 +61,9 @@ class LeadsController extends Controller
         $user = Auth::user();
         $data = $request->validated();
         $data['workspace_id'] = $user->workspace_id;
-        $lead = Lead::create($data);
-
-        $this->logActivity('lead_created', $lead, 'Lead created', ['data' => $data]);
-
-        // Redirect back to the leads index page with a success message
-        return to_route('leads.index')->with('success', 'Lead created successfully.');
+        $lead = $this->leadService->createLead($data);
+        $this->activityLogService->log('lead_created', $lead, 'Lead created', $data);
+        return redirect()->route('leads.index')->with('success', 'Lead created.');
     }
 
     /**
@@ -122,15 +122,9 @@ class LeadsController extends Controller
     {
         $this->authorize('update', $lead);
         $data = $request->validated();
-        $lead->update($data);
-
-        $this->logActivity('lead_updated', $lead, 'Lead updated', ['data' => $data]);
-
-        if (!$request->inertia()) {
-            // Return a minimal JSON response to satisfy Inertia
-            return response()->json(['success' => true, 'id' => $lead->id, 'status' => $lead->status]);
-        }
-        return to_route('leads.index')->with('success', 'Lead updated successfully.');
+        $this->leadService->updateLead($lead, $data);
+        $this->activityLogService->log('lead_updated', $lead, 'Lead updated', $data);
+        return redirect()->route('leads.index')->with('success', 'Lead updated.');
     }
 
     /**
@@ -139,33 +133,11 @@ class LeadsController extends Controller
     public function destroy(Lead $lead)
     {
         $this->authorize('delete', $lead);
-
-        $lead->delete();
-        $this->logActivity('lead_deleted', $lead, 'Lead deleted');
-        // Redirect back to the leads index page with a success message
-        return to_route('leads.index')->with('success', 'Lead deleted successfully.');
-    }
-
-    /**
-     * Log an activity.
-     *
-     * @param  string  $action
-     * @param  mixed  $subject
-     * @param  string|null  $description
-     * @param  array  $properties
-     * @return void
-     */
-    protected function logActivity($action, $subject = null, $description = null, $properties = [])
-    {
-        ActivityLog::create([
-            'user_id' => Auth::id(),
-            'workspace_id' => Auth::user() ? Auth::user()->workspace_id : null,
-            'action' => $action,
-            'subject_type' => $subject ? get_class($subject) : null,
-            'subject_id' => $subject->id ?? null,
-            'description' => $description,
-            'properties' => $properties,
-        ]);
+        $leadId = $lead->id;
+        $leadData = $lead->toArray();
+        $this->leadService->deleteLead($lead);
+        $this->activityLogService->log('lead_deleted', (object)['id' => $leadId], 'Lead deleted', $leadData);
+        return redirect()->route('leads.index')->with('success', 'Lead deleted.');
     }
 
     /**

@@ -10,10 +10,21 @@ use Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Http\Requests\Permission\StorePermissionRequest;
 use App\Http\Requests\Permission\UpdatePermissionRequest;
+use App\Services\PermissionService;
+use App\Services\ActivityLogService;
 
 class PermissionController extends Controller
 {
     use AuthorizesRequests;
+
+    protected $permissionService;
+    protected $activityLogService;
+
+    public function __construct(PermissionService $permissionService, ActivityLogService $activityLogService)
+    {
+        $this->permissionService = $permissionService;
+        $this->activityLogService = $activityLogService;
+    }
 
     public function index()
     {
@@ -26,7 +37,8 @@ class PermissionController extends Controller
     {
         $this->authorize('create', Permission::class);
         $data = $request->validated();
-        $permission = Permission::create($data);
+        $permission = $this->permissionService->createPermission($data);
+        $this->activityLogService->log('permission_created', $permission, 'Permission created', $data);
         return redirect()->route('permissions.index')->with('success', 'Permission created.');
     }
 
@@ -34,14 +46,18 @@ class PermissionController extends Controller
     {
         $this->authorize('update', $permission);
         $data = $request->validated();
-        $permission->update($data);
+        $this->permissionService->updatePermission($permission, $data);
+        $this->activityLogService->log('permission_updated', $permission, 'Permission updated', $data);
         return redirect()->route('permissions.index')->with('success', 'Permission updated.');
     }
 
     public function destroy(Permission $permission)
     {
         $this->authorize('delete', $permission);
-        $permission->delete();
+        $permissionId = $permission->id;
+        $permissionData = $permission->toArray();
+        $this->permissionService->deletePermission($permission);
+        $this->activityLogService->log('permission_deleted', (object)['id' => $permissionId], 'Permission deleted', $permissionData);
         return redirect()->route('permissions.index')->with('success', 'Permission deleted.');
     }
 }

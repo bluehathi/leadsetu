@@ -11,17 +11,20 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Http\Requests\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\Workspace\UpdateWorkspaceRequest;
+use App\Services\WorkspaceService;
+use App\Services\ActivityLogService;
 
 class WorkspaceController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct()
+    protected $workspaceService;
+    protected $activityLogService;
+
+    public function __construct(WorkspaceService $workspaceService, ActivityLogService $activityLogService)
     {
-        // $this->middleware('permission:view workspaces')->only(['index']);
-        // $this->middleware('permission:create workspaces')->only(['store']);
-        // $this->middleware('permission:edit workspaces')->only(['update']);
-        // $this->middleware('permission:delete workspaces')->only(['destroy']);
+        $this->workspaceService = $workspaceService;
+        $this->activityLogService = $activityLogService;
     }
 
     public function index(Request $request)
@@ -59,8 +62,8 @@ class WorkspaceController extends Controller
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('logos', 'public');
         }
-        $workspace = Workspace::create($data);
-        $this->logActivity('workspace_created', $workspace, 'Workspace created', ['data' => $data]);
+        $workspace = $this->workspaceService->createWorkspace($data);
+        $this->activityLogService->log('workspace_created', $workspace, 'Workspace created', $data);
         return redirect()->route('workspaces.index')->with('success', 'Workspace created.');
     }
 
@@ -89,29 +92,15 @@ class WorkspaceController extends Controller
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('logos', 'public');
         }
-        $workspace->update($data);
-        $this->logActivity('workspace_updated', $workspace, 'Workspace updated', ['data' => $data]);
+        $this->workspaceService->updateWorkspace($workspace, $data);
+        $this->activityLogService->log('workspace_updated', $workspace, 'Workspace updated', $data);
         return redirect()->route('workspaces.index')->with('success', 'Workspace updated.');
     }
 
     public function destroy(Workspace $workspace)
     {
         $this->authorize('delete', $workspace);
-
         // Prevent workspace deletion
         return redirect()->route('workspaces.index')->with('error', 'Workspace deletion is not allowed.');
-    }
-
-    protected function logActivity($action, $subject = null, $description = null, $properties = [])
-    {
-        ActivityLog::create([
-            'user_id' => Auth::id(),
-            'workspace_id' => Auth::user() ? Auth::user()->workspace_id : null,
-            'action' => $action,
-            'subject_type' => $subject ? get_class($subject) : null,
-            'subject_id' => $subject->id ?? null,
-            'description' => $description,
-            'properties' => $properties,
-        ]);
     }
 }
