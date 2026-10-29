@@ -17,6 +17,7 @@ class ContactResource extends JsonResource
             'phone' => $this->phone,
             'title' => $this->title,
             'notes' => $this->notes,
+            'unsubscribed' => $this->unsubscribed_at !== null,
             'company_id' => $this->company_id,
             'company' => new CompanyResource($this->whenLoaded('company')),
             'created_at' => $this->created_at,

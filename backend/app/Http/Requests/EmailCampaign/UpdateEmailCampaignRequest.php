@@ -2,27 +2,22 @@
 
 namespace App\Http\Requests\EmailCampaign;
 
-use Illuminate\Foundation\Http\FormRequest;
-
-class UpdateEmailCampaignRequest extends FormRequest
+class UpdateEmailCampaignRequest extends StoreEmailCampaignRequest
 {
-    public function authorize()
+    public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('update', $this->route('email_campaign'));
     }
 
-    public function rules()
+    public function rules(): array
     {
-        return [
-            'name' => 'required|string|max:255',
-            'subject' => 'required|string|max:255',
-            'body' => 'required|string',
-            'prospect_list_ids' => 'required|array|min:1',
-            'prospect_list_ids.*' => [
-                'required',
-                'integer',
-            ],
-            'scheduled_at' => 'nullable|date|after_or_equal:now',
-        ];
+        $rules = parent::rules();
+        foreach ($rules as $field => $rule) {
+            if (is_string($rule) && str_starts_with($rule, 'required')) {
+                $rules[$field] = 'sometimes|' . $rule;
+            }
+        }
+
+        return $rules;
     }
 }

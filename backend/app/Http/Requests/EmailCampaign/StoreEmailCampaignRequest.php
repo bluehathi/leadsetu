@@ -2,27 +2,26 @@
 
 namespace App\Http\Requests\EmailCampaign;
 
+use App\Models\EmailCampaign;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreEmailCampaignRequest extends FormRequest
 {
-    public function authorize()
+    public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('create', EmailCampaign::class);
     }
 
-    public function rules()
+    public function rules(): array
     {
         return [
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
-            'body' => 'required|string',
-            'prospect_list_ids' => 'required|array|min:1',
-            'prospect_list_ids.*' => [
-                'required',
-                'integer',
-            ],
-            'scheduled_at' => 'nullable|date|after_or_equal:now',
+            'body' => 'required|string|max:200000',
+            'prospect_list_ids' => 'required|array|min:1|max:50',
+            // Only the caller's own lists can be targeted.
+            'prospect_list_ids.*' => ['integer', Rule::exists('prospect_lists', 'id')->where('workspace_id', $this->user()->workspace_id)],
         ];
     }
 }

@@ -12,18 +12,21 @@ class EmailCampaign extends Model
     use \App\Models\Concerns\BelongsToWorkspace;
     use HasFactory;
 
-    protected $fillable = [
-        'workspace_id',
-        'user_id',
-        'name',
-        'subject',
-        'body',
-        'status', // draft, scheduled, sending, sent, failed
-        'scheduled_at',
-        'sent_at',
-        'failed_at',
-        'prospect_list_id',
+    public const EDITABLE = ['draft', 'scheduled'];
+
+    // workspace_id/user_id come from the session and status moves only through the service.
+    protected $fillable = ['name', 'subject', 'body'];
+
+    protected $casts = [
+        'scheduled_at' => 'datetime',
+        'sent_at' => 'datetime',
+        'failed_at' => 'datetime',
     ];
+
+    public function isEditable(): bool
+    {
+        return in_array($this->status, self::EDITABLE, true);
+    }
 
     public function user(): BelongsTo
     {

@@ -13,6 +13,8 @@ class Contact extends Model
     use \App\Models\Concerns\BelongsToWorkspace;
     use HasFactory;
 
+    protected $casts = ['unsubscribed_at' => 'datetime'];
+
     protected $fillable = [
         'name',
         'email',
@@ -32,5 +34,11 @@ class Contact extends Model
     {
         return $this->belongsToMany(ProspectList::class, 'contact_prospect_list')
                     ->withPivot('subscribed_at');
+    }
+
+    /** Contacts that may receive campaign email. */
+    public function scopeSubscribed($query)
+    {
+        return $query->whereNull('unsubscribed_at')->whereNotNull('email')->where('email', '!=', '');
     }
 }

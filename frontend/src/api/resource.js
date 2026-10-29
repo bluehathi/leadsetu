@@ -29,3 +29,18 @@ export const smtpApi = {
     update: (payload) => api.put('/settings/smtp', payload).then((r) => r.data.data),
     test: () => api.post('/settings/smtp/test').then((r) => r.data),
 };
+
+export const prospectListsApi = {
+    ...resource('prospect-lists'),
+    members: (id, params) => api.get(`/prospect-lists/${id}/contacts`, { params }).then((r) => r.data),
+    addContacts: (id, contact_ids) => api.post(`/prospect-lists/${id}/contacts`, { contact_ids }).then((r) => r.data.data),
+    removeContacts: (id, contact_ids) => api.delete(`/prospect-lists/${id}/contacts`, { data: { contact_ids } }).then((r) => r.data.data),
+};
+
+export const campaignsApi = {
+    ...resource('email-campaigns'),
+    send: (id) => api.post(`/email-campaigns/${id}/send`).then((r) => r.data.data),
+    schedule: (id, scheduled_at) => api.post(`/email-campaigns/${id}/schedule`, { scheduled_at }).then((r) => r.data.data),
+    cancel: (id) => api.post(`/email-campaigns/${id}/cancel`).then((r) => r.data.data),
+    deliveries: (id, params) => api.get(`/email-campaigns/${id}/deliveries`, { params }).then((r) => r.data),
+};

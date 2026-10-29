@@ -18,8 +18,15 @@ class SmtpConfigHelper
      * A mailer bound to this workspace's SMTP settings only. Unlike applyMailConfig() it does
      * not touch global config, so credentials cannot leak into the next send in a long-lived worker.
      */
+    /** @var (\Closure(MailConfiguration): Mailer)|null Test seam so suites never open SMTP connections. */
+    public static ?\Closure $mailerOverride = null;
+
     public static function mailer(MailConfiguration $config): Mailer
     {
+        if (static::$mailerOverride) {
+            return (static::$mailerOverride)($config);
+        }
+
         return Mail::build([
             'transport' => 'smtp',
             'host' => $config->host,

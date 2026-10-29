@@ -3,9 +3,12 @@ import Layout from './components/Layout';
 import { useMe } from './hooks/useMe';
 import Companies from './pages/Companies';
 import Contacts from './pages/Contacts';
+import CampaignDetail from './pages/CampaignDetail';
+import Campaigns from './pages/Campaigns';
 import Leads from './pages/Leads';
 import Login from './pages/Login';
 import Permissions from './pages/Permissions';
+import ProspectLists from './pages/ProspectLists';
 import Roles from './pages/Roles';
 import SmtpSettings from './pages/SmtpSettings';
 import Users from './pages/Users';
@@ -25,6 +28,9 @@ export default function App() {
             <Route element={<RequireAuth><Layout /></RequireAuth>}>
                 <Route index element={<Navigate to="/leads" replace />} />
                 <Route path="/leads" element={<Leads />} />
+                <Route path="/prospect-lists" element={<ProspectLists />} />
+                <Route path="/campaigns" element={<Campaigns />} />
+                <Route path="/campaigns/:id" element={<CampaignDetail />} />
                 <Route path="/companies" element={<Companies />} />
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/users" element={<Users />} />

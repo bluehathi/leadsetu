@@ -185,51 +185,13 @@ class EmailDispatchService
     }
 
     /**
-     * Dispatch all emails for a campaign immediately.
+     * Dispatch all emails for a campaign immediately (synchronous; used by the legacy admin UI).
+     * New code queues App\Jobs\SendEmailCampaign instead.
      */
-    public  function dispatchCampaign(EmailCampaign $campaign)
+    public function dispatchCampaign(EmailCampaign $campaign)
     {
+        \App\Support\WorkspaceContext::run($campaign->workspace_id, fn () => app(CampaignSender::class)->send($campaign));
 
-        $prospectLists = $campaign->prospectLists;
-
-        if (!$prospectLists) return false;
-        
-        $user = \App\Models\User::find($campaign->user_id); // Ensure this is a single User
-        
-        foreach ($prospectLists as $list) {
-            $contacts = $list->contacts()->get();
-            foreach ($contacts as $contact) {
-                try {
-                    app(EmailDispatchService::class)->sendAndLog(
-                        $user,
-                        $contact,
-                        [
-                            'subject' => $campaign->subject,
-                            'body' => $campaign->body,
-                            'campaign_id' => $campaign->id
-                        ]
-                    );
-                } catch (\Throwable $e) {
-                    Log::error('Failed to send campaign email to contact ' . $contact->id . ': ' . $e->getMessage());
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Schedule campaign for future sending.
-     */
-    public static function scheduleCampaign(EmailCampaign $campaign)
-    {
-        $delay = Carbon::parse($campaign->scheduled_at)->diffInSeconds(now(), false);
-        if ($delay > 0) $delay = 0;
-        Queue::later(
-            now()->addSeconds($delay),
-            function () use ($campaign) {
-                self::dispatchCampaign($campaign->fresh());
-            }
-        );
         return true;
     }
 }

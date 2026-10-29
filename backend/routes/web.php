@@ -85,5 +85,9 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::post('email-campaigns/{email_campaign}/schedule', [App\Http\Controllers\Admin\EmailCampaignController::class, 'schedule'])->name('email-campaigns.schedule')->middleware('permission:create_campaign');
 });
 
+// Signed unsubscribe link from campaign emails
+Route::get('/unsubscribe/{contact}', App\Http\Controllers\UnsubscribeController::class)
+    ->middleware('signed')->name('contacts.unsubscribe');
+
 // Home route
 Route::get('/', [HomeController::class, 'index'])->name('home');

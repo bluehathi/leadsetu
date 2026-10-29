@@ -7,6 +7,8 @@ const NAV = [
     { to: '/leads', label: 'Leads', permission: 'view_leads' },
     { to: '/companies', label: 'Companies', permission: 'view_companies' },
     { to: '/contacts', label: 'Contacts', permission: 'view_contacts' },
+    { to: '/prospect-lists', label: 'Prospect lists', permission: 'view_prospect_lists' },
+    { to: '/campaigns', label: 'Campaigns', permission: 'view_campaigns' },
     { to: '/users', label: 'Users', permission: 'view_users' },
     { to: '/roles', label: 'Roles', permission: 'view_roles' },
     { to: '/permissions', label: 'Permissions', permission: 'view_permissions' },

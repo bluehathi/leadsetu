@@ -155,6 +155,12 @@ class BrevoWebhookController extends Controller
             //     Log::info('Unhandled Brevo event type: ' . $event['event']);
         }
 
+        // Stop mailing contacts who unsubscribed, complained, or hard-bounced.
+        if (in_array($event['event'], ['unsubscribed', 'spam', 'hard_bounce'], true) && $emailLog->contact_id) {
+            \App\Models\Contact::withoutGlobalScopes()->whereKey($emailLog->contact_id)
+                ->whereNull('unsubscribed_at')->update(['unsubscribed_at' => now()]);
+        }
+
         // Persist the changes to the database
         $emailLog->save();
 

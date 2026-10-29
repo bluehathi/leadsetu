@@ -2,38 +2,42 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\EmailCampaign;
+use App\Models\User;
+use App\Policies\Concerns\ChecksWorkspace;
 
 class EmailCampaignPolicy
 {
-    public function viewAny(User $user)
+    use ChecksWorkspace;
+
+    public function viewAny(User $user): bool
     {
-        return $user->can('view_campaigns');
+        return $user->workspace_id !== null && $user->can('view_campaigns');
     }
 
-    public function view(User $user, EmailCampaign $campaign)
+    public function view(User $user, EmailCampaign $campaign): bool
     {
-        return $user->workspace_id === $campaign->workspace_id && $user->can('view_campaigns');
+        return $this->sameWorkspace($user, $campaign) && $user->can('view_campaigns');
     }
 
-    public function create(User $user)
+    public function create(User $user): bool
     {
-        return $user->can('create_campaign');
+        return $user->workspace_id !== null && $user->can('create_campaign');
     }
 
-    public function update(User $user, EmailCampaign $campaign)
+    public function update(User $user, EmailCampaign $campaign): bool
     {
-        return $user->workspace_id === $campaign->workspace_id && $user->can('edit_campaign');
+        return $this->sameWorkspace($user, $campaign) && $user->can('edit_campaign');
     }
 
-    public function delete(User $user, EmailCampaign $campaign)
+    public function delete(User $user, EmailCampaign $campaign): bool
     {
-        return $user->workspace_id === $campaign->workspace_id && $user->can('delete_campaign');
+        return $this->sameWorkspace($user, $campaign) && $user->can('delete_campaign');
     }
 
-    public function send(User $user, EmailCampaign $campaign)
+    /** Sending, scheduling and cancelling a schedule all need the send permission. */
+    public function send(User $user, EmailCampaign $campaign): bool
     {
-        return $user->workspace_id === $campaign->workspace_id && $user->can('send_campaign');
+        return $this->sameWorkspace($user, $campaign) && $user->can('send_campaign');
     }
 }
