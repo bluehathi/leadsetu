@@ -4,11 +4,14 @@ namespace App\Services;
 
 use App\Http\Resources\ActivityLogResource;
 use App\Models\ActivityLog;
+use App\Models\BusinessProfile;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\EmailCampaign;
 use App\Models\EmailLog;
+use App\Models\Invoice;
 use App\Models\Lead;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -26,6 +29,7 @@ class DashboardService
             'leads' => $user->can('view_leads') ? $this->leads() : null,
             'contacts' => $user->can('view_contacts') ? $this->contacts() : null,
             'companies' => $user->can('view_companies') ? ['total' => Company::count()] : null,
+            'receivables' => $user->can('view_invoices') ? $this->receivables() : null,
             'campaigns' => $user->can('view_campaigns') ? $this->campaigns($user->workspace_id) : null,
             'recent_activity' => $user->can('view_activity_logs') ? $this->recentActivity() : null,
         ];
@@ -80,6 +84,22 @@ class DashboardService
             'by_status' => EmailCampaign::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
             'emails_sent_30d' => $sent,
             'open_rate_30d' => $sent > 0 ? round($opened / $sent * 100, 1) : 0,
+        ];
+    }
+
+    /** Money owed to the business, from issued invoices only (all figures in minor units of the workspace currency). */
+    private function receivables(): array
+    {
+        $open = Invoice::query()->whereIn('status', ['issued', 'partially_paid'])->where('balance_minor', '>', 0);
+        $overdue = (clone $open)->whereDate('due_date', '<', today());
+
+        return [
+            'currency' => BusinessProfile::query()->value('currency'),
+            'outstanding_minor' => (int) (clone $open)->sum('balance_minor'),
+            'overdue_minor' => (int) (clone $overdue)->sum('balance_minor'),
+            'overdue_count' => (clone $overdue)->count(),
+            'collected_this_month_minor' => (int) Payment::query()->whereNull('voided_at')->where('paid_at', '>=', now()->startOfMonth()->toDateString())->sum('amount_minor'),
+            'draft_count' => Invoice::where('status', 'draft')->count(),
         ];
     }
 

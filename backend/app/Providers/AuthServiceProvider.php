@@ -24,6 +24,11 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Role::class             => \App\Policies\RolePolicy::class,
         \Spatie\Permission\Models\Permission::class => \App\Policies\PermissionPolicy::class,
         \App\Models\User::class             => \App\Policies\UserPolicy::class,
+        \App\Models\Item::class            => \App\Policies\ItemPolicy::class,
+        \App\Models\TaxRate::class         => \App\Policies\TaxRatePolicy::class,
+        \App\Models\Quote::class           => \App\Policies\QuotePolicy::class,
+        \App\Models\Invoice::class         => \App\Policies\InvoicePolicy::class,
+        \App\Models\BusinessProfile::class => \App\Policies\BusinessProfilePolicy::class,
         // Add more as needed
     ];
 

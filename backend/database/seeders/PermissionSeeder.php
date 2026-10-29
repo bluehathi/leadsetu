@@ -33,7 +33,14 @@ class PermissionSeeder extends Seeder
             //settings
             'manage_settings','manage_smtp_settings',
             //email campaigns
-            'view_campaigns','create_campaign','edit_campaign','delete_campaign','send_campaign'
+            'view_campaigns','create_campaign','edit_campaign','delete_campaign','send_campaign',
+            // billing: catalog, taxes, quotes, invoices, payments
+            'manage_business_profile',
+            'view_items', 'create_items', 'edit_items', 'delete_items',
+            'view_tax_rates', 'manage_tax_rates',
+            'view_quotes', 'create_quotes', 'edit_quotes', 'delete_quotes',
+            'view_invoices', 'create_invoices', 'edit_invoices', 'delete_invoices', 'issue_invoices', 'void_invoices',
+            'record_payments', 'void_payments',
         ];
         foreach ($permissions as $permission) {
             $perm = Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);

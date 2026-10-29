@@ -47,6 +47,18 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard', V1\DashboardController::class);
         Route::get('activity-logs/filters', [V1\ActivityLogController::class, 'filters']);
         Route::get('activity-logs', [V1\ActivityLogController::class, 'index']);
+        Route::get('business', [V1\BusinessProfileController::class, 'show']);
+        Route::put('business', [V1\BusinessProfileController::class, 'update']);
+        Route::apiResource('tax-rates', V1\TaxRateController::class);
+        Route::apiResource('items', V1\ItemController::class);
+        Route::post('quotes/{quote}/status', [V1\QuoteController::class, 'status']);
+        Route::post('quotes/{quote}/convert', [V1\QuoteController::class, 'convert']);
+        Route::apiResource('quotes', V1\QuoteController::class);
+        Route::post('invoices/{invoice}/issue', [V1\InvoiceController::class, 'issue']);
+        Route::post('invoices/{invoice}/void', [V1\InvoiceController::class, 'void']);
+        Route::post('invoices/{invoice}/payments', [V1\InvoiceController::class, 'recordPayment']);
+        Route::post('payments/{payment}/void', [V1\InvoiceController::class, 'voidPayment']);
+        Route::apiResource('invoices', V1\InvoiceController::class);
         Route::apiResource('users', V1\UserController::class);
         Route::apiResource('roles', V1\RoleController::class);
         Route::get('permissions', [V1\PermissionController::class, 'index']);
