@@ -3,31 +3,40 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Policies\Concerns\ChecksWorkspace;
 
 class UserPolicy
 {
-    public function viewAny(User $user)
+    use ChecksWorkspace;
+
+    public function viewAny(User $user): bool
     {
-        return $user->can('view_users');
+        return $user->workspace_id !== null && $user->can('view_users');
     }
 
-    public function view(User $user, User $model)
+    public function view(User $user, User $model): bool
     {
-        return $user->workspace_id === $model->workspace_id && $user->can('view_users');
+        return $this->sameWorkspace($user, $model) && $user->can('view_users');
     }
 
-    public function create(User $user)
+    public function create(User $user): bool
     {
-        return $user->can('create_users');
+        return $user->workspace_id !== null && $user->can('create_users');
     }
 
-    public function update(User $user, User $model)
+    /** Also requires holding every permission the target holds: no taking over a more powerful account. */
+    public function update(User $user, User $model): bool
     {
-        return $user->workspace_id === $model->workspace_id && $user->can('edit_users');
+        return $this->sameWorkspace($user, $model)
+            && $user->can('edit_users')
+            && ($user->is($model) || $user->outranksOrEquals($model));
     }
 
-    public function delete(User $user, User $model)
+    public function delete(User $user, User $model): bool
     {
-        return $user->workspace_id === $model->workspace_id && $user->can('delete_users');
+        return $this->sameWorkspace($user, $model)
+            && ! $user->is($model)
+            && $user->can('delete_users')
+            && $user->outranksOrEquals($model);
     }
 }

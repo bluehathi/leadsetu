@@ -1,7 +1,7 @@
 import { Button, Pagination, inputClass } from './ui';
 
 // Generic list screen: search box, table, pagination, row actions.
-export default function ResourceTable({ title, columns, state, canCreate, canEdit, canDelete, onCreate, onEdit, onDelete }) {
+export default function ResourceTable({ title, columns, state, canCreate, canEdit, canDelete, rowEditable = () => true, rowDeletable = () => true, onCreate, onEdit, onDelete }) {
     const { list, search, setSearch, setPage } = state;
     const rows = list.data?.data ?? [];
 
@@ -27,8 +27,8 @@ export default function ResourceTable({ title, columns, state, canCreate, canEdi
                             <tr key={row.id} className="border-b last:border-0">
                                 {columns.map((c) => <td key={c.label} className="px-4 py-2">{c.render(row) ?? '—'}</td>)}
                                 <td className="space-x-3 px-4 py-2 text-right">
-                                    {canEdit && <button className="text-blue-600 hover:underline" onClick={() => onEdit(row)}>Edit</button>}
-                                    {canDelete && <Button variant="danger" onClick={() => onDelete(row)}>Delete</Button>}
+                                    {canEdit && rowEditable(row) && <button className="text-blue-600 hover:underline" onClick={() => onEdit(row)}>Edit</button>}
+                                    {canDelete && rowDeletable(row) && <Button variant="danger" onClick={() => onDelete(row)}>Delete</Button>}
                                 </td>
                             </tr>
                         ))}

@@ -6,6 +6,9 @@ import { useMe } from '../hooks/useMe';
 const NAV = [
     { to: '/companies', label: 'Companies', permission: 'view_companies' },
     { to: '/contacts', label: 'Contacts', permission: 'view_contacts' },
+    { to: '/users', label: 'Users', permission: 'view_users' },
+    { to: '/roles', label: 'Roles', permission: 'view_roles' },
+    { to: '/permissions', label: 'Permissions', permission: 'view_permissions' },
 ];
 
 export default function Layout() {

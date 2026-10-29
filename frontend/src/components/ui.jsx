@@ -6,13 +6,17 @@ export const Button = ({ variant = 'primary', className = '', ...props }) => (
                 : 'border hover:bg-gray-100'} ${className}`} />
 );
 
-export const Field = ({ label, error, children }) => (
-    <label className="block text-sm">
+// `group` renders a div (not a label) for fields that contain their own labels, e.g. checkbox lists.
+export const Field = ({ label, error, children, group = false }) => {
+    const Wrapper = group ? 'div' : 'label';
+    return (
+    <Wrapper className="block text-sm">
         <span className="mb-1 block font-medium">{label}</span>
         {children}
         {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
-    </label>
-);
+    </Wrapper>
+    );
+};
 
 export const inputClass = 'w-full rounded border p-2 text-sm';
 

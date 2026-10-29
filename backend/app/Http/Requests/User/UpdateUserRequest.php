@@ -2,24 +2,26 @@
 
 namespace App\Http\Requests\User;
 
+use App\Rules\AssignableRoles;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UpdateUserRequest extends FormRequest
 {
-    public function authorize()
+    public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('update', $this->route('user'));
     }
 
-    public function rules()
+    public function rules(): array
     {
-        $userId = $this->route('user') ? $this->route('user')->id : null;
         return [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $userId,
-            'password' => 'nullable|string|min:6',
-            'roles' => 'array',
-            'roles.*' => 'exists:roles,id',
+            'name' => 'sometimes|required|string|max:255',
+            'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->route('user'))],
+            'password' => ['nullable', 'string', Password::min(8)],
+            'roles' => 'sometimes|array',
+            'roles.*' => ['integer', new AssignableRoles()],
         ];
     }
 }

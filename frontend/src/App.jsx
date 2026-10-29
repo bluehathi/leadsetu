@@ -4,6 +4,9 @@ import { useMe } from './hooks/useMe';
 import Companies from './pages/Companies';
 import Contacts from './pages/Contacts';
 import Login from './pages/Login';
+import Permissions from './pages/Permissions';
+import Roles from './pages/Roles';
+import Users from './pages/Users';
 
 function RequireAuth({ children }) {
     const { me, isLoading } = useMe();
@@ -20,6 +23,9 @@ export default function App() {
                 <Route index element={<Navigate to="/contacts" replace />} />
                 <Route path="/companies" element={<Companies />} />
                 <Route path="/contacts" element={<Contacts />} />
+                <Route path="/users" element={<Users />} />
+                <Route path="/roles" element={<Roles />} />
+                <Route path="/permissions" element={<Permissions />} />
             </Route>
         </Routes>
     );

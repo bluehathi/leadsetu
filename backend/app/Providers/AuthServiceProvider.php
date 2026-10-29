@@ -21,6 +21,9 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Workspace::class         => \App\Policies\WorkspacePolicy::class,
         \App\Models\ActivityLog::class       => \App\Policies\ActivityLogPolicy::class,
         \App\Models\MailConfiguration::class => \App\Policies\MailConfigurationPolicy::class,
+        \App\Models\Role::class             => \App\Policies\RolePolicy::class,
+        \Spatie\Permission\Models\Permission::class => \App\Policies\PermissionPolicy::class,
+        \App\Models\User::class             => \App\Policies\UserPolicy::class,
         // Add more as needed
     ];
 

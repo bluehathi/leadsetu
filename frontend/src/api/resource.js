@@ -11,3 +11,6 @@ export const resource = (path) => ({
 
 export const companiesApi = resource('companies');
 export const contactsApi = resource('contacts');
+export const usersApi = resource('users');
+export const rolesApi = resource('roles');
+export const permissionsApi = { list: () => api.get('/permissions').then((r) => r.data) };
