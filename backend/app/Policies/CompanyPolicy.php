@@ -2,33 +2,36 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Company;
+use App\Models\User;
+use App\Policies\Concerns\ChecksWorkspace;
 
 class CompanyPolicy
 {
-    public function viewAny(User $user)
+    use ChecksWorkspace;
+
+    public function viewAny(User $user): bool
     {
-        return $user->can('view_companies');
+        return $user->workspace_id !== null && $user->can('view_companies');
     }
 
-    public function view(User $user, Company $company)
+    public function view(User $user, Company $company): bool
     {
-        return $user->workspace_id === $company->workspace_id && $user->can('view_companies');
+        return $this->sameWorkspace($user, $company) && $user->can('view_companies');
     }
 
-    public function create(User $user)
+    public function create(User $user): bool
     {
-        return $user->can('create_companies');
+        return $user->workspace_id !== null && $user->can('create_companies');
     }
 
-    public function update(User $user, Company $company)
+    public function update(User $user, Company $company): bool
     {
-        return $user->workspace_id === $company->workspace_id && $user->can('edit_companies');
+        return $this->sameWorkspace($user, $company) && $user->can('edit_companies');
     }
 
-    public function delete(User $user, Company $company)
+    public function delete(User $user, Company $company): bool
     {
-        return $user->workspace_id === $company->workspace_id && $user->can('delete_companies');
+        return $this->sameWorkspace($user, $company) && $user->can('delete_companies');
     }
 }

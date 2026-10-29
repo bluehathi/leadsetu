@@ -13,8 +13,9 @@ export default function Login() {
         e.preventDefault();
         setError(null);
         try {
-            await login(form);
-            await qc.invalidateQueries({ queryKey: ['me'] });
+            const res = await login(form);
+            // Seed the cache so the route guard doesn't see a stale logged-out value.
+            qc.setQueryData(['me'], res.data.data);
             navigate('/');
         } catch (err) {
             setError(err.response?.data?.errors?.email?.[0] ?? 'Login failed');

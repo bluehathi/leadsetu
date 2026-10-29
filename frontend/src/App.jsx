@@ -1,10 +1,12 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getMe } from './api/auth';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import Layout from './components/Layout';
+import { useMe } from './hooks/useMe';
+import Companies from './pages/Companies';
+import Contacts from './pages/Contacts';
 import Login from './pages/Login';
 
 function RequireAuth({ children }) {
-    const { data: me, isLoading } = useQuery({ queryKey: ['me'], queryFn: getMe });
+    const { me, isLoading } = useMe();
     if (isLoading) return <div className="p-8">Loading…</div>;
     if (!me) return <Navigate to="/login" replace />;
     return children;
@@ -14,14 +16,11 @@ export default function App() {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
-            <Route
-                path="/"
-                element={
-                    <RequireAuth>
-                        <div className="p-8">Dashboard (migrate modules here)</div>
-                    </RequireAuth>
-                }
-            />
+            <Route element={<RequireAuth><Layout /></RequireAuth>}>
+                <Route index element={<Navigate to="/contacts" replace />} />
+                <Route path="/companies" element={<Companies />} />
+                <Route path="/contacts" element={<Contacts />} />
+            </Route>
         </Routes>
     );
 }

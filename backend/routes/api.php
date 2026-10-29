@@ -8,7 +8,6 @@ use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\SMTPController;
 use App\Http\Controllers\Api\ProspectListController;
@@ -27,6 +26,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', [V1\AuthController::class, 'logout']);
         Route::get('me', [V1\AuthController::class, 'me']);
+        Route::apiResource('companies', V1\CompanyController::class);
         Route::apiResource('contacts', V1\ContactController::class);
     });
 });
@@ -39,7 +39,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('permissions', PermissionController::class);
     Route::apiResource('users', UserController::class);
-    Route::apiResource('companies', CompanyController::class);
     Route::apiResource('smtp-settings', SMTPController::class);
     Route::apiResource('prospect-lists', ProspectListController::class);
     Route::apiResource('email-campaigns', EmailCampaignController::class);

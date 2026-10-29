@@ -1,0 +1,13 @@
+import { api } from './client';
+
+// Thin CRUD wrapper around a /api/v1/<path> resource.
+export const resource = (path) => ({
+    list: (params) => api.get(`/${path}`, { params }).then((r) => r.data),
+    get: (id) => api.get(`/${path}/${id}`).then((r) => r.data.data),
+    create: (payload) => api.post(`/${path}`, payload).then((r) => r.data.data),
+    update: (id, payload) => api.put(`/${path}/${id}`, payload).then((r) => r.data.data),
+    remove: (id) => api.delete(`/${path}/${id}`),
+});
+
+export const companiesApi = resource('companies');
+export const contactsApi = resource('contacts');

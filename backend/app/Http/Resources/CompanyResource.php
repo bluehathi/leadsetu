@@ -13,7 +13,10 @@ class CompanyResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'description' => $this->description,
             'website' => $this->website,
+            'contacts_count' => $this->when(isset($this->contacts_count), fn () => $this->contacts_count),
+            'created_at' => $this->created_at,
         ];
     }
 }
