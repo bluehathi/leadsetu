@@ -25,7 +25,7 @@ Route::get('/register', [AuthController::class, 'showRegistrationForm'])->middle
 Route::post('/register', [AuthController::class, 'register'])->middleware('guest');
 
 // Admin-protected routes
-Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
+Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/leads/kanban', [LeadsController::class, 'kanban'])->name('leads.kanban')->middleware('permission:view_leads');
     Route::resource('/leads', App\Http\Controllers\Admin\LeadsController::class)->middleware('permission:view_leads');;

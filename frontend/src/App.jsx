@@ -8,8 +8,12 @@ import CampaignDetail from './pages/CampaignDetail';
 import Campaigns from './pages/Campaigns';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
+import ForgotPassword from './pages/ForgotPassword';
 import Login from './pages/Login';
 import Permissions from './pages/Permissions';
+import Profile from './pages/Profile';
+import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
 import ProspectLists from './pages/ProspectLists';
 import Roles from './pages/Roles';
 import SmtpSettings from './pages/SmtpSettings';
@@ -39,9 +43,13 @@ export default function App() {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<RequireAuth><Layout /></RequireAuth>}>
                 <Route index element={<Home />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="/activity-logs" element={<ActivityLogs />} />
                 <Route path="/leads" element={<Leads />} />
                 <Route path="/prospect-lists" element={<ProspectLists />} />

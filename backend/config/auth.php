@@ -112,4 +112,10 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    // Allow anyone to sign up and create a new workspace (turn off for invite-only installs).
+    'registration_enabled' => env('REGISTRATION_ENABLED', true),
+
+    // Block API access until the user has verified their email address.
+    'require_verified_email' => env('REQUIRE_VERIFIED_EMAIL', false),
+
 ];

@@ -20,6 +20,19 @@ cd frontend && cp .env.example .env && npm install && npm run dev
 
 See `backend/README.md` for backend details.
 
+## Configuration notes (backend `.env`)
+
+| Variable | Purpose |
+|---|---|
+| `APP_URL`, `FRONTEND_URL` | Public URLs of the API and the SPA; used in unsubscribe, verification and password-reset links |
+| `SANCTUM_STATEFUL_DOMAINS` | SPA origin(s) allowed to use cookie login |
+| `REGISTRATION_ENABLED` | Open sign-up (each sign-up creates a workspace); set `false` for invite-only |
+| `REQUIRE_VERIFIED_EMAIL` | Block the API until the email address is verified |
+| `BREVO_WEBHOOK_SECRET` | Legacy shared webhook secret (optional; each workspace gets its own webhook URL) |
+| `QUEUE_CONNECTION` | Campaigns send in the background: run `php artisan queue:work` |
+
+Run `php artisan db:seed --class=PermissionSeeder` and `--class=RoleSeeder` on a fresh install: sign-up assigns the shared "WorkSpace Owner" role.
+
 ## Migration status
 
 The legacy Inertia UI still lives in `backend/resources/js` and is being migrated module by

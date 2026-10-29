@@ -1,6 +1,7 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { logout } from '../api/auth';
+import { logout, resendVerification } from '../api/auth';
 import { useMe } from '../hooks/useMe';
 
 const NAV = [
@@ -23,6 +24,11 @@ export default function Layout() {
     const navigate = useNavigate();
     const qc = useQueryClient();
 
+    const [resent, setResent] = useState(false);
+    const resend = async () => {
+        try { await resendVerification(); setResent(true); } catch { /* throttled: keep the button */ }
+    };
+
     const signOut = async () => {
         await logout();
         qc.clear();
@@ -44,10 +50,16 @@ export default function Layout() {
                 </nav>
             </aside>
             <div className="flex-1">
+                {me && !me.email_verified && (
+                    <div className="border-b bg-yellow-50 px-6 py-2 text-sm text-yellow-800">
+                        Please verify your email address ({me.email}).{' '}
+                        {resent ? 'Verification email sent.' : <button className="underline" onClick={resend}>Resend email</button>}
+                    </div>
+                )}
                 <header className="flex items-center justify-between border-b bg-white px-6 py-3 text-sm">
                     <span>{me?.workspace?.name}</span>
                     <span className="flex items-center gap-4">
-                        {me?.name}
+                        <Link to="/profile" className="hover:underline">{me?.name}</Link>
                         <button onClick={signOut} className="text-blue-600 hover:underline">Sign out</button>
                     </span>
                 </header>
