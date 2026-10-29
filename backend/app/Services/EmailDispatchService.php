@@ -86,15 +86,14 @@ class EmailDispatchService
         ]);
 
         try {
-            // Apply the dynamic SMTP configuration for this sending operation
-            SmtpConfigHelper::applyMailConfig($workspaceConfig);
+            // Mailer bound to this workspace only (no global config mutation).
+            $mailer = SmtpConfigHelper::mailer($workspaceConfig);
 
-            
             // Step 3: Instantiate our updated Mailable, passing the entire log object to it.
             $mailable = new UserComposedEmail($emailLog);
 
             // Step 4: Send the email. We no longer need to capture the return value.
-            $mail = Mail::to($recipientContact->email)->send($mailable);
+            $mail = $mailer->to($recipientContact->email)->send($mailable);
 
             $retrievedMessageId = $mail->getMessageId();
 

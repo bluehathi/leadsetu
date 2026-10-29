@@ -2,7 +2,9 @@
 namespace App\Helpers;
 
 use App\Models\MailConfiguration;
+use Illuminate\Mail\Mailer;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class SmtpConfigHelper
 {
@@ -12,6 +14,25 @@ class SmtpConfigHelper
         return MailConfiguration::where('workspace_id', $workspaceId)->first();
     }
 
+    /**
+     * A mailer bound to this workspace's SMTP settings only. Unlike applyMailConfig() it does
+     * not touch global config, so credentials cannot leak into the next send in a long-lived worker.
+     */
+    public static function mailer(MailConfiguration $config): Mailer
+    {
+        return Mail::build([
+            'transport' => 'smtp',
+            'host' => $config->host,
+            'port' => $config->port,
+            'encryption' => $config->encryption === 'none' ? null : $config->encryption,
+            'username' => $config->username,
+            'password' => $config->password,
+            'timeout' => 15,
+            'from' => ['address' => $config->from_address, 'name' => $config->from_name],
+        ]);
+    }
+
+    /** @deprecated Mutates global config; use mailer(). */
     public static function applyMailConfig($config)
     {
         config(['mail.mailers.smtp' => [

@@ -14,6 +14,18 @@ class MailConfiguration extends Model
         'password', 'encryption', 'from_address', 'from_name',
     ];
 
+    /** Credentials and the webhook secret never leave the server in serialized output. */
+    protected $hidden = ['password', 'username', 'webhook_token'];
+
+    public function ensureWebhookToken(): string
+    {
+        if (! $this->webhook_token) {
+            $this->forceFill(['webhook_token' => \Illuminate\Support\Str::random(40)])->save();
+        }
+
+        return $this->webhook_token;
+    }
+
     // Use Laravel 10's modern, fluent cast definition
     protected function host(): Attribute {
         return Attribute::make(get: fn ($value) => decrypt($value), set: fn ($value) => encrypt($value));

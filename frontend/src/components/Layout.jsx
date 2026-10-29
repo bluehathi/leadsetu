@@ -9,6 +9,8 @@ const NAV = [
     { to: '/users', label: 'Users', permission: 'view_users' },
     { to: '/roles', label: 'Roles', permission: 'view_roles' },
     { to: '/permissions', label: 'Permissions', permission: 'view_permissions' },
+    { to: '/workspace', label: 'Workspace', permission: 'view_workspaces' },
+    { to: '/settings/smtp', label: 'SMTP settings', permission: 'manage_smtp_settings' },
 ];
 
 export default function Layout() {

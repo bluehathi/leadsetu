@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\EmailLog; // <-- Using your EmailLog model
+use App\Models\EmailLog;
+use App\Models\MailConfiguration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,9 +22,19 @@ class BrevoWebhookController extends Controller
         // Modern Security for Laravel 12: Verify the webhook is from Brevo
         // This checks for a secret token in the webhook URL.
         $secretToken = (string) $request->query('token', '');
-        $expected = (string) config('services.brevo.webhook_secret');
-        // Fail closed when no secret is configured; compare in constant time.
-        if ($expected === '' || ! hash_equals($expected, $secretToken)) {
+
+        // Preferred: a per-workspace token (events are then limited to that workspace's emails).
+        $workspaceId = null;
+        if ($secretToken !== '') {
+            $workspaceId = MailConfiguration::withoutGlobalScopes()
+                ->where('webhook_token', $secretToken)->value('workspace_id');
+        }
+
+        // Legacy: one shared secret from the environment. Fails closed when unset.
+        $legacy = (string) config('services.brevo.webhook_secret');
+        $legacyOk = $legacy !== '' && hash_equals($legacy, $secretToken);
+
+        if ($workspaceId === null && ! $legacyOk) {
             Log::warning('Unauthorized webhook attempt to Brevo endpoint.', [
                 'ip' => $request->ip(),
                 'path' => $request->path()
@@ -54,7 +65,7 @@ class BrevoWebhookController extends Controller
             }
 
             // Process each event
-            $this->processEvent($event);
+            $this->processEvent($event, $workspaceId);
         }
 
         // Acknowledge receipt to Brevo
@@ -66,10 +77,12 @@ class BrevoWebhookController extends Controller
      *
      * @param array $event
      */
-    protected function processEvent(array $event)
+    protected function processEvent(array $event, ?int $workspaceId = null)
     {
         // Find the original email record using the unique message ID from Brevo.
-        $emailLog = EmailLog::where('esp_message_id', trim($event['message-id'], '<>'))->first();
+        $emailLog = EmailLog::where('esp_message_id', trim($event['message-id'], '<>'))
+            ->when($workspaceId !== null, fn ($q) => $q->where('workspace_id', $workspaceId))
+            ->first();
 
         if (!$emailLog) {
             Log::warning('Brevo Webhook: EmailLog not found for message-id: ' . $event['message-id']);

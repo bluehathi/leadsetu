@@ -6,7 +6,9 @@ import Contacts from './pages/Contacts';
 import Login from './pages/Login';
 import Permissions from './pages/Permissions';
 import Roles from './pages/Roles';
+import SmtpSettings from './pages/SmtpSettings';
 import Users from './pages/Users';
+import Workspace from './pages/Workspace';
 
 function RequireAuth({ children }) {
     const { me, isLoading } = useMe();
@@ -26,6 +28,8 @@ export default function App() {
                 <Route path="/users" element={<Users />} />
                 <Route path="/roles" element={<Roles />} />
                 <Route path="/permissions" element={<Permissions />} />
+                <Route path="/workspace" element={<Workspace />} />
+                <Route path="/settings/smtp" element={<SmtpSettings />} />
             </Route>
         </Routes>
     );
