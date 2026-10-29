@@ -3,7 +3,6 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\BrevoWebhookController;
-use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\ProspectListController;
 use App\Http\Controllers\Api\EmailCampaignController;
@@ -27,6 +26,8 @@ Route::prefix('v1')->group(function () {
         Route::get('settings/smtp', [V1\SmtpSettingsController::class, 'show']);
         Route::put('settings/smtp', [V1\SmtpSettingsController::class, 'update']);
         Route::post('settings/smtp/test', [V1\SmtpSettingsController::class, 'test'])->middleware('throttle:3,1');
+        Route::patch('leads/{lead}/status', [V1\LeadController::class, 'updateStatus']);
+        Route::apiResource('leads', V1\LeadController::class);
         Route::apiResource('users', V1\UserController::class);
         Route::apiResource('roles', V1\RoleController::class);
         Route::get('permissions', [V1\PermissionController::class, 'index']);
@@ -38,7 +39,6 @@ Route::prefix('v1')->group(function () {
 Route::post('webhooks/brevo', [BrevoWebhookController::class, 'handle']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::apiResource('leads', LeadController::class);
     Route::apiResource('prospect-lists', ProspectListController::class);
     Route::apiResource('email-campaigns', EmailCampaignController::class);
     Route::apiResource('activity-logs', ActivityLogController::class);

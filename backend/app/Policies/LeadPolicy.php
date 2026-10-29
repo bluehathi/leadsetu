@@ -2,33 +2,36 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Lead;
+use App\Models\User;
+use App\Policies\Concerns\ChecksWorkspace;
 
 class LeadPolicy
 {
-    public function viewAny(User $user)
+    use ChecksWorkspace;
+
+    public function viewAny(User $user): bool
     {
-        return $user->can('view_leads');
+        return $user->workspace_id !== null && $user->can('view_leads');
     }
 
-    public function view(User $user, Lead $lead)
+    public function view(User $user, Lead $lead): bool
     {
-        return $user->workspace_id === $lead->workspace_id && $user->can('view_leads');
+        return $this->sameWorkspace($user, $lead) && $user->can('view_leads');
     }
 
-    public function create(User $user)
+    public function create(User $user): bool
     {
-        return $user->can('create_leads');
+        return $user->workspace_id !== null && $user->can('create_leads');
     }
 
-    public function update(User $user, Lead $lead)
+    public function update(User $user, Lead $lead): bool
     {
-        return $user->workspace_id === $lead->workspace_id && $user->can('edit_leads');
+        return $this->sameWorkspace($user, $lead) && $user->can('edit_leads');
     }
 
-    public function delete(User $user, Lead $lead)
+    public function delete(User $user, Lead $lead): bool
     {
-        return $user->workspace_id === $lead->workspace_id && $user->can('delete_leads');
+        return $this->sameWorkspace($user, $lead) && $user->can('delete_leads');
     }
 }

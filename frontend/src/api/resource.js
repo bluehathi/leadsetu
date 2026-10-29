@@ -11,6 +11,10 @@ export const resource = (path) => ({
 
 export const companiesApi = resource('companies');
 export const contactsApi = resource('contacts');
+export const leadsApi = {
+    ...resource('leads'),
+    setStatus: (id, status) => api.patch(`/leads/${id}/status`, { status }).then((r) => r.data.data),
+};
 export const usersApi = resource('users');
 export const rolesApi = resource('roles');
 export const permissionsApi = { list: () => api.get('/permissions').then((r) => r.data) };

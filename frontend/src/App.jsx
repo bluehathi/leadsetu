@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import { useMe } from './hooks/useMe';
 import Companies from './pages/Companies';
 import Contacts from './pages/Contacts';
+import Leads from './pages/Leads';
 import Login from './pages/Login';
 import Permissions from './pages/Permissions';
 import Roles from './pages/Roles';
@@ -22,7 +23,8 @@ export default function App() {
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth><Layout /></RequireAuth>}>
-                <Route index element={<Navigate to="/contacts" replace />} />
+                <Route index element={<Navigate to="/leads" replace />} />
+                <Route path="/leads" element={<Leads />} />
                 <Route path="/companies" element={<Companies />} />
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/users" element={<Users />} />

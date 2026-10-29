@@ -1,7 +1,7 @@
 import { Button, Pagination, inputClass } from './ui';
 
 // Generic list screen: search box, table, pagination, row actions.
-export default function ResourceTable({ title, columns, state, canCreate, canEdit, canDelete, rowEditable = () => true, rowDeletable = () => true, onCreate, onEdit, onDelete }) {
+export default function ResourceTable({ title, columns, state, canCreate, canEdit, canDelete, rowEditable = () => true, rowDeletable = () => true, toolbar, onCreate, onEdit, onDelete }) {
     const { list, search, setSearch, setPage } = state;
     const rows = list.data?.data ?? [];
 
@@ -13,6 +13,7 @@ export default function ResourceTable({ title, columns, state, canCreate, canEdi
             </div>
             <input className={`${inputClass} mb-4 max-w-xs`} placeholder="Search…" value={search}
                 onChange={(e) => setSearch(e.target.value)} />
+            {toolbar}
             {list.isError && <p className="text-sm text-red-600">Could not load data.</p>}
             <div className="overflow-x-auto rounded border bg-white">
                 <table className="w-full text-left text-sm">

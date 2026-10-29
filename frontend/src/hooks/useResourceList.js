@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // List state (search/sort/page) + mutations for a CRUD resource.
-export function useResourceList(key, api, { sort } = {}) {
+export function useResourceList(key, api, { sort, filters = {} } = {}) {
     const qc = useQueryClient();
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
 
     const list = useQuery({
-        queryKey: [key, { search, page, sort }],
-        queryFn: () => api.list({ search: search || undefined, page, sort }),
+        queryKey: [key, { search, page, sort, filters }],
+        queryFn: () => api.list({ search: search || undefined, page, sort, ...filters }),
         placeholderData: keepPreviousData,
     });
 

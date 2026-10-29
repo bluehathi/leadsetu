@@ -9,6 +9,11 @@ class Lead extends Model
     use \App\Models\Concerns\BelongsToWorkspace;
     use HasFactory;
 
+    public const STATUSES = ['new', 'contacted', 'qualified', 'unqualified', 'lost', 'won'];
+    public const SOURCES = ['website', 'referral', 'cold_call', 'advertisement', 'other'];
+    public const PRIORITIES = ['High', 'Medium', 'Low'];
+
+    // score/qualification are computed, user_id/workspace_id come from the session: none are mass-assignable.
     protected $fillable = [
         'name',
         'email',
@@ -18,20 +23,22 @@ class Lead extends Model
         'notes',
         'status',
         'source',
-        'score',
-        'qualification',
-        'user_id',
-        'workspace_id', // Add workspace_id
         'title',
         'positions',
         'tags',
-        'company_id', // Add company_id
-        'contact_id', // Add contact_id
+        'company_id',
+        'contact_id',
+        'deal_value',
+        'expected_close',
+        'priority',
+        'lead_owner',
     ];
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'tags' => 'array',
+        'expected_close' => 'date',
+        'attachments' => 'array',
     ];
     protected $table = 'leads';
     protected $primaryKey = 'id';

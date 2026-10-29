@@ -4,6 +4,7 @@ import { logout } from '../api/auth';
 import { useMe } from '../hooks/useMe';
 
 const NAV = [
+    { to: '/leads', label: 'Leads', permission: 'view_leads' },
     { to: '/companies', label: 'Companies', permission: 'view_companies' },
     { to: '/contacts', label: 'Contacts', permission: 'view_contacts' },
     { to: '/users', label: 'Users', permission: 'view_users' },

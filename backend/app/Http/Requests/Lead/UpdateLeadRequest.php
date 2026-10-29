@@ -2,36 +2,21 @@
 
 namespace App\Http\Requests\Lead;
 
-use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-class UpdateLeadRequest extends FormRequest
+class UpdateLeadRequest extends StoreLeadRequest
 {
-    public function authorize()
+    public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('update', $this->route('lead'));
     }
 
-    public function rules()
+    public function rules(): array
     {
-        return [
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'company_id' => 'nullable|exists:companies,id',
-            'contact_id' => 'nullable|exists:contacts,id',
-            'website' => 'nullable|string|max:255',
-            'company' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-            'status' => 'nullable|string',
-            'source' => 'nullable|string',
-            'deal_value' => 'nullable|numeric',
-            'expected_close' => 'nullable|date',
-            'lead_score' => 'nullable|integer',
-            'lead_owner' => 'nullable|integer',
-            'priority' => 'nullable|string',
-            'title' => 'nullable|string',
-            'positions' => 'nullable|string',
-            'tags' => 'nullable|string',
-        ];
+        $rules = parent::rules();
+        // Partial updates: only validate fields that were sent.
+        $rules['name'] = 'sometimes|required|string|max:180';
+
+        return $rules;
     }
 }

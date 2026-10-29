@@ -31,7 +31,7 @@ class LeadFactory extends Factory
             'expected_close' => now()->addMonth(),
             'lead_score' => 50,
             'lead_owner' => 1,
-            'priority' => 'medium',
+            'priority' => 'Medium',
             'attachments' => [],
         ];
     }
