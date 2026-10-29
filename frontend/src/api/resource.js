@@ -58,3 +58,26 @@ export const activityLogsApi = {
     list: (params) => api.get('/activity-logs', { params }).then((r) => r.data),
     filters: () => api.get('/activity-logs/filters').then((r) => r.data.data),
 };
+
+export const businessApi = {
+    get: () => api.get('/business').then((r) => r.data.data),
+    update: (payload) => api.put('/business', payload).then((r) => r.data.data),
+};
+export const taxRatesApi = resource('tax-rates');
+export const itemsApi = resource('items');
+
+const documentApi = (path) => ({
+    ...resource(path),
+});
+export const quotesApi = {
+    ...documentApi('quotes'),
+    setStatus: (id, status) => api.post(`/quotes/${id}/status`, { status }).then((r) => r.data.data),
+    convert: (id) => api.post(`/quotes/${id}/convert`).then((r) => r.data.data),
+};
+export const invoicesApi = {
+    ...documentApi('invoices'),
+    issue: (id) => api.post(`/invoices/${id}/issue`).then((r) => r.data.data),
+    void: (id, reason) => api.post(`/invoices/${id}/void`, { reason }).then((r) => r.data.data),
+    pay: (id, payload) => api.post(`/invoices/${id}/payments`, payload).then((r) => r.data.data),
+    voidPayment: (paymentId, reason) => api.post(`/payments/${paymentId}/void`, { reason }).then((r) => r.data.data),
+};

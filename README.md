@@ -38,9 +38,17 @@ In production do NOT run the full seeder (it creates demo users). Run only `php 
 ## Status
 
 The Inertia UI has been removed: the backend is API-only and every screen lives in `frontend/`.
-Covered: sign-up / sign-in / password reset / email verification, dashboard, leads (list + board), contacts
-(CSV/XLSX import, one-to-one email), companies, prospect lists, email campaigns (scheduling, unsubscribe,
-delivery stats), users, roles, permissions, workspace, SMTP settings, activity log.
 
-Not built yet: lead-to-contact conversion and the ERP modules (see the roadmap discussion: money/numbering/
-accounting foundations, then sales, purchasing, inventory).
+**CRM:** sign-up / sign-in / password reset / email verification, dashboard, leads (list + board), contacts
+(CSV/XLSX import, one-to-one email), companies (customers), prospect lists, email campaigns (scheduling,
+unsubscribe, delivery stats), users, roles, permissions, workspace, SMTP settings, activity log.
+
+**Billing (India GST + US sales tax):** business profile, tax rates, items catalog, quotes, invoices (gap-free
+numbers per financial year, immutable once issued, void instead of delete), partial payments, receivables on
+the dashboard, printable invoices. Money is stored as integer minor units.
+
+After upgrading an existing install run `php artisan migrate` and re-run
+`php artisan db:seed --class=PermissionSeeder` and `--class=RoleSeeder` to get the new billing permissions.
+
+Not built yet: PDF download/email of invoices, credit notes, purchases/bills, inventory, double-entry
+accounting and reports, lead-to-customer conversion.

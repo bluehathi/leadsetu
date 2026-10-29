@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { dashboardApi } from '../api/resource';
 import { humanize, money, when } from '../lib/format';
 import { STATUSES, label } from '../lib/leads';
+import { formatMoney } from '../lib/money';
 
 const Card = ({ title, value, hint }) => (
     <div className="rounded border bg-white p-4">
@@ -34,13 +35,16 @@ export default function Dashboard() {
     const { data, isLoading, isError } = useQuery({ queryKey: ['dashboard'], queryFn: dashboardApi.get });
     if (isLoading) return <p>Loading…</p>;
     if (isError) return <p className="text-sm text-red-600">Could not load the dashboard.</p>;
-    const { leads, contacts, companies, campaigns, recent_activity: activity } = data;
+    const { leads, receivables, contacts, companies, campaigns, recent_activity: activity } = data;
 
     return (
         <div className="space-y-6">
             <h1 className="text-xl font-semibold">Dashboard</h1>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {receivables && <Card title="Outstanding" value={formatMoney(receivables.outstanding_minor, receivables.currency ?? 'INR')} hint={`${receivables.draft_count} draft invoices`} />}
+                {receivables && <Card title="Overdue" value={formatMoney(receivables.overdue_minor, receivables.currency ?? 'INR')} hint={`${receivables.overdue_count} invoices`} />}
+                {receivables && <Card title="Collected this month" value={formatMoney(receivables.collected_this_month_minor, receivables.currency ?? 'INR')} />}
                 {leads && <Card title="Leads" value={leads.total} hint={`${leads.new_this_month} new this month`} />}
                 {leads && <Card title="Conversion rate" value={`${leads.conversion_rate}%`} hint={`${leads.won} won`} />}
                 {leads && <Card title="Open pipeline" value={money(leads.open_pipeline_value)} hint="new, contacted, qualified" />}

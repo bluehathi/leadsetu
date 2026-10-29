@@ -4,6 +4,9 @@ import { useMe } from './hooks/useMe';
 import Companies from './pages/Companies';
 import Contacts from './pages/Contacts';
 import ActivityLogs from './pages/ActivityLogs';
+import BusinessSettings from './pages/BusinessSettings';
+import { DocumentDetail, DocumentEditor, DocumentList } from './pages/Documents';
+import Items from './pages/Items';
 import CampaignDetail from './pages/CampaignDetail';
 import Campaigns from './pages/Campaigns';
 import Dashboard from './pages/Dashboard';
@@ -29,7 +32,7 @@ function RequireAuth({ children }) {
 
 // Land on the first area the user is allowed to see.
 const HOME = [
-    ['view_dashboard', '/dashboard'], ['view_leads', '/leads'], ['view_contacts', '/contacts'],
+    ['view_dashboard', '/dashboard'], ['view_invoices', '/invoices'], ['view_leads', '/leads'], ['view_contacts', '/contacts'],
     ['view_companies', '/companies'], ['view_campaigns', '/campaigns'], ['view_users', '/users'],
 ];
 
@@ -55,6 +58,16 @@ export default function App() {
                 <Route path="/prospect-lists" element={<ProspectLists />} />
                 <Route path="/campaigns" element={<Campaigns />} />
                 <Route path="/campaigns/:id" element={<CampaignDetail />} />
+                <Route path="/business" element={<BusinessSettings />} />
+                <Route path="/items" element={<Items />} />
+                <Route path="/quotes" element={<DocumentList kind="quote" />} />
+                <Route path="/quotes/new" element={<DocumentEditor kind="quote" />} />
+                <Route path="/quotes/:id" element={<DocumentDetail kind="quote" />} />
+                <Route path="/quotes/:id/edit" element={<DocumentEditor kind="quote" />} />
+                <Route path="/invoices" element={<DocumentList kind="invoice" />} />
+                <Route path="/invoices/new" element={<DocumentEditor kind="invoice" />} />
+                <Route path="/invoices/:id" element={<DocumentDetail kind="invoice" />} />
+                <Route path="/invoices/:id/edit" element={<DocumentEditor kind="invoice" />} />
                 <Route path="/companies" element={<Companies />} />
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/users" element={<Users />} />

@@ -7,7 +7,10 @@ import { useMe } from '../hooks/useMe';
 const NAV = [
     { to: '/dashboard', label: 'Dashboard', permission: 'view_dashboard' },
     { to: '/leads', label: 'Leads', permission: 'view_leads' },
-    { to: '/companies', label: 'Companies', permission: 'view_companies' },
+    { to: '/quotes', label: 'Quotes', permission: 'view_quotes' },
+    { to: '/invoices', label: 'Invoices', permission: 'view_invoices' },
+    { to: '/items', label: 'Items', permission: 'view_items' },
+    { to: '/companies', label: 'Customers', permission: 'view_companies' },
     { to: '/contacts', label: 'Contacts', permission: 'view_contacts' },
     { to: '/prospect-lists', label: 'Prospect lists', permission: 'view_prospect_lists' },
     { to: '/campaigns', label: 'Campaigns', permission: 'view_campaigns' },
@@ -15,6 +18,7 @@ const NAV = [
     { to: '/roles', label: 'Roles', permission: 'view_roles' },
     { to: '/permissions', label: 'Permissions', permission: 'view_permissions' },
     { to: '/activity-logs', label: 'Activity log', permission: 'view_activity_logs' },
+    { to: '/business', label: 'Business & taxes', permission: 'manage_business_profile' },
     { to: '/workspace', label: 'Workspace', permission: 'view_workspaces' },
     { to: '/settings/smtp', label: 'SMTP settings', permission: 'manage_smtp_settings' },
 ];
