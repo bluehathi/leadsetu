@@ -4,10 +4,15 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Concerns\AppliesResourcePolicy;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Contact\ImportContactsRequest;
+use App\Http\Requests\Contact\SendContactEmailRequest;
 use App\Http\Requests\Contact\StoreContactRequest;
 use App\Http\Requests\Contact\UpdateContactRequest;
 use App\Http\Resources\ContactResource;
+use App\Http\Resources\EmailLogResource;
 use App\Models\Contact;
+use App\Services\ActivityLogService;
+use App\Services\ContactImportService;
 use App\Services\ContactService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +23,7 @@ class ContactController extends Controller implements HasMiddleware
 {
     use AppliesResourcePolicy;
 
-    public function __construct(protected ContactService $contacts)
+    public function __construct(protected ContactService $contacts, protected ActivityLogService $audit)
     {
     }
 
@@ -62,5 +67,22 @@ class ContactController extends Controller implements HasMiddleware
         $this->contacts->deleteContact($contact);
 
         return response()->json(null, 204);
+    }
+
+    /** CSV/XLSX upload; returns how many rows were created, skipped as duplicates, or rejected. */
+    public function import(ImportContactsRequest $request, ContactImportService $importer): JsonResponse
+    {
+        $result = $importer->import($request->file('file'));
+        $this->audit->log('contacts_imported', null, 'Contacts imported', ['created' => $result['created'], 'skipped' => $result['skipped'], 'errors' => count($result['errors'])]);
+
+        return response()->json(['data' => $result]);
+    }
+
+    public function sendEmail(SendContactEmailRequest $request, Contact $contact): JsonResponse
+    {
+        $log = $this->contacts->sendEmail($contact, $request->validated());
+        $this->audit->log('contact_emailed', $contact, 'Email sent to contact', ['subject' => $request->validated('subject')]);
+
+        return (new EmailLogResource($log))->response()->setStatusCode(201);
     }
 }

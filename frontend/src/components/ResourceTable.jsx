@@ -1,7 +1,7 @@
 import { Button, Pagination, inputClass } from './ui';
 
 // Generic list screen: search box, table, pagination, row actions.
-export default function ResourceTable({ title, columns, state, canCreate, canEdit, canDelete, rowEditable = () => true, rowDeletable = () => true, toolbar, onCreate, onEdit, onDelete }) {
+export default function ResourceTable({ title, columns, state, canCreate, canEdit, canDelete, rowEditable = () => true, rowDeletable = () => true, rowActions, toolbar, headerActions, onCreate, onEdit, onDelete }) {
     const { list, search, setSearch, setPage } = state;
     const rows = list.data?.data ?? [];
 
@@ -9,7 +9,7 @@ export default function ResourceTable({ title, columns, state, canCreate, canEdi
         <div>
             <div className="mb-4 flex items-center justify-between">
                 <h1 className="text-xl font-semibold">{title}</h1>
-                {canCreate && <Button onClick={onCreate}>New</Button>}
+                <div className="flex gap-2">{headerActions}{canCreate && <Button onClick={onCreate}>New</Button>}</div>
             </div>
             <input className={`${inputClass} mb-4 max-w-xs`} placeholder="Search…" value={search}
                 onChange={(e) => setSearch(e.target.value)} />
@@ -28,6 +28,7 @@ export default function ResourceTable({ title, columns, state, canCreate, canEdi
                             <tr key={row.id} className="border-b last:border-0">
                                 {columns.map((c) => <td key={c.label} className="px-4 py-2">{c.render(row) ?? '—'}</td>)}
                                 <td className="space-x-3 px-4 py-2 text-right">
+                                    {rowActions?.(row)}
                                     {canEdit && rowEditable(row) && <button className="text-blue-600 hover:underline" onClick={() => onEdit(row)}>Edit</button>}
                                     {canDelete && rowDeletable(row) && <Button variant="danger" onClick={() => onDelete(row)}>Delete</Button>}
                                 </td>

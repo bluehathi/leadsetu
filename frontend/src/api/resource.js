@@ -10,7 +10,15 @@ export const resource = (path) => ({
 });
 
 export const companiesApi = resource('companies');
-export const contactsApi = resource('contacts');
+export const contactsApi = {
+    ...resource('contacts'),
+    import: (file) => {
+        const form = new FormData();
+        form.append('file', file);
+        return api.post('/contacts/import', form).then((r) => r.data.data);
+    },
+    sendEmail: (id, payload) => api.post(`/contacts/${id}/send-email`, payload).then((r) => r.data.data),
+};
 export const leadsApi = {
     ...resource('leads'),
     setStatus: (id, status) => api.patch(`/leads/${id}/status`, { status }).then((r) => r.data.data),

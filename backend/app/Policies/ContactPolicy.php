@@ -34,4 +34,10 @@ class ContactPolicy
     {
         return $this->sameWorkspace($user, $contact) && $user->can('delete_contacts');
     }
+
+    /** One-to-one email to a contact: same permission as sending campaigns. */
+    public function email(User $user, Contact $contact): bool
+    {
+        return $this->sameWorkspace($user, $contact) && $user->can('send_campaign');
+    }
 }

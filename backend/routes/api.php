@@ -51,6 +51,8 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('roles', V1\RoleController::class);
         Route::get('permissions', [V1\PermissionController::class, 'index']);
         Route::apiResource('companies', V1\CompanyController::class);
+        Route::post('contacts/import', [V1\ContactController::class, 'import'])->middleware('throttle:5,1');
+        Route::post('contacts/{contact}/send-email', [V1\ContactController::class, 'sendEmail'])->middleware('throttle:30,1');
         Route::apiResource('contacts', V1\ContactController::class);
     });
 });
