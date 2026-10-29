@@ -4,6 +4,7 @@ import { logout } from '../api/auth';
 import { useMe } from '../hooks/useMe';
 
 const NAV = [
+    { to: '/dashboard', label: 'Dashboard', permission: 'view_dashboard' },
     { to: '/leads', label: 'Leads', permission: 'view_leads' },
     { to: '/companies', label: 'Companies', permission: 'view_companies' },
     { to: '/contacts', label: 'Contacts', permission: 'view_contacts' },
@@ -12,6 +13,7 @@ const NAV = [
     { to: '/users', label: 'Users', permission: 'view_users' },
     { to: '/roles', label: 'Roles', permission: 'view_roles' },
     { to: '/permissions', label: 'Permissions', permission: 'view_permissions' },
+    { to: '/activity-logs', label: 'Activity log', permission: 'view_activity_logs' },
     { to: '/workspace', label: 'Workspace', permission: 'view_workspaces' },
     { to: '/settings/smtp', label: 'SMTP settings', permission: 'manage_smtp_settings' },
 ];

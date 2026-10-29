@@ -44,3 +44,9 @@ export const campaignsApi = {
     cancel: (id) => api.post(`/email-campaigns/${id}/cancel`).then((r) => r.data.data),
     deliveries: (id, params) => api.get(`/email-campaigns/${id}/deliveries`, { params }).then((r) => r.data),
 };
+
+export const dashboardApi = { get: () => api.get('/dashboard').then((r) => r.data.data) };
+export const activityLogsApi = {
+    list: (params) => api.get('/activity-logs', { params }).then((r) => r.data),
+    filters: () => api.get('/activity-logs/filters').then((r) => r.data.data),
+};

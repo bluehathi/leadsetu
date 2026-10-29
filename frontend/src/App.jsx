@@ -3,8 +3,10 @@ import Layout from './components/Layout';
 import { useMe } from './hooks/useMe';
 import Companies from './pages/Companies';
 import Contacts from './pages/Contacts';
+import ActivityLogs from './pages/ActivityLogs';
 import CampaignDetail from './pages/CampaignDetail';
 import Campaigns from './pages/Campaigns';
+import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Login from './pages/Login';
 import Permissions from './pages/Permissions';
@@ -21,12 +23,26 @@ function RequireAuth({ children }) {
     return children;
 }
 
+// Land on the first area the user is allowed to see.
+const HOME = [
+    ['view_dashboard', '/dashboard'], ['view_leads', '/leads'], ['view_contacts', '/contacts'],
+    ['view_companies', '/companies'], ['view_campaigns', '/campaigns'], ['view_users', '/users'],
+];
+
+function Home() {
+    const { can } = useMe();
+    const target = HOME.find(([p]) => can(p))?.[1];
+    return target ? <Navigate to={target} replace /> : <p className="text-gray-600">Your account has no access to any area yet. Ask an administrator for permissions.</p>;
+}
+
 export default function App() {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth><Layout /></RequireAuth>}>
-                <Route index element={<Navigate to="/leads" replace />} />
+                <Route index element={<Home />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/activity-logs" element={<ActivityLogs />} />
                 <Route path="/leads" element={<Leads />} />
                 <Route path="/prospect-lists" element={<ProspectLists />} />
                 <Route path="/campaigns" element={<Campaigns />} />

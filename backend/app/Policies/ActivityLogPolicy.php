@@ -2,18 +2,21 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\User;
+use App\Policies\Concerns\ChecksWorkspace;
 
 class ActivityLogPolicy
 {
-    public function viewAny(User $user)
+    use ChecksWorkspace;
+
+    public function viewAny(User $user): bool
     {
-        return $user->can('view_activity_logs');
+        return $user->workspace_id !== null && $user->can('view_activity_logs');
     }
 
-    public function view(User $user, ActivityLog $log)
+    public function view(User $user, ActivityLog $log): bool
     {
-        return $user->workspace_id === $log->workspace_id && $user->can('view_activity_logs');
+        return $this->sameWorkspace($user, $log) && $user->can('view_activity_logs');
     }
 }

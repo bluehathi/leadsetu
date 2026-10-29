@@ -4,7 +4,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\BrevoWebhookController;
 use App\Http\Controllers\Api\V1;
-use App\Http\Controllers\Api\ActivityLogController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -35,6 +34,9 @@ Route::prefix('v1')->group(function () {
         Route::post('email-campaigns/{email_campaign}/cancel', [V1\EmailCampaignController::class, 'cancel']);
         Route::get('email-campaigns/{email_campaign}/deliveries', [V1\EmailCampaignController::class, 'deliveries']);
         Route::apiResource('email-campaigns', V1\EmailCampaignController::class);
+        Route::get('dashboard', V1\DashboardController::class);
+        Route::get('activity-logs/filters', [V1\ActivityLogController::class, 'filters']);
+        Route::get('activity-logs', [V1\ActivityLogController::class, 'index']);
         Route::apiResource('users', V1\UserController::class);
         Route::apiResource('roles', V1\RoleController::class);
         Route::get('permissions', [V1\PermissionController::class, 'index']);
@@ -45,6 +47,3 @@ Route::prefix('v1')->group(function () {
 
 Route::post('webhooks/brevo', [BrevoWebhookController::class, 'handle']);
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::apiResource('activity-logs', ActivityLogController::class);
-});
