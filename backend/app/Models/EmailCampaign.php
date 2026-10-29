@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class EmailCampaign extends Model
 {
+    use \App\Models\Concerns\BelongsToWorkspace;
     use HasFactory;
 
     protected $fillable = [
@@ -23,11 +24,6 @@ class EmailCampaign extends Model
         'failed_at',
         'prospect_list_id',
     ];
-
-    public function workspace(): BelongsTo
-    {
-        return $this->belongsTo(Workspace::class);
-    }
 
     public function user(): BelongsTo
     {

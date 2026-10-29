@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Scopes\WorkSpaceScope;
 class Lead extends Model
 {
+    use \App\Models\Concerns\BelongsToWorkspace;
     use HasFactory;
 
     protected $fillable = [
@@ -36,17 +36,7 @@ class Lead extends Model
     protected $table = 'leads';
     protected $primaryKey = 'id';
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new WorkSpaceScope());
-    }
-
     
-
-    public function workspace()
-    {
-        return $this->belongsTo(Workspace::class);
-    }
 
     public function company()
     {

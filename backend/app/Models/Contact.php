@@ -7,10 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-use App\Models\Scopes\WorkSpaceScope;
 
 class Contact extends Model
 {
+    use \App\Models\Concerns\BelongsToWorkspace;
     use HasFactory;
 
     protected $fillable = [
@@ -22,17 +22,6 @@ class Contact extends Model
         'notes',
         'company_id',
     ];
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new WorkSpaceScope());
-    }
-
-    // If you have workspaces and want to link contacts to them:
-    public function workspace(): BelongsTo
-    {
-        return $this->belongsTo(Workspace::class);
-    }
 
     public function company(): BelongsTo
     {

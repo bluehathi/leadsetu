@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class MailConfiguration extends Model
 {
+    use \App\Models\Concerns\BelongsToWorkspace;
     protected $fillable = [
         'workspace_id', 'driver', 'host', 'port', 'username', 
         'password', 'encryption', 'from_address', 'from_name',

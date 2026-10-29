@@ -20,8 +20,10 @@ class BrevoWebhookController extends Controller
     {
         // Modern Security for Laravel 12: Verify the webhook is from Brevo
         // This checks for a secret token in the webhook URL.
-        $secretToken = $request->get('token');
-        if ($secretToken !== config('services.brevo.webhook_secret')) {
+        $secretToken = (string) $request->query('token', '');
+        $expected = (string) config('services.brevo.webhook_secret');
+        // Fail closed when no secret is configured; compare in constant time.
+        if ($expected === '' || ! hash_equals($expected, $secretToken)) {
             Log::warning('Unauthorized webhook attempt to Brevo endpoint.', [
                 'ip' => $request->ip(),
                 'path' => $request->path()
@@ -29,15 +31,22 @@ class BrevoWebhookController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $payload = $request->all();
+        $payload = $request->json()->all();
 
         // Brevo can send a single event or an array of events.
         // We'll normalize it to always handle an array.
         $events = isset($payload['event']) ? [$payload] : $payload;
 
         foreach ($events as $event) {
-            // Log every event for debugging purposes
-            Log::info('Brevo Webhook Event Received:', $event);
+            if (!is_array($event)) {
+                continue;
+            }
+
+            // Log only identifiers, not recipient data.
+            Log::info('Brevo Webhook Event Received', [
+                'event' => $event['event'] ?? null,
+                'message-id' => $event['message-id'] ?? null,
+            ]);
 
             if (!isset($event['event']) || !isset($event['message-id'])) {
                 Log::warning('Brevo Webhook: Skipping invalid event payload.', $event);

@@ -2,6 +2,7 @@
 
 namespace App\Models\Scopes;
 
+use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
@@ -9,13 +10,28 @@ use Illuminate\Database\Eloquent\Scope;
 class WorkSpaceScope implements Scope
 {
     /**
-     * Apply the scope to a given Eloquent query builder.
+     * Restrict queries to the current tenant. Fails closed: an HTTP request whose
+     * user has no workspace (or no user at all) sees nothing. Only console contexts
+     * (seeders, artisan, queue workers) without a tenant are left unscoped, and jobs
+     * should wrap their work in WorkspaceContext::run().
      */
     public function apply(Builder $builder, Model $model): void
     {
-        // If the user is authenticated and has a workspace_id, apply the scope
-        if (auth()->check() && auth()->user()->workspace_id) {
-            $builder->where($model->getTable() . '.workspace_id', auth()->user()->workspace_id);
+        $column = $model->getTable() . '.workspace_id';
+
+        if (($workspaceId = WorkspaceContext::id()) !== null) {
+            $builder->where($column, $workspaceId);
+            return;
+        }
+
+        if (auth()->check()) {
+            $workspaceId = auth()->user()->workspace_id;
+            $workspaceId === null ? $builder->whereRaw('1 = 0') : $builder->where($column, $workspaceId);
+            return;
+        }
+
+        if (! app()->runningInConsole()) {
+            $builder->whereRaw('1 = 0');
         }
     }
 }

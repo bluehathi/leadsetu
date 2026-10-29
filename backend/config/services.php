@@ -35,7 +35,7 @@ return [
         ],
     ],
     'brevo' => [
-        'webhook_secret' => env('BREVO_WEBHOOK_SECRET','452855D857AF6AA8B74ED92C4187A')
+        'webhook_secret' => env('BREVO_WEBHOOK_SECRET')
     ]
 
 ];

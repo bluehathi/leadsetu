@@ -9,7 +9,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\CompanyController;
-use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\SMTPController;
 use App\Http\Controllers\Api\ProspectListController;
 use App\Http\Controllers\Api\EmailCampaignController;
@@ -20,6 +20,17 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+// Versioned API consumed by the SPA (Sanctum cookie auth).
+Route::prefix('v1')->group(function () {
+    Route::post('auth/login', [V1\AuthController::class, 'login'])->middleware('throttle:6,1');
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('auth/logout', [V1\AuthController::class, 'logout']);
+        Route::get('me', [V1\AuthController::class, 'me']);
+        Route::apiResource('contacts', V1\ContactController::class);
+    });
+});
+
 Route::post('webhooks/brevo', [BrevoWebhookController::class, 'handle']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -29,7 +40,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('permissions', PermissionController::class);
     Route::apiResource('users', UserController::class);
     Route::apiResource('companies', CompanyController::class);
-    Route::apiResource('contacts', ContactController::class);
     Route::apiResource('smtp-settings', SMTPController::class);
     Route::apiResource('prospect-lists', ProspectListController::class);
     Route::apiResource('email-campaigns', EmailCampaignController::class);

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProspectList extends Model
 {
+    use \App\Models\Concerns\BelongsToWorkspace;
     use HasFactory;
 
     protected $fillable = ['workspace_id', 'user_id', 'name', 'description'];
