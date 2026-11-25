@@ -1,160 +1,54 @@
 # LeadSetu
 
-LeadSetu is a modern, workspace-based CRM and outreach platform for managing contacts, companies, prospect lists, and email campaigns. Built with Laravel, Inertia.js, and React, it is designed for multi-user teams, advanced filtering, and robust permission management. The architecture emphasizes clean code, reusability, and scalability for both web and API interfaces.
+Monorepo with two independent applications:
 
----
+| Folder | What | Stack |
+|---|---|---|
+| `backend/` | JSON API (multi-tenant business/ERP logic, policies, queues) | Laravel |
+| `frontend/` | Single-page app that consumes the API | React, Vite, React Router, TanStack Query |
 
-## Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Setup & Installation](#setup--installation)
-- [Authorization & Permissions](#authorization--permissions)
-- [Validation & Form Requests](#validation--form-requests)
-- [Domain Service Layer](#domain-service-layer)
-- [Email & Queue](#email--queue)
-- [Testing](#testing)
-- [Contributing](#contributing)
-- [License](#license)
+## Local development
 
----
+```bash
+# API  (http://localhost:8000)
+cd backend && composer install && cp .env.example .env && php artisan key:generate
+php artisan migrate --seed && php artisan serve   # --seed adds DEMO users (e.g. admin@example.com / 123456789): development only
 
-## Features
-- **Contacts & Companies**: Manage contacts and their associated companies. Import via CSV.
-- **Prospect Lists**: Organize contacts into multiple lists for targeted outreach.
-- **Email Campaigns**: Create, schedule, and send campaigns to prospect lists using workspace-specific SMTP settings.
-- **One-to-One Email**: Send and log individual emails to contacts, with full tracking and activity logging.
-- **Activity Logging**: All major actions are logged for audit and reporting.
-- **Multi-Workspace**: Each user belongs to a workspace; all data is scoped accordingly.
-- **Advanced Filtering & Sorting**: Powerful search and sort for contacts, companies, and campaigns.
-- **Modern UI**: Built with React, Tailwind CSS, and Inertia.js for a fast, SPA-like experience.
-- **Role & Permission Management**: Fine-grained access control using roles and permissions.
-- **Policy-Based Authorization**: All major models and controllers enforce Laravel policies for security.
-- **Domain-Organized Form Requests**: All validation logic is handled by Form Request classes, organized by domain for clarity and maintainability.
-- **Domain Service Layer**: All business logic is encapsulated in domain-based service classes, keeping controllers clean and enabling easy reuse for API controllers.
+php artisan queue:work                                # in another terminal: campaigns send in the background
 
----
-
-## Tech Stack
-- **Backend**: Laravel 10+
-- **Frontend**: React (with Inertia.js)
-- **Database**: MySQL (or compatible)
-- **Queue**: Laravel Queue (for scheduled/sent emails)
-- **Mail**: SMTP (per workspace)
-
----
-
-## Project Structure
-
-```
-app/
-  Http/
-    Controllers/         # Web and API controllers (thin, delegate to services)
-    Requests/            # Form Requests, organized by domain (e.g., Company/StoreCompanyRequest.php)
-  Models/                # Eloquent models
-  Policies/              # Laravel policies for all major models
-  Services/              # Domain-based service classes (business logic, reusable)
-  ...
-resources/
-  js/                    # React components
-  views/                 # Blade templates (if any)
-routes/
-  web.php                # Web routes
-  api.php                # API routes
-...
+# SPA  (http://localhost:5173, proxies /api and /sanctum to the API)
+cd frontend && cp .env.example .env && npm install && npm run dev
 ```
 
----
+See `backend/README.md` for backend details.
 
-## Setup & Installation
+## Configuration notes (backend `.env`)
 
-1. **Clone the repository**
-   ```sh
-   git clone <your-repo-url>
-   cd leadsetu
-   ```
-2. **Install PHP dependencies**
-   ```sh
-   composer install
-   ```
-3. **Install JS dependencies**
-   ```sh
-   npm install
-   ```
-4. **Copy and edit environment files**
-   ```sh
-   cp .env.example .env
-   # Edit .env for your DB, mail, etc.
-   ```
-5. **Generate app key**
-   ```sh
-   php artisan key:generate
-   ```
-6. **Run migrations and seeders**
-   ```sh
-   php artisan migrate --seed
-   ```
-7. **Build frontend assets**
-   ```sh
-   npm run build
-   ```
-8. **Start the development server**
-   ```sh
-   php artisan serve
-   ```
+| Variable | Purpose |
+|---|---|
+| `APP_URL`, `FRONTEND_URL` | Public URLs of the API and the SPA; used in unsubscribe, verification and password-reset links |
+| `SANCTUM_STATEFUL_DOMAINS` | SPA origin(s) allowed to use cookie login |
+| `REGISTRATION_ENABLED` | Open sign-up (each sign-up creates a workspace); set `false` for invite-only |
+| `REQUIRE_VERIFIED_EMAIL` | Block the API until the email address is verified |
+| `BREVO_WEBHOOK_SECRET` | Legacy shared webhook secret (optional; each workspace gets its own webhook URL) |
+| `QUEUE_CONNECTION` | Campaigns send in the background: run `php artisan queue:work` |
 
----
+In production do NOT run the full seeder (it creates demo users). Run only `php artisan db:seed --class=PermissionSeeder` and `--class=RoleSeeder`: sign-up assigns the shared "WorkSpace Owner" role.
 
-## Authorization & Permissions
-- **Policies**: All major models (ProspectList, Contact, Company, Lead, EmailCampaign, Workspace, ActivityLog, MailConfiguration, Role, Permission, Dashboard, Settings) have Laravel policies registered and enforced in their controllers via `$this->authorize()` calls.
-- **Controller Enforcement**: All resource and custom controller actions use explicit policy-based authorization.
-- **Permission Seeder**: Permissions are seeded and mapped to roles. Update `database/seeders/PermissionSeeder.php` to add or change permissions.
-- **UI Enforcement**: The frontend uses the user's permissions (shared via Inertia) to show/hide actions and navigation.
-- **Routes**: All admin routes are protected by both middleware and policy checks for defense-in-depth.
+## Status
 
----
+The Inertia UI has been removed: the backend is API-only and every screen lives in `frontend/`.
 
-## Validation & Form Requests
-- **Form Requests**: All validation logic is handled by Laravel Form Request classes.
-- **Organization**: Form Requests are organized into domain-specific subfolders under `app/Http/Requests/` (e.g., `Company/StoreCompanyRequest.php`, `User/UpdateUserRequest.php`).
-- **Controller Usage**: Controllers type-hint the appropriate Form Request for each action, ensuring consistent validation and authorization.
-- **Cleanup**: Obsolete Form Request files outside their subfolders have been removed for clarity.
+**CRM:** sign-up / sign-in / password reset / email verification, dashboard, leads (list + board), contacts
+(CSV/XLSX import, one-to-one email), companies (customers), prospect lists, email campaigns (scheduling,
+unsubscribe, delivery stats), users, roles, permissions, workspace, SMTP settings, activity log.
 
----
+**Billing (India GST + US sales tax):** business profile, tax rates, items catalog, quotes, invoices (gap-free
+numbers per financial year, immutable once issued, void instead of delete), partial payments, receivables on
+the dashboard, printable invoices. Money is stored as integer minor units.
 
-## Domain Service Layer
-- **Service Classes**: All business logic for major domains (Company, Contact, Lead, ProspectList, EmailCampaign, Workspace, Role, Permission, SMTP, User, ActivityLog) is encapsulated in service classes under `app/Services/`.
-- **Controller Simplicity**: Controllers delegate business logic and activity logging to these services, making them clean and focused on request/response.
-- **API Ready**: This structure enables easy reuse of business logic for future API controllers and other entry points.
-- **Activity Logging**: Use `ActivityLogService` for consistent, reusable activity logging across the application.
+After upgrading an existing install run `php artisan migrate` and re-run
+`php artisan db:seed --class=PermissionSeeder` and `--class=RoleSeeder` to get the new billing permissions.
 
----
-
-## Email & Queue
-- Configure SMTP settings per workspace in the UI or via the database.
-- For scheduled campaigns, ensure your queue worker is running:
-  ```sh
-  php artisan queue:work
-  ```
-
----
-
-## Testing
-- Run backend tests:
-  ```sh
-  php artisan test
-  ```
-- Run frontend tests (if present):
-  ```sh
-  npm test
-  ```
-
----
-
-## Contributing
-Pull requests are welcome! Please open issues for bugs or feature requests.
-
----
-
-## License
-MIT
+Not built yet: PDF download/email of invoices, credit notes, purchases/bills, inventory, double-entry
+accounting and reports, lead-to-customer conversion.

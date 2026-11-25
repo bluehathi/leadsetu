@@ -1,0 +1,74 @@
+import { useState } from 'react';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { logout, resendVerification } from '../api/auth';
+import { useMe } from '../hooks/useMe';
+
+const NAV = [
+    { to: '/dashboard', label: 'Dashboard', permission: 'view_dashboard' },
+    { to: '/leads', label: 'Leads', permission: 'view_leads' },
+    { to: '/quotes', label: 'Quotes', permission: 'view_quotes' },
+    { to: '/invoices', label: 'Invoices', permission: 'view_invoices' },
+    { to: '/items', label: 'Items', permission: 'view_items' },
+    { to: '/companies', label: 'Customers', permission: 'view_companies' },
+    { to: '/contacts', label: 'Contacts', permission: 'view_contacts' },
+    { to: '/prospect-lists', label: 'Prospect lists', permission: 'view_prospect_lists' },
+    { to: '/campaigns', label: 'Campaigns', permission: 'view_campaigns' },
+    { to: '/users', label: 'Users', permission: 'view_users' },
+    { to: '/roles', label: 'Roles', permission: 'view_roles' },
+    { to: '/permissions', label: 'Permissions', permission: 'view_permissions' },
+    { to: '/activity-logs', label: 'Activity log', permission: 'view_activity_logs' },
+    { to: '/business', label: 'Business & taxes', permission: 'manage_business_profile' },
+    { to: '/workspace', label: 'Workspace', permission: 'view_workspaces' },
+    { to: '/settings/smtp', label: 'SMTP settings', permission: 'manage_smtp_settings' },
+];
+
+export default function Layout() {
+    const { me, can } = useMe();
+    const navigate = useNavigate();
+    const qc = useQueryClient();
+
+    const [resent, setResent] = useState(false);
+    const resend = async () => {
+        try { await resendVerification(); setResent(true); } catch { /* throttled: keep the button */ }
+    };
+
+    const signOut = async () => {
+        await logout();
+        qc.clear();
+        navigate('/login');
+    };
+
+    return (
+        <div className="flex min-h-screen bg-gray-50 text-gray-900">
+            <aside className="w-56 shrink-0 border-r bg-white p-4">
+                <div className="mb-6 text-lg font-bold">LeadSetu</div>
+                <nav className="space-y-1">
+                    {NAV.filter((n) => can(n.permission)).map((n) => (
+                        <NavLink key={n.to} to={n.to}
+                            className={({ isActive }) =>
+                                `block rounded px-3 py-2 text-sm ${isActive ? 'bg-blue-50 font-medium text-blue-700' : 'hover:bg-gray-100'}`}>
+                            {n.label}
+                        </NavLink>
+                    ))}
+                </nav>
+            </aside>
+            <div className="flex-1">
+                {me && !me.email_verified && (
+                    <div className="border-b bg-yellow-50 px-6 py-2 text-sm text-yellow-800">
+                        Please verify your email address ({me.email}).{' '}
+                        {resent ? 'Verification email sent.' : <button className="underline" onClick={resend}>Resend email</button>}
+                    </div>
+                )}
+                <header className="flex items-center justify-between border-b bg-white px-6 py-3 text-sm">
+                    <span>{me?.workspace?.name}</span>
+                    <span className="flex items-center gap-4">
+                        <Link to="/profile" className="hover:underline">{me?.name}</Link>
+                        <button onClick={signOut} className="text-blue-600 hover:underline">Sign out</button>
+                    </span>
+                </header>
+                <main className="p-6"><Outlet /></main>
+            </div>
+        </div>
+    );
+}
