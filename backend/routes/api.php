@@ -92,6 +92,8 @@ Route::prefix('v1')->group(function () {
         Route::post('social/contents/optimize', [V1\SocialContentController::class, 'optimize']);
         Route::post('social/contents/{social_content}/publish-from-drive', [V1\GoogleDriveController::class, 'publishToYouTube']);
         Route::post('social/contents/{social_content}/sync-youtube', [V1\GoogleDriveController::class, 'updateLiveYouTube']);
+        Route::post('social/contents/{social_content}/sync-facebook', [V1\GoogleDriveController::class, 'updateLiveFacebook']);
+        Route::post('social/accounts/{social_account}/sync-youtube-planner', [V1\GoogleDriveController::class, 'syncYouTubeToPlanner']);
         Route::post('social/contents/{social_content}/share', [V1\SocialContentController::class, 'share']);
         Route::post('social/contents/{social_content}/first-comment', [V1\SocialContentController::class, 'updateFirstComment']);
         Route::apiResource('social/contents', V1\SocialContentController::class)->parameters(['contents' => 'social_content']);

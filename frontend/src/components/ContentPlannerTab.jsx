@@ -22,8 +22,8 @@ const platformBadge = (platform) =>
     platform === 'youtube'
         ? 'bg-red-100 text-red-700'
         : platform === 'facebook'
-        ? 'bg-blue-100 text-blue-700'
-        : 'bg-pink-100 text-pink-700';
+            ? 'bg-blue-100 text-blue-700'
+            : 'bg-pink-100 text-pink-700';
 
 export default function ContentPlannerTab({
     accounts,
@@ -155,6 +155,29 @@ export default function ContentPlannerTab({
         onError: (err) => setErrorMsg(err?.response?.data?.message || 'Failed to sync updates to YouTube.'),
     });
 
+    const syncFbMut = useMutation({
+        mutationFn: (id) => socialApi.syncContentToFacebook(id),
+        onSuccess: () => {
+            setErrorMsg('');
+            onSaved();
+        },
+        onError: (err) => setErrorMsg(err?.response?.data?.message || 'Failed to sync updates to Facebook.'),
+    });
+
+    const importYtMut = useMutation({
+        mutationFn: async () => {
+            const ytAccounts = accounts.filter((a) => a.platform === 'youtube');
+            for (const acc of ytAccounts) {
+                await socialApi.syncYouTubeToPlanner(acc.id, 25);
+            }
+        },
+        onSuccess: () => {
+            setErrorMsg('');
+            onSaved();
+        },
+        onError: (err) => setErrorMsg(err?.response?.data?.message || 'Failed to import YouTube videos.'),
+    });
+
     const stageCounts = useMemo(() => {
         const counts = { all: contents.length, idea: 0, draft: 0, scheduled: 0, published: 0 };
         contents.forEach((c) => {
@@ -203,11 +226,11 @@ export default function ContentPlannerTab({
             drive_folder_name: contentForm.drive_folder_name || null,
             ...(contentForm.drive_file_id
                 ? {
-                      drive_file_id: contentForm.drive_file_id,
-                      drive_file_name: contentForm.drive_file_name,
-                      drive_file_url: contentForm.drive_file_url,
-                      drive_mime_type: contentForm.drive_mime_type,
-                  }
+                    drive_file_id: contentForm.drive_file_id,
+                    drive_file_name: contentForm.drive_file_name,
+                    drive_file_url: contentForm.drive_file_url,
+                    drive_mime_type: contentForm.drive_mime_type,
+                }
                 : {}),
             ...(contentForm.drive_thumbnail_file_id ? { drive_thumbnail_file_id: contentForm.drive_thumbnail_file_id } : {}),
         };
@@ -342,27 +365,24 @@ export default function ContentPlannerTab({
                         <button
                             type="button"
                             onClick={() => setFormTab('basics')}
-                            className={`rounded-lg py-1.5 transition ${
-                                formTab === 'basics' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                            }`}
+                            className={`rounded-lg py-1.5 transition ${formTab === 'basics' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
                         >
                             1. Basics
                         </button>
                         <button
                             type="button"
                             onClick={() => setFormTab('seo')}
-                            className={`rounded-lg py-1.5 transition ${
-                                formTab === 'seo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                            }`}
+                            className={`rounded-lg py-1.5 transition ${formTab === 'seo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
                         >
                             2. SEO &amp; Copy
                         </button>
                         <button
                             type="button"
                             onClick={() => setFormTab('media')}
-                            className={`rounded-lg py-1.5 transition ${
-                                formTab === 'media' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                            }`}
+                            className={`rounded-lg py-1.5 transition ${formTab === 'media' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
                         >
                             3. Media &amp; Comment
                             {(contentForm.drive_file_id || contentForm.drive_folder_id || contentForm.first_comment) && (
@@ -385,8 +405,8 @@ export default function ContentPlannerTab({
                                             {showCrossPost
                                                 ? 'Hide cross-post'
                                                 : extraAccountIds.length > 0
-                                                ? `+${extraAccountIds.length} cross-post(s)`
-                                                : '+ Cross-post'}
+                                                    ? `+${extraAccountIds.length} cross-post(s)`
+                                                    : '+ Cross-post'}
                                         </button>
                                     )}
                                 </div>
@@ -717,8 +737,8 @@ export default function ContentPlannerTab({
                                     ? 'Updating…'
                                     : 'Update Content'
                                 : createMut.isPending
-                                ? 'Saving…'
-                                : 'Save to Planner'}
+                                    ? 'Saving…'
+                                    : 'Save to Planner'}
                         </button>
                         {editingId && (
                             <button
@@ -744,11 +764,10 @@ export default function ContentPlannerTab({
                                 <button
                                     key={s.id}
                                     onClick={() => setStageFilter(s.id)}
-                                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                                        stageFilter === s.id
-                                            ? 'bg-indigo-600 text-white shadow-sm'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
+                                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${stageFilter === s.id
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
                                 >
                                     {s.label} ({stageCounts[s.id] ?? 0})
                                 </button>
@@ -757,17 +776,26 @@ export default function ContentPlannerTab({
                                 <button
                                     type="button"
                                     onClick={() => setFailedOnly((v) => !v)}
-                                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                                        failedOnly
-                                            ? 'bg-red-600 text-white shadow-sm'
-                                            : 'bg-red-50 text-red-700 hover:bg-red-100'
-                                    }`}
+                                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${failedOnly
+                                        ? 'bg-red-600 text-white shadow-sm'
+                                        : 'bg-red-50 text-red-700 hover:bg-red-100'
+                                        }`}
                                 >
                                     ⚠ Failed ({failedCount})
                                 </button>
                             )}
                         </div>
                         <div className="flex items-center gap-2">
+                            {canManage && accounts.some((a) => a.platform === 'youtube') && (
+                                <button
+                                    type="button"
+                                    disabled={importYtMut.isPending}
+                                    onClick={() => importYtMut.mutate()}
+                                    className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                >
+                                    {importYtMut.isPending ? 'Syncing YT…' : '↻ Sync YT Videos'}
+                                </button>
+                            )}
                             <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs">
                                 <button
                                     type="button"
@@ -798,11 +826,10 @@ export default function ContentPlannerTab({
                                     key={p.id}
                                     type="button"
                                     onClick={() => setPlatformFilter(p.id)}
-                                    className={`rounded-md px-2 py-1 font-medium transition ${
-                                        platformFilter === p.id
-                                            ? 'bg-gray-900 text-white'
-                                            : 'text-gray-600 hover:bg-gray-100'
-                                    }`}
+                                    className={`rounded-md px-2 py-1 font-medium transition ${platformFilter === p.id
+                                        ? 'bg-gray-900 text-white'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
                                 >
                                     {p.label}
                                 </button>
@@ -1034,6 +1061,16 @@ export default function ContentPlannerTab({
                                                         {syncYtMut.isPending ? 'Syncing…' : '↻ Sync to YT'}
                                                     </button>
                                                 )}
+                                                {item.status === 'published' && item.platform === 'facebook' && item.published_url && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={syncFbMut.isPending}
+                                                        onClick={() => syncFbMut.mutate(item.id)}
+                                                        className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                                                    >
+                                                        {syncFbMut.isPending ? 'Syncing…' : '↻ Sync to FB'}
+                                                    </button>
+                                                )}
                                                 {item.status === 'published' && (
                                                     <button
                                                         onClick={() => {
@@ -1081,9 +1118,8 @@ export default function ContentPlannerTab({
                                         {item.seo_breakdown.map((chk) => (
                                             <span
                                                 key={chk.key}
-                                                className={`rounded px-2 py-0.5 text-[11px] ${
-                                                    chk.passed ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
-                                                }`}
+                                                className={`rounded px-2 py-0.5 text-[11px] ${chk.passed ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+                                                    }`}
                                             >
                                                 {chk.passed ? '✓' : '○'} {chk.label} ({chk.points}/{chk.max})
                                             </span>
@@ -1176,9 +1212,8 @@ export default function ContentPlannerTab({
                                     return (
                                         <label
                                             key={acc.id}
-                                            className={`flex cursor-pointer items-center justify-between rounded-xl border p-2.5 text-xs ${
-                                                checked ? 'border-indigo-400 bg-indigo-50/50' : 'border-gray-200 hover:bg-gray-50'
-                                            }`}
+                                            className={`flex cursor-pointer items-center justify-between rounded-xl border p-2.5 text-xs ${checked ? 'border-indigo-400 bg-indigo-50/50' : 'border-gray-200 hover:bg-gray-50'
+                                                }`}
                                         >
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <input

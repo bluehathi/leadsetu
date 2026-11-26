@@ -75,4 +75,8 @@ export const socialApi = {
         api.post(`/social/contents/${contentId}/publish-from-drive`, { privacy_status }).then((r) => r.data.data),
     syncContentToYouTube: (contentId, privacy_status = null) =>
         api.post(`/social/contents/${contentId}/sync-youtube`, privacy_status ? { privacy_status } : {}).then((r) => r.data.data),
+    syncContentToFacebook: (contentId) =>
+        api.post(`/social/contents/${contentId}/sync-facebook`).then((r) => r.data.data),
+    syncYouTubeToPlanner: (accountId, limit = 25) =>
+        api.post(`/social/accounts/${accountId}/sync-youtube-planner`, { limit }).then((r) => r.data.data),
 };

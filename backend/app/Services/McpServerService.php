@@ -271,7 +271,7 @@ class McpServerService
                 ],
                 [
                     'name' => 'update_live_youtube_video',
-                    'description' => 'Update a live YouTube video’s title, description, tags, hashtags, or privacy status directly on YouTube (and sync the planner item). Can also link a youtube_video_id if not yet linked.',
+                    'description' => 'Update a live YouTube video’s title, description, tags, hashtags, Drive thumbnail, or privacy status directly on YouTube (and sync the planner item). Can also link a youtube_video_id if not yet linked.',
                     'inputSchema' => [
                         'type' => 'object',
                         'properties' => [
@@ -281,9 +281,36 @@ class McpServerService
                             'description' => ['type' => 'string', 'description' => 'New YouTube video description'],
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Updated YouTube tags'],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Updated hashtags appended to description'],
+                            'drive_thumbnail_file_id' => ['type' => 'string', 'description' => 'Optional Google Drive image file ID to push as live YouTube thumbnail'],
                             'privacy_status' => ['type' => 'string', 'enum' => ['public', 'unlisted', 'private'], 'description' => 'Optional new privacy status'],
                         ],
                         'required' => ['content_id'],
+                    ],
+                ],
+                [
+                    'name' => 'update_live_facebook_post',
+                    'description' => 'Update the caption/message on an already-published Facebook Page post.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'content_id' => ['type' => 'integer', 'description' => 'Published Facebook SocialContent ID'],
+                            'title' => ['type' => 'string', 'description' => 'Updated headline/first line'],
+                            'description' => ['type' => 'string', 'description' => 'Updated Facebook post caption/message'],
+                            'hashtags' => ['type' => 'array', 'items' => ['type' => 'string']],
+                        ],
+                        'required' => ['content_id'],
+                    ],
+                ],
+                [
+                    'name' => 'sync_youtube_to_planner',
+                    'description' => 'Sync existing live YouTube channel videos into Content Planner, automatically linking matching unlinked items by title and importing missing videos with their real youtube_video_id.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'social_account_id' => ['type' => 'integer', 'description' => 'YouTube SocialAccount ID from list_social_accounts'],
+                            'limit' => ['type' => 'integer', 'description' => 'Number of recent videos to sync (1-50, default 25)'],
+                        ],
+                        'required' => ['social_account_id'],
                     ],
                 ],
                 [
@@ -369,6 +396,8 @@ class McpServerService
             'share_content_to_brand',
             'update_first_comment',
             'update_live_youtube_video',
+            'update_live_facebook_post',
+            'sync_youtube_to_planner',
             'publish_content_now',
             'create_drive_folder',
             'rename_drive_file',
@@ -399,6 +428,8 @@ class McpServerService
             'share_content_to_brand' => $this->shareContentToBrand($args),
             'update_first_comment' => $this->updateFirstComment($args),
             'update_live_youtube_video' => $this->updateLiveYouTubeVideo($args),
+            'update_live_facebook_post' => $this->updateLiveFacebookPost($args),
+            'sync_youtube_to_planner' => $this->syncYouTubeToPlanner($args),
             'publish_content_now' => $this->publishContentNow($args),
             'create_drive_folder' => $this->createDriveFolder($args),
             'rename_drive_file' => $this->renameDriveFile($args),
@@ -881,6 +912,11 @@ class McpServerService
         if (isset($args['hashtags']) && is_array($args['hashtags'])) {
             $updates['hashtags'] = array_values($args['hashtags']);
         }
+        if (! empty($args['drive_thumbnail_file_id'])) {
+            $updates = array_merge($updates, $this->resolveDriveAttachments([
+                'drive_thumbnail_file_id' => $args['drive_thumbnail_file_id'],
+            ]));
+        }
         if (! empty($updates)) {
             $merged = array_merge($content->toArray(), $updates);
             $scored = $this->growthService->scoreContent($merged);
@@ -896,6 +932,42 @@ class McpServerService
         $this->audit->log('youtube_video_updated', $updated, "MCP updated live YouTube video '{$updated->title}' ({$updated->youtube_video_id})");
 
         return $updated->toArray();
+    }
+
+    protected function updateLiveFacebookPost(array $args): array
+    {
+        $content = SocialContent::with('account')->findOrFail((int) ($args['content_id'] ?? 0));
+
+        $updates = [];
+        foreach (['title', 'description'] as $field) {
+            if (array_key_exists($field, $args) && $args[$field] !== null) {
+                $updates[$field] = $args[$field];
+            }
+        }
+        if (isset($args['hashtags']) && is_array($args['hashtags'])) {
+            $updates['hashtags'] = array_values($args['hashtags']);
+        }
+        if (! empty($updates)) {
+            $merged = array_merge($content->toArray(), $updates);
+            $scored = $this->growthService->scoreContent($merged);
+            $content->update(array_merge($updates, $scored));
+        }
+
+        $updated = $this->driveService->updateLiveFacebookPost($content->fresh());
+        $this->audit->log('facebook_post_updated', $updated, "MCP updated live Facebook post '{$updated->title}'");
+
+        return $updated->toArray();
+    }
+
+    protected function syncYouTubeToPlanner(array $args): array
+    {
+        $account = SocialAccount::findOrFail((int) ($args['social_account_id'] ?? 0));
+        $limit = max(1, min(50, (int) ($args['limit'] ?? 25)));
+
+        $result = $this->driveService->syncYouTubeVideosToPlanner($account, $limit);
+        $this->audit->log('youtube_videos_synced_to_planner', $account, "MCP synced YouTube videos to Content Planner ({$result['linked']} linked, {$result['imported']} imported)");
+
+        return $result;
     }
 
     protected function publishContentNow(array $args): array

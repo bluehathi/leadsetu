@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\GoogleDriveConnection;
 use App\Models\GoogleDriveFile;
+use App\Models\SocialAccount;
 use App\Models\SocialContent;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -1151,6 +1152,10 @@ class GoogleDriveService
             throw new RuntimeException($putResp->json('error.message') ?: 'Failed to update live YouTube video.');
         }
 
+        if ($content->drive_thumbnail_file_id) {
+            $this->uploadYouTubeThumbnailFromDrive($content, $ytToken, $videoId, true);
+        }
+
         $content->forceFill([
             'youtube_video_id' => $videoId,
             'published_url' => $content->published_url ?: "https://www.youtube.com/watch?v={$videoId}",
@@ -1159,5 +1164,268 @@ class GoogleDriveService
         ])->save();
 
         return $content->fresh()->load('account:id,platform,account_name,handle');
+    }
+
+    /**
+     * Upload a Drive image (respecting mandatory Drive folder lock) as a live YouTube video's thumbnail.
+     */
+    public function uploadYouTubeThumbnailFromDrive(
+        SocialContent $content,
+        string $ytToken,
+        string $videoId,
+        bool $strict = true
+    ): void {
+        if (! $content->drive_thumbnail_file_id) {
+            return;
+        }
+
+        $driveConn = GoogleDriveConnection::withoutGlobalScopes()
+            ->where('workspace_id', $content->workspace_id)
+            ->first();
+        if (! $driveConn) {
+            if ($strict) {
+                throw new RuntimeException('Google Drive is not connected.');
+            }
+            return;
+        }
+
+        $this->assertDriveLocked($driveConn);
+        $driveToken = $this->ensureFreshToken($driveConn);
+        $tempThumbPath = tempnam(sys_get_temp_dir(), 'yt_thumb_');
+
+        try {
+            $thumbDownload = Http::withToken($driveToken)
+                ->timeout(60)
+                ->sink($tempThumbPath)
+                ->get("https://www.googleapis.com/drive/v3/files/{$content->drive_thumbnail_file_id}", [
+                    'alt' => 'media',
+                    'supportsAllDrives' => 'true',
+                ]);
+
+            if (! $thumbDownload->successful() || ! file_exists($tempThumbPath) || filesize($tempThumbPath) === 0) {
+                if ($strict) {
+                    throw new RuntimeException('Failed to download thumbnail image from Google Drive.');
+                }
+                return;
+            }
+
+            $thumbStream = fopen($tempThumbPath, 'rb');
+            try {
+                $resp = Http::withToken($ytToken)
+                    ->withBody($thumbStream, 'image/jpeg')
+                    ->post("https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={$videoId}");
+            } finally {
+                if (is_resource($thumbStream)) {
+                    fclose($thumbStream);
+                }
+            }
+
+            if ($strict && ! $resp->successful()) {
+                throw new RuntimeException($resp->json('error.message') ?: 'Failed to update YouTube thumbnail.');
+            }
+        } finally {
+            if ($tempThumbPath && file_exists($tempThumbPath)) {
+                @unlink($tempThumbPath);
+            }
+        }
+    }
+
+    /**
+     * Update the caption/message on an already-published Facebook Page post.
+     */
+    public function updateLiveFacebookPost(SocialContent $content): SocialContent
+    {
+        $content->loadMissing('account');
+        $account = $content->account;
+        if (! $account || $account->platform !== 'facebook' || ! $account->access_token) {
+            throw new RuntimeException('Selected content must belong to a connected Facebook Page.');
+        }
+
+        $postId = null;
+        if ($content->published_url && preg_match('/facebook\.com\/([^\/\?]+)/', $content->published_url, $m)) {
+            $postId = $m[1];
+        }
+        if (! $postId) {
+            throw new RuntimeException('Facebook post ID not found in published_url.');
+        }
+
+        $message = trim((string) ($content->title ? "{$content->title}\n\n" : '').(string) ($content->description ?? ''));
+        if (is_array($content->hashtags) && count($content->hashtags) > 0) {
+            $tagsLine = implode(' ', array_map(fn ($h) => str_starts_with($h, '#') ? $h : "#{$h}", $content->hashtags));
+            $message = trim($message."\n\n".$tagsLine);
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $resp = Http::post("https://graph.facebook.com/{$version}/{$postId}", [
+            'message' => $message,
+            'access_token' => $account->access_token,
+        ]);
+        if (! $resp->successful()) {
+            throw new RuntimeException($resp->json('error.message') ?: 'Failed to update Facebook post caption.');
+        }
+
+        return $content->fresh()->load('account:id,platform,account_name,handle');
+    }
+
+    /**
+     * Sync existing live YouTube videos into Content Planner, linking matching unlinked items
+     * and importing missing videos with their real youtube_video_id.
+     */
+    public function syncYouTubeVideosToPlanner(SocialAccount $account, int $limit = 25): array
+    {
+        if ($account->platform !== 'youtube') {
+            throw new RuntimeException('Selected account must be a connected YouTube channel.');
+        }
+
+        $ytToken = $this->socialSync->getFreshYouTubeToken($account);
+        if (! $ytToken) {
+            throw new RuntimeException('YouTube channel token is missing or expired. Please reconnect your YouTube channel.');
+        }
+
+        $chResp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/channels', [
+            'part' => 'contentDetails',
+            'mine' => 'true',
+        ]);
+        if (! $chResp->successful()) {
+            throw new RuntimeException($chResp->json('error.message') ?: 'Failed to fetch YouTube channel uploads playlist.');
+        }
+
+        $uploadsPlaylistId = $chResp->json('items.0.contentDetails.relatedPlaylists.uploads');
+        if (! $uploadsPlaylistId) {
+            return ['linked' => 0, 'imported' => 0, 'updated' => 0, 'items' => []];
+        }
+
+        $limit = max(1, min(50, $limit));
+        $plResp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/playlistItems', [
+            'part' => 'contentDetails',
+            'playlistId' => $uploadsPlaylistId,
+            'maxResults' => $limit,
+        ]);
+        if (! $plResp->successful()) {
+            throw new RuntimeException($plResp->json('error.message') ?: 'Failed to list YouTube uploads.');
+        }
+
+        $videoIds = collect($plResp->json('items', []))
+            ->map(fn ($item) => $item['contentDetails']['videoId'] ?? null)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($videoIds)) {
+            return ['linked' => 0, 'imported' => 0, 'updated' => 0, 'items' => []];
+        }
+
+        $videosResp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/videos', [
+            'part' => 'snippet,statistics,contentDetails',
+            'id' => implode(',', $videoIds),
+        ]);
+        if (! $videosResp->successful()) {
+            throw new RuntimeException($videosResp->json('error.message') ?: 'Failed to fetch YouTube video details.');
+        }
+
+        $growth = app(SocialGrowthService::class);
+        $linked = 0;
+        $imported = 0;
+        $updated = 0;
+        $syncedItems = [];
+
+        foreach ($videosResp->json('items', []) as $video) {
+            $vid = (string) ($video['id'] ?? '');
+            if ($vid === '') {
+                continue;
+            }
+            $snippet = $video['snippet'] ?? [];
+            $stats = $video['statistics'] ?? [];
+            $title = trim((string) ($snippet['title'] ?? 'Untitled'));
+            $description = (string) ($snippet['description'] ?? '');
+            $tags = array_values(array_filter(array_map('strval', $snippet['tags'] ?? [])));
+            $thumbs = $snippet['thumbnails'] ?? [];
+            $thumbUrl = $thumbs['maxres']['url']
+                ?? $thumbs['high']['url']
+                ?? $thumbs['medium']['url']
+                ?? ($thumbs['default']['url'] ?? null);
+            $publishedAt = isset($snippet['publishedAt']) ? \Illuminate\Support\Carbon::parse($snippet['publishedAt']) : now();
+            $publishedUrl = "https://www.youtube.com/watch?v={$vid}";
+            $views = (int) ($stats['viewCount'] ?? 0);
+            $likes = (int) ($stats['likeCount'] ?? 0);
+            $comments = (int) ($stats['commentCount'] ?? 0);
+
+            $durationStr = (string) ($video['contentDetails']['duration'] ?? '');
+            $durationSec = 0;
+            if (preg_match('/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/', $durationStr, $dm)) {
+                $durationSec = ((int) ($dm[1] ?? 0) * 3600) + ((int) ($dm[2] ?? 0) * 60) + (int) ($dm[3] ?? 0);
+            }
+            $isShort = ($durationSec > 0 && $durationSec <= 60) || str_contains(strtolower($title.' '.$description), '#short');
+
+            $existingByVid = SocialContent::where('social_account_id', $account->id)
+                ->where('youtube_video_id', $vid)
+                ->first();
+
+            if ($existingByVid) {
+                $existingByVid->forceFill([
+                    'published_url' => $existingByVid->published_url ?: $publishedUrl,
+                    'thumbnail_url' => $existingByVid->thumbnail_url ?: $thumbUrl,
+                    'views_count' => $views,
+                    'likes_count' => $likes,
+                    'comments_count' => $comments,
+                ])->save();
+                $updated++;
+                $syncedItems[] = $existingByVid;
+                continue;
+            }
+
+            // Try matching an unlinked planner item by exact case-insensitive title.
+            $unlinkedMatch = SocialContent::where('social_account_id', $account->id)
+                ->whereNull('youtube_video_id')
+                ->whereRaw('LOWER(TRIM(title)) = ?', [mb_strtolower($title)])
+                ->first();
+
+            if ($unlinkedMatch) {
+                $unlinkedMatch->forceFill([
+                    'youtube_video_id' => $vid,
+                    'published_url' => $publishedUrl,
+                    'thumbnail_url' => $unlinkedMatch->thumbnail_url ?: $thumbUrl,
+                    'status' => 'published',
+                    'published_at' => $unlinkedMatch->published_at ?: $publishedAt,
+                    'views_count' => $views,
+                    'likes_count' => $likes,
+                    'comments_count' => $comments,
+                    'publish_error' => null,
+                ])->save();
+                $linked++;
+                $syncedItems[] = $unlinkedMatch;
+                continue;
+            }
+
+            $data = [
+                'social_account_id' => $account->id,
+                'platform' => 'youtube',
+                'content_type' => $isShort ? 'short' : 'video',
+                'title' => $title,
+                'description' => $description,
+                'tags' => $tags,
+                'hashtags' => [],
+                'thumbnail_url' => $thumbUrl,
+                'youtube_video_id' => $vid,
+                'published_url' => $publishedUrl,
+                'status' => 'published',
+                'published_at' => $publishedAt,
+                'views_count' => $views,
+                'likes_count' => $likes,
+                'comments_count' => $comments,
+            ];
+            $scored = $growth->scoreContent($data);
+            $created = SocialContent::create(array_merge($data, $scored));
+            $imported++;
+            $syncedItems[] = $created;
+        }
+
+        return [
+            'linked' => $linked,
+            'imported' => $imported,
+            'updated' => $updated,
+            'total_processed' => count($syncedItems),
+        ];
     }
 }

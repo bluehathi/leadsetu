@@ -388,4 +388,34 @@ class GoogleDriveController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }
+
+    public function updateLiveFacebook(SocialContent $socialContent): JsonResponse
+    {
+        Gate::authorize('update', $socialContent);
+
+        try {
+            $updated = $this->drive->updateLiveFacebookPost($socialContent);
+            $this->audit->log('facebook_post_updated', $updated, "Updated live Facebook post caption for {$updated->title}");
+
+            return response()->json(['data' => $updated]);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function syncYouTubeToPlanner(Request $request, SocialAccount $socialAccount): JsonResponse
+    {
+        Gate::authorize('create', SocialContent::class);
+
+        $limit = max(1, min(50, (int) $request->input('limit', 25)));
+
+        try {
+            $result = $this->drive->syncYouTubeVideosToPlanner($socialAccount, $limit);
+            $this->audit->log('youtube_videos_synced_to_planner', $socialAccount, "Synced YouTube videos to Content Planner ({$result['linked']} linked, {$result['imported']} imported)");
+
+            return response()->json(['data' => $result]);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
 }
