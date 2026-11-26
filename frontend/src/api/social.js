@@ -4,6 +4,12 @@ export const socialApi = {
     overview: (platform) => api.get('/social/overview', { params: platform ? { platform } : {} }).then((r) => r.data.data),
 
     listAccounts: (params) => api.get('/social/accounts', { params }).then((r) => r.data.data),
+    getAccountAnalytics: (id, refresh = false) =>
+        api.get(`/social/accounts/${id}/analytics`, { params: refresh ? { refresh: 1 } : {} }).then((r) => r.data.data),
+    getVideoAnalytics: (accountId, videoId, refresh = false) =>
+        api
+            .get(`/social/accounts/${accountId}/videos/${videoId}/analytics`, { params: refresh ? { refresh: 1 } : {} })
+            .then((r) => r.data.data),
     createAccount: (payload) => api.post('/social/accounts', payload).then((r) => r.data.data),
     updateAccount: (id, payload) => api.put(`/social/accounts/${id}`, payload).then((r) => r.data.data),
     syncAccount: (id) => api.post(`/social/accounts/${id}/sync`).then((r) => r.data.data),

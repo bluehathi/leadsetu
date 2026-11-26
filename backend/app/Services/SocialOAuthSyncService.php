@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\SocialAccount;
+use App\Models\SocialVideoAnalytic;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
@@ -35,7 +36,7 @@ class SocialOAuthSyncService
                 'client_id' => $clientId,
                 'redirect_uri' => $redirect,
                 'response_type' => 'code',
-                'scope' => 'https://www.googleapis.com/auth/youtube.readonly',
+                'scope' => 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly',
                 'access_type' => 'offline',
                 'prompt' => 'consent',
                 'state' => $state,
@@ -241,14 +242,23 @@ class SocialOAuthSyncService
             return $account->fresh();
         }
 
-        return $account->platform === 'youtube'
+        $synced = $account->platform === 'youtube'
             ? $this->syncYouTube($account)
             : $this->syncInstagram($account);
+
+        if ($synced->access_token && $synced->status === 'connected') {
+            $this->getChannelAnalytics($synced, true);
+        }
+
+        return $synced->fresh();
     }
 
-    protected function syncYouTube(SocialAccount $account): SocialAccount
+    protected function ensureFreshYouTubeToken(SocialAccount $account): ?string
     {
         $accessToken = $account->access_token;
+        if (! $accessToken) {
+            return null;
+        }
 
         if ($account->token_expires_at && $account->token_expires_at->isPast() && $account->refresh_token) {
             $refreshResp = Http::asForm()->post('https://oauth2.googleapis.com/token', [
@@ -260,7 +270,7 @@ class SocialOAuthSyncService
 
             if (! $refreshResp->successful()) {
                 $account->update(['status' => 'needs_reauth']);
-                return $account->fresh();
+                return null;
             }
 
             $accessToken = $refreshResp->json('access_token');
@@ -268,6 +278,563 @@ class SocialOAuthSyncService
             if ($expiresIn = $refreshResp->json('expires_in')) {
                 $account->token_expires_at = now()->addSeconds((int) $expiresIn);
             }
+            $account->save();
+        }
+
+        return $accessToken;
+    }
+
+    /**
+     * Get per-channel analytics from DB cache, or fetch live from YT/IG on first load or explicit refresh.
+     */
+    public function getChannelAnalytics(SocialAccount $account, bool $forceRefresh = false): array
+    {
+        $contents = $account->contents()->get(['id', 'status', 'seo_score']);
+        $studioStats = [
+            'planned_contents' => $contents->count(),
+            'published_contents' => $contents->where('status', 'published')->count(),
+            'avg_seo_score' => $contents->count() > 0 ? round((float) $contents->avg('seo_score'), 1) : 0,
+        ];
+
+        if (! $forceRefresh && is_array($account->analytics_cache)) {
+            return array_merge($account->analytics_cache, [
+                'account' => $account,
+                'studio' => $studioStats,
+                'source' => 'cache',
+                'synced_at' => $account->analytics_synced_at?->toIso8601String(),
+                'warning' => null,
+            ]);
+        }
+
+        $base = [
+            'account' => $account,
+            'studio' => $studioStats,
+            'source' => 'cached',
+            'synced_at' => $account->analytics_synced_at?->toIso8601String(),
+            'channel_meta' => null,
+            'summary' => [
+                'followers_count' => $account->followers_count,
+                'views_count' => $account->views_count,
+                'posts_count' => $account->posts_count,
+                'engagement_rate' => $account->engagement_rate,
+                'recent_videos_count' => 0,
+                'recent_total_views' => 0,
+                'recent_total_likes' => 0,
+                'recent_total_comments' => 0,
+                'avg_views_per_video' => 0,
+                'shorts_count' => 0,
+                'long_form_count' => 0,
+            ],
+            'top_items' => [],
+            'recent_items' => [],
+            'warning' => null,
+        ];
+
+        if (! $account->access_token) {
+            $base['warning'] = 'Connect via OAuth to load live video-level analytics.';
+            return $base;
+        }
+
+        $result = $account->platform === 'youtube'
+            ? $this->getYouTubeAnalytics($account, $base)
+            : $this->getInstagramAnalytics($account, $base);
+
+        if ($result['source'] === 'live') {
+            $now = now();
+            $account->forceFill([
+                'followers_count' => $result['summary']['followers_count'],
+                'views_count' => $result['summary']['views_count'],
+                'posts_count' => $result['summary']['posts_count'],
+                'engagement_rate' => $result['summary']['engagement_rate'],
+                'last_synced_at' => $now,
+                'analytics_cache' => [
+                    'channel_meta' => $result['channel_meta'],
+                    'summary' => $result['summary'],
+                    'top_items' => $result['top_items'],
+                    'recent_items' => $result['recent_items'],
+                    'deep_analytics' => $result['deep_analytics'] ?? null,
+                ],
+                'analytics_synced_at' => $now,
+            ])->save();
+
+            $result['synced_at'] = $now->toIso8601String();
+            $result['account'] = $account->fresh();
+        }
+
+        return $result;
+    }
+
+    protected function getYouTubeAnalytics(SocialAccount $account, array $base): array
+    {
+        $accessToken = $this->ensureFreshYouTubeToken($account);
+        if (! $accessToken) {
+            $base['warning'] = 'YouTube token expired. Please reconnect your channel.';
+            return $base;
+        }
+
+        $channelParams = ['part' => 'snippet,statistics,contentDetails'];
+        if ($account->external_id) {
+            $channelParams['id'] = $account->external_id;
+        } else {
+            $channelParams['mine'] = 'true';
+        }
+
+        $channelResp = Http::withToken($accessToken)->get('https://www.googleapis.com/youtube/v3/channels', $channelParams);
+        if ($channelResp->status() === 401) {
+            $account->update(['status' => 'needs_reauth']);
+            $base['warning'] = 'YouTube authorization expired. Please reconnect your channel.';
+            return $base;
+        }
+
+        $channel = $channelResp->successful() ? $channelResp->json('items.0') : null;
+        if (! $channel) {
+            $base['warning'] = 'Unable to fetch live channel details from YouTube.';
+            return $base;
+        }
+
+        $snippet = $channel['snippet'] ?? [];
+        $stats = $channel['statistics'] ?? [];
+        $uploadsPlaylistId = $channel['contentDetails']['relatedPlaylists']['uploads'] ?? null;
+
+        $base['source'] = 'live';
+        $base['channel_meta'] = [
+            'country' => $snippet['country'] ?? null,
+            'published_at' => $snippet['publishedAt'] ?? null,
+            'description' => $snippet['description'] ?? null,
+            'channel_url' => $account->external_id ? "https://www.youtube.com/channel/{$account->external_id}" : null,
+        ];
+        $base['summary']['followers_count'] = (int) ($stats['subscriberCount'] ?? $account->followers_count);
+        $base['summary']['views_count'] = (int) ($stats['viewCount'] ?? $account->views_count);
+        $base['summary']['posts_count'] = (int) ($stats['videoCount'] ?? $account->posts_count);
+
+        $items = [];
+        if ($uploadsPlaylistId) {
+            $videoIds = [];
+            $pageToken = null;
+            for ($page = 0; $page < 2; $page++) {
+                $playlistParams = [
+                    'part' => 'contentDetails',
+                    'playlistId' => $uploadsPlaylistId,
+                    'maxResults' => 50,
+                ];
+                if ($pageToken) {
+                    $playlistParams['pageToken'] = $pageToken;
+                }
+
+                $playlistResp = Http::withToken($accessToken)->get('https://www.googleapis.com/youtube/v3/playlistItems', $playlistParams);
+                if (! $playlistResp->successful()) {
+                    break;
+                }
+
+                foreach ($playlistResp->json('items', []) as $plItem) {
+                    if ($vid = $plItem['contentDetails']['videoId'] ?? null) {
+                        $videoIds[] = $vid;
+                    }
+                }
+
+                $pageToken = $playlistResp->json('nextPageToken');
+                if (! $pageToken) {
+                    break;
+                }
+            }
+
+            foreach (array_chunk(array_unique($videoIds), 50) as $chunk) {
+                $videosResp = Http::withToken($accessToken)->get('https://www.googleapis.com/youtube/v3/videos', [
+                    'part' => 'snippet,statistics,contentDetails',
+                    'id' => implode(',', $chunk),
+                ]);
+
+                foreach ($videosResp->json('items', []) as $video) {
+                    $vSnippet = $video['snippet'] ?? [];
+                    $vStats = $video['statistics'] ?? [];
+                    $durationSec = $this->parseIsoDurationSeconds((string) ($video['contentDetails']['duration'] ?? ''));
+                    $views = (int) ($vStats['viewCount'] ?? 0);
+                    $likes = (int) ($vStats['likeCount'] ?? 0);
+                    $comments = (int) ($vStats['commentCount'] ?? 0);
+                    $title = $vSnippet['title'] ?? 'Untitled';
+                    $isShort = ($durationSec > 0 && $durationSec <= 60) || str_contains(strtolower($title), '#short');
+
+                    $items[] = [
+                        'id' => $video['id'],
+                        'title' => $title,
+                        'thumbnail_url' => $vSnippet['thumbnails']['medium']['url'] ?? ($vSnippet['thumbnails']['default']['url'] ?? null),
+                        'published_at' => $vSnippet['publishedAt'] ?? null,
+                        'duration_seconds' => $durationSec,
+                        'type' => $isShort ? 'short' : 'video',
+                        'views' => $views,
+                        'likes' => $likes,
+                        'comments' => $comments,
+                        'engagement_rate' => $views > 0 ? round((($likes + $comments) / $views) * 100, 2) : 0,
+                        'url' => "https://www.youtube.com/watch?v={$video['id']}",
+                    ];
+                }
+            }
+        }
+
+        $count = count($items);
+        $totalViews = array_sum(array_column($items, 'views'));
+        $totalLikes = array_sum(array_column($items, 'likes'));
+        $totalComments = array_sum(array_column($items, 'comments'));
+        $shortsCount = count(array_filter($items, fn ($i) => $i['type'] === 'short'));
+
+        $base['summary']['recent_videos_count'] = $count;
+        $base['summary']['recent_total_views'] = $totalViews;
+        $base['summary']['recent_total_likes'] = $totalLikes;
+        $base['summary']['recent_total_comments'] = $totalComments;
+        $base['summary']['avg_views_per_video'] = $count > 0 ? (int) round($totalViews / $count) : 0;
+        $base['summary']['engagement_rate'] = $totalViews > 0 ? round((($totalLikes + $totalComments) / $totalViews) * 100, 2) : $account->engagement_rate;
+        $base['summary']['shorts_count'] = $shortsCount;
+        $base['summary']['long_form_count'] = $count - $shortsCount;
+
+        $sortedByViews = $items;
+        usort($sortedByViews, fn ($a, $b) => $b['views'] <=> $a['views']);
+        $base['top_items'] = array_slice($sortedByViews, 0, 5);
+        $base['recent_items'] = $items;
+        $base['deep_analytics'] = $this->fetchYouTubeDeepAnalytics($accessToken);
+
+        return $base;
+    }
+
+    /**
+     * Query YouTube Analytics API v2 for 28-day daily trends, watch time, and traffic sources.
+     * Gracefully returns enabled=false when the token lacks yt-analytics.readonly scope.
+     */
+    protected function fetchYouTubeDeepAnalytics(string $accessToken, ?string $videoId = null): array
+    {
+        $endDate = now()->toDateString();
+        $startDate = now()->subDays(27)->toDateString();
+
+        $dailyParams = [
+            'ids' => 'channel==MINE',
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'dimensions' => 'day',
+            'metrics' => $videoId
+                ? 'views,estimatedMinutesWatched,averageViewDuration,likes,comments'
+                : 'views,estimatedMinutesWatched,averageViewDuration,subscribersGained,subscribersLost',
+            'sort' => 'day',
+        ];
+        if ($videoId) {
+            $dailyParams['filters'] = "video=={$videoId}";
+        }
+
+        $dailyResp = Http::withToken($accessToken)->get('https://youtubeanalytics.googleapis.com/v2/reports', $dailyParams);
+
+        if ($dailyResp->status() === 401 || $dailyResp->status() === 403) {
+            return [
+                'enabled' => false,
+                'reason' => 'Reconnect your YouTube channel to grant YouTube Analytics permission (Watch Time, Daily Trends & Traffic Sources).',
+                'daily' => [],
+                'totals' => null,
+                'traffic_sources' => [],
+            ];
+        }
+
+        if (! $dailyResp->successful()) {
+            return [
+                'enabled' => false,
+                'reason' => 'YouTube Analytics data is temporarily unavailable.',
+                'daily' => [],
+                'totals' => null,
+                'traffic_sources' => [],
+            ];
+        }
+
+        $dailyRows = [];
+        $sumViews = 0;
+        $sumMinutes = 0;
+        $avgDurSum = 0;
+        $avgDurCount = 0;
+        $subsGained = 0;
+        $subsLost = 0;
+
+        foreach ($dailyResp->json('rows', []) as $row) {
+            $views = (int) ($row[1] ?? 0);
+            $mins = (int) ($row[2] ?? 0);
+            $avgDur = (int) ($row[3] ?? 0);
+            $sumViews += $views;
+            $sumMinutes += $mins;
+            if ($avgDur > 0) {
+                $avgDurSum += $avgDur;
+                $avgDurCount++;
+            }
+            if (! $videoId) {
+                $subsGained += (int) ($row[4] ?? 0);
+                $subsLost += (int) ($row[5] ?? 0);
+            }
+
+            $dailyRows[] = [
+                'date' => (string) ($row[0] ?? ''),
+                'views' => $views,
+                'watch_minutes' => $mins,
+                'avg_view_duration' => $avgDur,
+            ];
+        }
+
+        $trafficParams = [
+            'ids' => 'channel==MINE',
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'dimensions' => 'insightTrafficSourceType',
+            'metrics' => 'views,estimatedMinutesWatched',
+            'sort' => '-views',
+            'maxResults' => 8,
+        ];
+        if ($videoId) {
+            $trafficParams['filters'] = "video=={$videoId}";
+        }
+
+        $trafficResp = Http::withToken($accessToken)->get('https://youtubeanalytics.googleapis.com/v2/reports', $trafficParams);
+        $trafficSources = [];
+        if ($trafficResp->successful()) {
+            foreach ($trafficResp->json('rows', []) as $row) {
+                $trafficSources[] = [
+                    'source' => str_replace('_', ' ', strtolower((string) ($row[0] ?? 'other'))),
+                    'views' => (int) ($row[1] ?? 0),
+                    'watch_minutes' => (int) ($row[2] ?? 0),
+                ];
+            }
+        }
+
+        return [
+            'enabled' => true,
+            'period_days' => 28,
+            'daily' => $dailyRows,
+            'totals' => [
+                'views' => $sumViews,
+                'watch_hours' => round($sumMinutes / 60, 1),
+                'watch_minutes' => $sumMinutes,
+                'avg_view_duration_seconds' => $avgDurCount > 0 ? (int) round($avgDurSum / $avgDurCount) : 0,
+                'subscribers_gained' => $subsGained,
+                'subscribers_lost' => $subsLost,
+                'net_subscribers' => $subsGained - $subsLost,
+            ],
+            'traffic_sources' => $trafficSources,
+        ];
+    }
+
+    protected function getInstagramAnalytics(SocialAccount $account, array $base): array
+    {
+        if (! $account->external_id) {
+            $base['warning'] = 'Instagram account ID is missing.';
+            return $base;
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $mediaResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/media", [
+            'fields' => 'id,caption,media_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count',
+            'limit' => 25,
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $mediaResp->successful()) {
+            $base['warning'] = 'Unable to fetch recent Instagram media. Token may need re-authentication.';
+            return $base;
+        }
+
+        $base['source'] = 'live';
+        $items = [];
+        foreach ($mediaResp->json('data', []) as $post) {
+            $likes = (int) ($post['like_count'] ?? 0);
+            $comments = (int) ($post['comments_count'] ?? 0);
+            $followers = max(1, (int) $account->followers_count);
+            $items[] = [
+                'id' => $post['id'],
+                'title' => mb_strimwidth((string) ($post['caption'] ?? 'Instagram Post'), 0, 80, '…'),
+                'thumbnail_url' => $post['thumbnail_url'] ?? ($post['media_url'] ?? null),
+                'published_at' => $post['timestamp'] ?? null,
+                'duration_seconds' => null,
+                'type' => strtolower((string) ($post['media_type'] ?? 'post')),
+                'views' => 0,
+                'likes' => $likes,
+                'comments' => $comments,
+                'engagement_rate' => round((($likes + $comments) / $followers) * 100, 2),
+                'url' => $post['permalink'] ?? null,
+            ];
+        }
+
+        $base['summary']['recent_videos_count'] = count($items);
+        $base['summary']['recent_total_likes'] = array_sum(array_column($items, 'likes'));
+        $base['summary']['recent_total_comments'] = array_sum(array_column($items, 'comments'));
+        $sortedByEngagement = $items;
+        usort($sortedByEngagement, fn ($a, $b) => ($b['likes'] + $b['comments']) <=> ($a['likes'] + $a['comments']));
+        $base['top_items'] = array_slice($sortedByEngagement, 0, 5);
+        $base['recent_items'] = $items;
+
+        return $base;
+    }
+
+    protected function parseIsoDurationSeconds(string $iso): int
+    {
+        if (! preg_match('/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/', $iso, $m)) {
+            return 0;
+        }
+
+        return ((int) ($m[1] ?? 0) * 3600) + ((int) ($m[2] ?? 0) * 60) + (int) ($m[3] ?? 0);
+    }
+
+    /**
+     * Get per-video YouTube analytics from DB cache, or fetch live on first load or explicit refresh.
+     */
+    public function getYouTubeVideoAnalytics(SocialAccount $account, string $videoId, bool $forceRefresh = false): array
+    {
+        if ($account->platform !== 'youtube') {
+            throw new RuntimeException('Video analytics is only supported for YouTube channels.');
+        }
+
+        $cached = SocialVideoAnalytic::where('social_account_id', $account->id)
+            ->where('external_video_id', $videoId)
+            ->first();
+
+        if (! $forceRefresh && $cached && is_array($cached->payload)) {
+            return array_merge($cached->payload, [
+                'account' => $account,
+                'source' => 'cache',
+                'synced_at' => $cached->synced_at?->toIso8601String(),
+            ]);
+        }
+
+        $accessToken = $this->ensureFreshYouTubeToken($account);
+        if (! $accessToken) {
+            throw new RuntimeException('YouTube token is missing or expired. Please reconnect your channel.');
+        }
+
+        $resp = Http::withToken($accessToken)->get('https://www.googleapis.com/youtube/v3/videos', [
+            'part' => 'snippet,statistics,contentDetails,status',
+            'id' => $videoId,
+        ]);
+
+        if ($resp->status() === 401) {
+            $account->update(['status' => 'needs_reauth']);
+            throw new RuntimeException('YouTube authorization expired. Please reconnect your channel.');
+        }
+
+        $video = $resp->successful() ? $resp->json('items.0') : null;
+        if (! $video) {
+            throw new RuntimeException('Video not found on YouTube.');
+        }
+
+        $snippet = $video['snippet'] ?? [];
+        $stats = $video['statistics'] ?? [];
+        $contentDetails = $video['contentDetails'] ?? [];
+        $status = $video['status'] ?? [];
+
+        $title = (string) ($snippet['title'] ?? 'Untitled');
+        $description = (string) ($snippet['description'] ?? '');
+        $tags = $snippet['tags'] ?? [];
+        $durationSec = $this->parseIsoDurationSeconds((string) ($contentDetails['duration'] ?? ''));
+        $isShort = ($durationSec > 0 && $durationSec <= 60) || str_contains(strtolower($title), '#short');
+
+        $views = (int) ($stats['viewCount'] ?? 0);
+        $likes = (int) ($stats['likeCount'] ?? 0);
+        $comments = (int) ($stats['commentCount'] ?? 0);
+
+        $publishedAt = isset($snippet['publishedAt']) ? Carbon::parse($snippet['publishedAt']) : null;
+        $daysSince = $publishedAt ? max(1, (int) $publishedAt->diffInDays(now())) : 1;
+
+        $hashtagsCount = preg_match_all('/#[\p{L}\p{N}_]+/u', $description);
+        $hasCaptions = ($contentDetails['caption'] ?? 'false') === 'true';
+        $isHd = strtolower((string) ($contentDetails['definition'] ?? 'sd')) === 'hd';
+
+        $checks = [
+            ['label' => 'Title length (30–70 chars)', 'passed' => mb_strlen($title) >= 30 && mb_strlen($title) <= 70, 'value' => mb_strlen($title).' chars'],
+            ['label' => 'Description depth (150+ chars)', 'passed' => mb_strlen($description) >= 150, 'value' => mb_strlen($description).' chars'],
+            ['label' => 'Tags added (5+ tags)', 'passed' => count($tags) >= 5, 'value' => count($tags).' tags'],
+            ['label' => 'Hashtags in description (2+)', 'passed' => $hashtagsCount >= 2, 'value' => $hashtagsCount.' hashtags'],
+            ['label' => 'HD quality', 'passed' => $isHd, 'value' => strtoupper((string) ($contentDetails['definition'] ?? 'sd'))],
+            ['label' => 'Captions enabled', 'passed' => $hasCaptions, 'value' => $hasCaptions ? 'Yes' : 'No'],
+        ];
+        $passedCount = count(array_filter($checks, fn ($c) => $c['passed']));
+        $seoScore = (int) round(($passedCount / count($checks)) * 100);
+
+        // Fetch top recent comments (best-effort; disabled comments return 403).
+        $recentComments = [];
+        $commentsResp = Http::withToken($accessToken)->get('https://www.googleapis.com/youtube/v3/commentThreads', [
+            'part' => 'snippet',
+            'videoId' => $videoId,
+            'maxResults' => 10,
+            'order' => 'relevance',
+            'textFormat' => 'plainText',
+        ]);
+
+        if ($commentsResp->successful()) {
+            foreach ($commentsResp->json('items', []) as $thread) {
+                $top = $thread['snippet']['topLevelComment']['snippet'] ?? [];
+                $recentComments[] = [
+                    'id' => $thread['id'] ?? uniqid(),
+                    'author' => $top['authorDisplayName'] ?? 'Viewer',
+                    'author_avatar' => $top['authorProfileImageUrl'] ?? null,
+                    'text' => $top['textDisplay'] ?? '',
+                    'likes' => (int) ($top['likeCount'] ?? 0),
+                    'published_at' => $top['publishedAt'] ?? null,
+                ];
+            }
+        }
+
+        $thumbnails = $snippet['thumbnails'] ?? [];
+        $thumbnailUrl = $thumbnails['maxres']['url']
+            ?? $thumbnails['high']['url']
+            ?? $thumbnails['medium']['url']
+            ?? ($thumbnails['default']['url'] ?? null);
+
+        $payload = [
+            'video' => [
+                'id' => $video['id'],
+                'title' => $title,
+                'description' => $description,
+                'thumbnail_url' => $thumbnailUrl,
+                'published_at' => $snippet['publishedAt'] ?? null,
+                'duration_seconds' => $durationSec,
+                'type' => $isShort ? 'short' : 'video',
+                'tags' => $tags,
+                'definition' => strtoupper((string) ($contentDetails['definition'] ?? 'sd')),
+                'has_captions' => $hasCaptions,
+                'privacy_status' => $status['privacyStatus'] ?? 'public',
+                'made_for_kids' => (bool) ($status['madeForKids'] ?? false),
+                'url' => "https://www.youtube.com/watch?v={$video['id']}",
+            ],
+            'metrics' => [
+                'views' => $views,
+                'likes' => $likes,
+                'comments' => $comments,
+                'engagement_rate' => $views > 0 ? round((($likes + $comments) / $views) * 100, 2) : 0,
+                'like_rate' => $views > 0 ? round(($likes / $views) * 100, 2) : 0,
+                'comment_rate' => $views > 0 ? round(($comments / $views) * 100, 2) : 0,
+                'days_since_published' => $daysSince,
+                'views_per_day' => round($views / $daysSince, 1),
+            ],
+            'seo' => [
+                'score' => $seoScore,
+                'checks' => $checks,
+            ],
+            'recent_comments' => $recentComments,
+            'deep_analytics' => $this->fetchYouTubeDeepAnalytics($accessToken, $video['id']),
+        ];
+
+        $now = now();
+        SocialVideoAnalytic::updateOrCreate(
+            [
+                'social_account_id' => $account->id,
+                'external_video_id' => $video['id'],
+            ],
+            [
+                'payload' => $payload,
+                'synced_at' => $now,
+            ]
+        );
+
+        return array_merge($payload, [
+            'account' => $account,
+            'source' => 'live',
+            'synced_at' => $now->toIso8601String(),
+        ]);
+    }
+
+    protected function syncYouTube(SocialAccount $account): SocialAccount
+    {
+        $accessToken = $this->ensureFreshYouTubeToken($account);
+        if (! $accessToken) {
+            return $account->fresh();
         }
 
         $params = ['part' => 'snippet,statistics'];

@@ -37,6 +37,7 @@ class SocialAccount extends Model
     protected $hidden = [
         'access_token',
         'refresh_token',
+        'analytics_cache',
     ];
 
     protected $casts = [
@@ -44,6 +45,8 @@ class SocialAccount extends Model
         'refresh_token' => 'encrypted',
         'token_expires_at' => 'datetime',
         'last_synced_at' => 'datetime',
+        'analytics_cache' => 'array',
+        'analytics_synced_at' => 'datetime',
         'followers_count' => 'integer',
         'views_count' => 'integer',
         'posts_count' => 'integer',

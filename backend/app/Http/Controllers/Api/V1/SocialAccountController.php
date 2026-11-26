@@ -81,6 +81,28 @@ class SocialAccountController extends Controller implements HasMiddleware
         ]);
     }
 
+    public function analytics(Request $request, SocialAccount $socialAccount): JsonResponse
+    {
+        Gate::authorize('view', $socialAccount);
+
+        return response()->json([
+            'data' => $this->oauthSync->getChannelAnalytics($socialAccount, $request->boolean('refresh')),
+        ]);
+    }
+
+    public function videoAnalytics(Request $request, SocialAccount $socialAccount, string $videoId): JsonResponse
+    {
+        Gate::authorize('view', $socialAccount);
+
+        try {
+            return response()->json([
+                'data' => $this->oauthSync->getYouTubeVideoAnalytics($socialAccount, $videoId, $request->boolean('refresh')),
+            ]);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
     public function update(UpdateSocialAccountRequest $request, SocialAccount $socialAccount): JsonResponse
     {
         $socialAccount->update($request->validated());

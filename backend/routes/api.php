@@ -74,6 +74,8 @@ Route::prefix('v1')->group(function () {
         Route::get('social/oauth/{platform}/url', [V1\SocialAccountController::class, 'oauthUrl']);
         Route::post('social/accounts/sync-all', [V1\SocialAccountController::class, 'syncAll']);
         Route::post('social/accounts/{social_account}/sync', [V1\SocialAccountController::class, 'sync']);
+        Route::get('social/accounts/{social_account}/analytics', [V1\SocialAccountController::class, 'analytics']);
+        Route::get('social/accounts/{social_account}/videos/{videoId}/analytics', [V1\SocialAccountController::class, 'videoAnalytics']);
         Route::apiResource('social/accounts', V1\SocialAccountController::class)->parameters(['accounts' => 'social_account']);
         Route::post('social/contents/optimize', [V1\SocialContentController::class, 'optimize']);
         Route::apiResource('social/contents', V1\SocialContentController::class)->parameters(['contents' => 'social_content']);

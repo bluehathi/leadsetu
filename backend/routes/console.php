@@ -8,4 +8,4 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('social:sync')->hourly();
+Schedule::command('social:sync')->cron('*/20 * * * *');

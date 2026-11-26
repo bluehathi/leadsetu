@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
 import { useMe } from '../hooks/useMe';
@@ -87,6 +87,18 @@ export default function SocialStudio() {
     const { data: accounts = [] } = useQuery({
         queryKey: ['social-accounts', platformFilter],
         queryFn: () => socialApi.listAccounts(platformFilter ? { platform: platformFilter } : {}),
+    });
+
+    const [analyticsAccountId, setAnalyticsAccountId] = useState(null);
+    const {
+        data: channelAnalytics,
+        isLoading: analyticsLoading,
+        isFetching: analyticsFetching,
+        refetch: refetchAnalytics,
+    } = useQuery({
+        queryKey: ['social-account-analytics', analyticsAccountId],
+        queryFn: () => socialApi.getAccountAnalytics(analyticsAccountId),
+        enabled: Boolean(analyticsAccountId),
     });
 
     const { data: contents = [] } = useQuery({
@@ -447,7 +459,15 @@ export default function SocialStudio() {
                                             <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(acc.platform)}`}>
                                                 {acc.platform}
                                             </span>
-                                            <span className="font-semibold">{acc.account_name}</span>
+                                            <Link
+                                                to={`/social/accounts/${acc.id}/analytics`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="font-semibold text-indigo-700 hover:underline"
+                                                title="Open channel analytics in a new tab"
+                                            >
+                                                {acc.account_name} ↗
+                                            </Link>
                                             <span className="text-sm text-gray-500">{acc.handle}</span>
                                             <span
                                                 className={`rounded px-2 py-0.5 text-xs ${
@@ -467,26 +487,202 @@ export default function SocialStudio() {
                                                 : ''}
                                         </div>
                                     </div>
-                                    {can('manage_social_accounts') && (
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => syncAccountMut.mutate(acc.id)}
-                                                className="rounded-lg border px-3 py-1 text-xs hover:bg-gray-50"
-                                            >
-                                                Sync
-                                            </button>
-                                            <button
-                                                onClick={() => deleteAccountMut.mutate(acc.id)}
-                                                className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
-                                            >
-                                                Remove
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setAnalyticsAccountId(analyticsAccountId === acc.id ? null : acc.id)}
+                                            className={`rounded-lg border px-3 py-1 text-xs font-medium ${
+                                                analyticsAccountId === acc.id
+                                                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                                                    : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
+                                            }`}
+                                        >
+                                            {analyticsAccountId === acc.id ? 'Hide Analytics' : 'Analytics'}
+                                        </button>
+                                        {can('manage_social_accounts') && (
+                                            <>
+                                                <button
+                                                    onClick={() => syncAccountMut.mutate(acc.id)}
+                                                    className="rounded-lg border px-3 py-1 text-xs hover:bg-gray-50"
+                                                >
+                                                    Sync
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteAccountMut.mutate(acc.id)}
+                                                    className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             ))
                         )}
                     </div>
+
+                    {analyticsAccountId && (
+                        <div className="lg:col-span-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-5">
+                            {analyticsLoading ? (
+                                <div className="py-8 text-center text-sm text-gray-500">Loading channel analytics…</div>
+                            ) : channelAnalytics ? (
+                                <>
+                                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                                        <div className="flex items-center gap-3">
+                                            {channelAnalytics.account.avatar_url && (
+                                                <img
+                                                    src={channelAnalytics.account.avatar_url}
+                                                    alt={channelAnalytics.account.account_name}
+                                                    className="h-12 w-12 rounded-full object-cover border"
+                                                />
+                                            )}
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="text-lg font-semibold">{channelAnalytics.account.account_name}</h3>
+                                                    <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(channelAnalytics.account.platform)}`}>
+                                                        {channelAnalytics.account.platform}
+                                                    </span>
+                                                    <span className={`rounded px-2 py-0.5 text-xs ${channelAnalytics.source === 'live' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                        {channelAnalytics.source === 'live' ? 'Live API' : 'Cached'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-500">
+                                                    {channelAnalytics.account.handle}
+                                                    {channelAnalytics.channel_meta?.country ? ` · ${channelAnalytics.channel_meta.country}` : ''}
+                                                    {channelAnalytics.channel_meta?.published_at
+                                                        ? ` · Joined ${new Date(channelAnalytics.channel_meta.published_at).toLocaleDateString()}`
+                                                        : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {channelAnalytics.channel_meta?.channel_url && (
+                                                <a
+                                                    href={channelAnalytics.channel_meta.channel_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Open Channel ↗
+                                                </a>
+                                            )}
+                                            <button
+                                                onClick={() => refetchAnalytics()}
+                                                disabled={analyticsFetching}
+                                                className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-gray-50 disabled:opacity-50"
+                                            >
+                                                {analyticsFetching ? 'Refreshing…' : 'Refresh'}
+                                            </button>
+                                            <button
+                                                onClick={() => setAnalyticsAccountId(null)}
+                                                className="rounded-lg border px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50"
+                                            >
+                                                Close
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {channelAnalytics.warning && (
+                                        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2.5 text-xs text-yellow-800">
+                                            {channelAnalytics.warning}
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                            <div className="text-xs text-gray-500">Subscribers / Followers</div>
+                                            <div className="mt-1 text-lg font-bold">{channelAnalytics.summary.followers_count.toLocaleString()}</div>
+                                        </div>
+                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                            <div className="text-xs text-gray-500">Total Channel Views</div>
+                                            <div className="mt-1 text-lg font-bold">{channelAnalytics.summary.views_count.toLocaleString()}</div>
+                                        </div>
+                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                            <div className="text-xs text-gray-500">Total Videos / Posts</div>
+                                            <div className="mt-1 text-lg font-bold">{channelAnalytics.summary.posts_count.toLocaleString()}</div>
+                                        </div>
+                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                            <div className="text-xs text-gray-500">Avg Views (Last {channelAnalytics.summary.recent_videos_count})</div>
+                                            <div className="mt-1 text-lg font-bold">{channelAnalytics.summary.avg_views_per_video.toLocaleString()}</div>
+                                        </div>
+                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                            <div className="text-xs text-gray-500">Engagement Rate</div>
+                                            <div className="mt-1 text-lg font-bold">{channelAnalytics.summary.engagement_rate}%</div>
+                                        </div>
+                                        <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                            <div className="text-xs text-gray-500">Shorts / Long-form</div>
+                                            <div className="mt-1 text-lg font-bold">
+                                                {channelAnalytics.summary.shorts_count} / {channelAnalytics.summary.long_form_count}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {channelAnalytics.recent_items.length > 0 && (
+                                        <div>
+                                            <h4 className="mb-2 text-sm font-semibold text-gray-800">
+                                                Recent Uploads Performance (Last {channelAnalytics.recent_items.length})
+                                            </h4>
+                                            <div className="overflow-x-auto rounded-lg border border-gray-100">
+                                                <table className="min-w-full divide-y divide-gray-100 text-sm">
+                                                    <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
+                                                        <tr>
+                                                            <th className="px-3 py-2">Video / Post</th>
+                                                            <th className="px-3 py-2">Type</th>
+                                                            <th className="px-3 py-2">Published</th>
+                                                            <th className="px-3 py-2 text-right">Views</th>
+                                                            <th className="px-3 py-2 text-right">Likes</th>
+                                                            <th className="px-3 py-2 text-right">Comments</th>
+                                                            <th className="px-3 py-2 text-right">Eng %</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100 bg-white">
+                                                        {channelAnalytics.recent_items.map((item) => (
+                                                            <tr key={item.id} className="hover:bg-gray-50">
+                                                                <td className="px-3 py-2">
+                                                                    <div className="flex items-center gap-2.5">
+                                                                        {item.thumbnail_url && (
+                                                                            <img
+                                                                                src={item.thumbnail_url}
+                                                                                alt=""
+                                                                                className="h-9 w-16 rounded object-cover flex-shrink-0"
+                                                                            />
+                                                                        )}
+                                                                        {item.url ? (
+                                                                            <a
+                                                                                href={item.url}
+                                                                                target="_blank"
+                                                                                rel="noreferrer"
+                                                                                className="font-medium text-gray-900 hover:text-indigo-600 line-clamp-2"
+                                                                            >
+                                                                                {item.title}
+                                                                            </a>
+                                                                        ) : (
+                                                                            <span className="font-medium text-gray-900 line-clamp-2">{item.title}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase text-gray-700">
+                                                                        {item.type}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">
+                                                                    {item.published_at ? new Date(item.published_at).toLocaleDateString() : '—'}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right font-medium">{item.views.toLocaleString()}</td>
+                                                                <td className="px-3 py-2 text-right">{item.likes.toLocaleString()}</td>
+                                                                <td className="px-3 py-2 text-right">{item.comments.toLocaleString()}</td>
+                                                                <td className="px-3 py-2 text-right">{item.engagement_rate}%</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : null}
+                        </div>
+                    )}
                 </div>
             )}
 
