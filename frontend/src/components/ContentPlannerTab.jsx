@@ -973,19 +973,19 @@ export default function ContentPlannerTab({
                                         {canManage && item.drive_file_id && item.platform === 'youtube' && !item.youtube_video_id && (
                                             <div className="flex items-center gap-1">
                                                 <select
-                                                    value={publishPrivacy[item.id] || 'private'}
+                                                    value={publishPrivacy[item.id] || 'public'}
                                                     onChange={(e) => setPublishPrivacy((p) => ({ ...p, [item.id]: e.target.value }))}
                                                     className="rounded border px-1.5 py-1 text-xs"
                                                 >
-                                                    <option value="private">Private</option>
-                                                    <option value="unlisted">Unlisted</option>
                                                     <option value="public">Public</option>
+                                                    <option value="unlisted">Unlisted</option>
+                                                    <option value="private">Private</option>
                                                 </select>
                                                 <button
                                                     onClick={() =>
                                                         publishMut.mutate({
                                                             id: item.id,
-                                                            privacy: publishPrivacy[item.id] || 'private',
+                                                            privacy: publishPrivacy[item.id] || 'public',
                                                         })
                                                     }
                                                     disabled={publishMut.isPending}
