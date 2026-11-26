@@ -113,31 +113,23 @@ class SocialOAuthSyncService
             $stats = $item['statistics'] ?? [];
             $handle = $snippet['customUrl'] ?? '@'.str_replace(' ', '', strtolower($snippet['title'] ?? 'channel'));
 
-            $account = SocialAccount::withoutGlobalScopes()->updateOrCreate(
-                [
-                    'workspace_id' => $workspaceId,
-                    'platform' => 'youtube',
-                    'external_id' => $item['id'],
-                ],
-                [
-                    'user_id' => $userId,
-                    'account_name' => $snippet['title'] ?? 'YouTube Channel',
-                    'handle' => str_starts_with($handle, '@') ? $handle : "@{$handle}",
-                    'avatar_url' => $snippet['thumbnails']['default']['url'] ?? null,
-                    'followers_count' => (int) ($stats['subscriberCount'] ?? 0),
-                    'views_count' => (int) ($stats['viewCount'] ?? 0),
-                    'posts_count' => (int) ($stats['videoCount'] ?? 0),
-                    'access_token' => $accessToken,
-                    'refresh_token' => $refreshToken ?: SocialAccount::withoutGlobalScopes()
-                        ->where('workspace_id', $workspaceId)
-                        ->where('platform', 'youtube')
-                        ->where('external_id', $item['id'])
-                        ->value('refresh_token'),
-                    'token_expires_at' => $expiresAt,
-                    'status' => 'connected',
-                    'last_synced_at' => now(),
-                ]
-            );
+            $account = $this->upsertConnectedAccount($workspaceId, $userId, 'youtube', $item['id'], [
+                'account_name' => $snippet['title'] ?? 'YouTube Channel',
+                'handle' => str_starts_with($handle, '@') ? $handle : "@{$handle}",
+                'avatar_url' => $snippet['thumbnails']['default']['url'] ?? null,
+                'followers_count' => (int) ($stats['subscriberCount'] ?? 0),
+                'views_count' => (int) ($stats['viewCount'] ?? 0),
+                'posts_count' => (int) ($stats['videoCount'] ?? 0),
+                'access_token' => $accessToken,
+                'refresh_token' => $refreshToken ?: SocialAccount::withoutGlobalScopes()
+                    ->where('workspace_id', $workspaceId)
+                    ->where('platform', 'youtube')
+                    ->where('external_id', $item['id'])
+                    ->value('refresh_token'),
+                'token_expires_at' => $expiresAt,
+                'status' => 'connected',
+                'last_synced_at' => now(),
+            ]);
 
             $connected[] = $account;
         }
@@ -192,30 +184,50 @@ class SocialOAuthSyncService
             }
 
             $username = $ig['username'] ?? 'instagram';
-            $account = SocialAccount::withoutGlobalScopes()->updateOrCreate(
-                [
-                    'workspace_id' => $workspaceId,
-                    'platform' => 'instagram',
-                    'external_id' => $ig['id'],
-                ],
-                [
-                    'user_id' => $userId,
-                    'account_name' => $ig['name'] ?? $username,
-                    'handle' => "@{$username}",
-                    'avatar_url' => $ig['profile_picture_url'] ?? null,
-                    'followers_count' => (int) ($ig['followers_count'] ?? 0),
-                    'posts_count' => (int) ($ig['media_count'] ?? 0),
-                    'access_token' => $accessToken,
-                    'token_expires_at' => $expiresAt,
-                    'status' => 'connected',
-                    'last_synced_at' => now(),
-                ]
-            );
+            $account = $this->upsertConnectedAccount($workspaceId, $userId, 'instagram', $ig['id'], [
+                'account_name' => $ig['name'] ?? $username,
+                'handle' => "@{$username}",
+                'avatar_url' => $ig['profile_picture_url'] ?? null,
+                'followers_count' => (int) ($ig['followers_count'] ?? 0),
+                'posts_count' => (int) ($ig['media_count'] ?? 0),
+                'access_token' => $accessToken,
+                'token_expires_at' => $expiresAt,
+                'status' => 'connected',
+                'last_synced_at' => now(),
+            ]);
 
             $connected[] = $this->syncInstagram($account);
         }
 
         return $connected;
+    }
+
+    /**
+     * Create or update a connected social account with explicit tenant/user ownership
+     * (OAuth callbacks have no authenticated session for BelongsToWorkspace).
+     */
+    protected function upsertConnectedAccount(
+        int $workspaceId,
+        int $userId,
+        string $platform,
+        string $externalId,
+        array $attributes
+    ): SocialAccount {
+        $account = SocialAccount::withoutGlobalScopes()->firstOrNew([
+            'workspace_id' => $workspaceId,
+            'platform' => $platform,
+            'external_id' => $externalId,
+        ]);
+
+        $account->forceFill(array_merge($attributes, [
+            'workspace_id' => $workspaceId,
+            'user_id' => $userId,
+            'platform' => $platform,
+            'external_id' => $externalId,
+        ]));
+        $account->save();
+
+        return $account;
     }
 
     public function syncAccount(SocialAccount $account): SocialAccount
