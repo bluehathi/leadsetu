@@ -525,9 +525,14 @@ class SocialOAuthSyncService
         $dailyResp = Http::withToken($accessToken)->get('https://youtubeanalytics.googleapis.com/v2/reports', $dailyParams);
 
         if ($dailyResp->status() === 401 || $dailyResp->status() === 403) {
+            $apiReason = $dailyResp->json('error.errors.0.reason');
+            $reason = $apiReason === 'accessNotConfigured'
+                ? ($dailyResp->json('error.message') ?: 'YouTube Analytics API is disabled in your Google Cloud project.')
+                : 'Reconnect your YouTube channel to grant YouTube Analytics permission (Watch Time, Daily Trends & Traffic Sources).';
+
             return [
                 'enabled' => false,
-                'reason' => 'Reconnect your YouTube channel to grant YouTube Analytics permission (Watch Time, Daily Trends & Traffic Sources).',
+                'reason' => $reason,
                 'daily' => [],
                 'totals' => null,
                 'traffic_sources' => [],
