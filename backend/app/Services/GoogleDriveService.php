@@ -37,7 +37,7 @@ class GoogleDriveService
             'client_id' => $clientId,
             'redirect_uri' => $redirect,
             'response_type' => 'code',
-            'scope' => 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email',
+            'scope' => 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email',
             'access_type' => 'offline',
             'prompt' => 'consent',
             'state' => $state,
@@ -780,5 +780,204 @@ class GoogleDriveService
             $content->forceFill(['publish_error' => $e->getMessage()])->save();
             throw $e;
         }
+    }
+
+    public function createFolder(GoogleDriveConnection $conn, string $name, ?string $parentFolderId = null): array
+    {
+        $name = trim($name);
+        if ($name === '') {
+            throw new RuntimeException('Folder name is required.');
+        }
+
+        $parent = $parentFolderId ?: ($conn->default_folder_id ?: 'root');
+        $this->assertFolderAllowed($conn, $parent);
+
+        $token = $this->ensureFreshToken($conn);
+        $resp = Http::withToken($token)->post('https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType,size,thumbnailLink,webViewLink,modifiedTime,parents&supportsAllDrives=true', [
+            'name' => $name,
+            'mimeType' => 'application/vnd.google-apps.folder',
+            'parents' => [$parent],
+        ]);
+        $this->assertDriveWriteResponse($resp, 'Failed to create Google Drive folder.');
+
+        return $this->upsertCachedDriveFile($conn, $resp->json(), $parent);
+    }
+
+    public function renameFile(GoogleDriveConnection $conn, string $fileId, string $newName): array
+    {
+        $newName = trim($newName);
+        if ($newName === '') {
+            throw new RuntimeException('New file name is required.');
+        }
+
+        $token = $this->ensureFreshToken($conn);
+        $this->assertFileAllowed($conn, $fileId, $token);
+
+        $resp = Http::withToken($token)->patch("https://www.googleapis.com/drive/v3/files/{$fileId}?fields=id,name,mimeType,size,thumbnailLink,webViewLink,modifiedTime,parents&supportsAllDrives=true", [
+            'name' => $newName,
+        ]);
+        $this->assertDriveWriteResponse($resp, 'Failed to rename Google Drive file.');
+
+        $data = $resp->json();
+        $parent = $data['parents'][0] ?? ($conn->default_folder_id ?: 'root');
+
+        return $this->upsertCachedDriveFile($conn, $data, $parent);
+    }
+
+    public function moveFile(GoogleDriveConnection $conn, string $fileId, string $targetFolderId): array
+    {
+        $token = $this->ensureFreshToken($conn);
+        $this->assertFileAllowed($conn, $fileId, $token);
+        $this->assertFolderAllowed($conn, $targetFolderId);
+
+        $metaResp = Http::withToken($token)->get("https://www.googleapis.com/drive/v3/files/{$fileId}", [
+            'fields' => 'parents',
+            'supportsAllDrives' => 'true',
+        ]);
+        $this->assertDriveWriteResponse($metaResp, 'Failed to inspect Google Drive file.');
+        $previousParents = implode(',', $metaResp->json('parents', []));
+
+        $query = array_filter([
+            'addParents' => $targetFolderId,
+            'removeParents' => $previousParents !== '' ? $previousParents : null,
+            'fields' => 'id,name,mimeType,size,thumbnailLink,webViewLink,modifiedTime,parents',
+            'supportsAllDrives' => 'true',
+        ]);
+
+        $resp = Http::withToken($token)->patch("https://www.googleapis.com/drive/v3/files/{$fileId}?".http_build_query($query), []);
+        $this->assertDriveWriteResponse($resp, 'Failed to move Google Drive file.');
+
+        return $this->upsertCachedDriveFile($conn, $resp->json(), $targetFolderId);
+    }
+
+    public function deleteFile(GoogleDriveConnection $conn, string $fileId, bool $permanent = false): array
+    {
+        if ($conn->lock_to_default_folder && $conn->default_folder_id && $fileId === $conn->default_folder_id) {
+            throw new RuntimeException('Cannot delete the locked default Google Drive folder.');
+        }
+
+        $token = $this->ensureFreshToken($conn);
+        $this->assertFileAllowed($conn, $fileId, $token);
+
+        if ($permanent) {
+            $resp = Http::withToken($token)->delete("https://www.googleapis.com/drive/v3/files/{$fileId}?supportsAllDrives=true");
+        } else {
+            $resp = Http::withToken($token)->patch("https://www.googleapis.com/drive/v3/files/{$fileId}?supportsAllDrives=true", [
+                'trashed' => true,
+            ]);
+        }
+        $this->assertDriveWriteResponse($resp, 'Failed to delete Google Drive file.');
+
+        GoogleDriveFile::withoutGlobalScopes()
+            ->where('workspace_id', $conn->workspace_id)
+            ->where(function ($q) use ($fileId) {
+                $q->where('drive_file_id', $fileId)
+                    ->orWhere('parent_folder_id', $fileId);
+            })
+            ->delete();
+
+        return [
+            'deleted' => true,
+            'permanent' => $permanent,
+            'drive_file_id' => $fileId,
+        ];
+    }
+
+    protected function assertFolderAllowed(GoogleDriveConnection $conn, string $folderId): void
+    {
+        if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+            if (! $this->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $folderId)) {
+                throw new RuntimeException('Access is locked to the default Google Drive folder.');
+            }
+        }
+    }
+
+    protected function assertFileAllowed(GoogleDriveConnection $conn, string $fileId, string $token): void
+    {
+        if (! $conn->lock_to_default_folder || ! $conn->default_folder_id) {
+            return;
+        }
+
+        $allowed = $this->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
+        $cached = GoogleDriveFile::withoutGlobalScopes()
+            ->where('workspace_id', $conn->workspace_id)
+            ->where('drive_file_id', $fileId)
+            ->first();
+
+        if ($cached && in_array($cached->parent_folder_id, $allowed, true)) {
+            return;
+        }
+
+        $metaResp = Http::withToken($token)->get("https://www.googleapis.com/drive/v3/files/{$fileId}", [
+            'fields' => 'parents',
+            'supportsAllDrives' => 'true',
+        ]);
+        if ($metaResp->successful()) {
+            $parents = $metaResp->json('parents', []);
+            foreach ($parents as $parentId) {
+                if (in_array($parentId, $allowed, true)) {
+                    return;
+                }
+            }
+        }
+
+        throw new RuntimeException('Access is locked to the default Google Drive folder.');
+    }
+
+    protected function assertDriveWriteResponse($resp, string $fallbackMessage): void
+    {
+        if ($resp->successful()) {
+            return;
+        }
+
+        $msg = (string) ($resp->json('error.message') ?: $fallbackMessage);
+        $reason = (string) ($resp->json('error.errors.0.reason') ?? '');
+        if ($resp->status() === 403 && (str_contains(strtolower($reason), 'insufficient') || str_contains(strtolower($msg), 'insufficient'))) {
+            throw new RuntimeException('Google Drive write permission is required. Please disconnect and reconnect Google Drive in Growth Studio to grant file management access.');
+        }
+
+        throw new RuntimeException($msg);
+    }
+
+    protected function upsertCachedDriveFile(GoogleDriveConnection $conn, array $f, string $parentFolderId): array
+    {
+        $mimeType = (string) ($f['mimeType'] ?? '');
+        $isFolder = $mimeType === 'application/vnd.google-apps.folder';
+        $isVideo = str_starts_with($mimeType, 'video/');
+        $isImage = str_starts_with($mimeType, 'image/');
+        $now = now();
+
+        $record = GoogleDriveFile::withoutGlobalScopes()->firstOrNew([
+            'workspace_id' => $conn->workspace_id,
+            'drive_file_id' => $f['id'],
+        ]);
+        $record->forceFill([
+            'workspace_id' => $conn->workspace_id,
+            'drive_file_id' => $f['id'],
+            'parent_folder_id' => $f['parents'][0] ?? $parentFolderId,
+            'name' => $f['name'] ?? '',
+            'mime_type' => $mimeType,
+            'is_folder' => $isFolder,
+            'is_video' => $isVideo,
+            'is_image' => $isImage,
+            'size' => isset($f['size']) ? (int) $f['size'] : null,
+            'thumbnail_url' => $f['thumbnailLink'] ?? null,
+            'web_view_url' => $f['webViewLink'] ?? null,
+            'modified_time' => isset($f['modifiedTime']) ? \Illuminate\Support\Carbon::parse($f['modifiedTime']) : null,
+            'synced_at' => $now,
+        ])->save();
+
+        return [
+            'drive_file_id' => $record->drive_file_id,
+            'parent_folder_id' => $record->parent_folder_id,
+            'name' => $record->name,
+            'mime_type' => $record->mime_type,
+            'is_folder' => $record->is_folder,
+            'is_video' => $record->is_video,
+            'is_image' => $record->is_image,
+            'size' => $record->size,
+            'web_view_url' => $record->web_view_url,
+            'modified_time' => $record->modified_time?->toIso8601String(),
+        ];
     }
 }

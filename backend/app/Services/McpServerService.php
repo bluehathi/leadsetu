@@ -150,12 +150,13 @@ class McpServerService
             ],
             [
                 'name' => 'list_drive_files',
-                'description' => 'List cached Google Drive folder and file metadata (read-only; respects folder lock if enabled).',
+                'description' => 'List Google Drive folders and media files (reads DB cache by default, or pass refresh=true to sync live from Google Drive; respects folder lock if enabled).',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
                         'folder_id' => ['type' => 'string', 'description' => 'Optional Google Drive folder ID'],
                         'search' => ['type' => 'string', 'description' => 'Optional filename search'],
+                        'refresh' => ['type' => 'boolean', 'description' => 'Set true to fetch live files from Google Drive API and refresh cache'],
                     ],
                 ],
             ],
@@ -277,6 +278,54 @@ class McpServerService
                         'required' => ['content_id'],
                     ],
                 ],
+                [
+                    'name' => 'create_drive_folder',
+                    'description' => 'Create a new folder in connected Google Drive (respects folder lock if enabled).',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'name' => ['type' => 'string', 'description' => 'New folder name'],
+                            'parent_folder_id' => ['type' => 'string', 'description' => 'Optional parent Google Drive folder ID (defaults to default/root folder)'],
+                        ],
+                        'required' => ['name'],
+                    ],
+                ],
+                [
+                    'name' => 'rename_drive_file',
+                    'description' => 'Rename a file or folder in connected Google Drive.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'file_id' => ['type' => 'string', 'description' => 'Google Drive file or folder ID from list_drive_files'],
+                            'name' => ['type' => 'string', 'description' => 'New name for the file or folder'],
+                        ],
+                        'required' => ['file_id', 'name'],
+                    ],
+                ],
+                [
+                    'name' => 'move_drive_file',
+                    'description' => 'Move a file or folder to another folder in connected Google Drive.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'file_id' => ['type' => 'string', 'description' => 'Google Drive file or folder ID to move'],
+                            'target_folder_id' => ['type' => 'string', 'description' => 'Destination Google Drive folder ID'],
+                        ],
+                        'required' => ['file_id', 'target_folder_id'],
+                    ],
+                ],
+                [
+                    'name' => 'delete_drive_file',
+                    'description' => 'Move a Google Drive file or folder to Trash (default) or permanently delete it.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'file_id' => ['type' => 'string', 'description' => 'Google Drive file or folder ID to trash/delete'],
+                            'permanent' => ['type' => 'boolean', 'description' => 'Set true to permanently delete instead of moving to Trash (default: false)'],
+                        ],
+                        'required' => ['file_id'],
+                    ],
+                ],
             ]);
         }
 
@@ -288,7 +337,19 @@ class McpServerService
         $limit = max(1, min(100, (int) ($args['limit'] ?? 25)));
         $canWriteContent = in_array('content:write', $scopes, true);
 
-        $writeTools = ['create_content_plan', 'update_content_plan', 'delete_content_plan', 'create_social_brand', 'share_content_to_brand', 'update_first_comment', 'publish_content_now'];
+        $writeTools = [
+            'create_content_plan',
+            'update_content_plan',
+            'delete_content_plan',
+            'create_social_brand',
+            'share_content_to_brand',
+            'update_first_comment',
+            'publish_content_now',
+            'create_drive_folder',
+            'rename_drive_file',
+            'move_drive_file',
+            'delete_drive_file',
+        ];
         if (in_array($name, $writeTools, true) && ! $canWriteContent) {
             throw new InvalidArgumentException("Tool '{$name}' requires the 'content:write' scope. Enable Content Planner write access for this MCP token in LeadSetu Workspace.");
         }
@@ -313,6 +374,10 @@ class McpServerService
             'share_content_to_brand' => $this->shareContentToBrand($args),
             'update_first_comment' => $this->updateFirstComment($args),
             'publish_content_now' => $this->publishContentNow($args),
+            'create_drive_folder' => $this->createDriveFolder($args),
+            'rename_drive_file' => $this->renameDriveFile($args),
+            'move_drive_file' => $this->moveDriveFile($args),
+            'delete_drive_file' => $this->deleteDriveFile($args),
             default => throw new InvalidArgumentException("Unknown MCP tool: {$name}"),
         };
 
@@ -520,12 +585,26 @@ class McpServerService
             return ['connected' => false, 'items' => []];
         }
 
-        // Read strictly from DB metadata cache (never hits Google Drive API or copies files).
-        $folderId = $args['folder_id'] ?? ($conn->default_folder_id ?: 'root');
+        $folderId = $args['folder_id'] ?? null;
         $search = $args['search'] ?? null;
+        $refresh = (bool) ($args['refresh'] ?? false);
 
-        if ($conn->lock_to_default_folder && $conn->default_folder_id) {
-            $folderId = $conn->default_folder_id;
+        if ($refresh) {
+            $live = $this->driveService->listFiles($conn, $folderId, $search, true);
+
+            return [
+                'connected' => true,
+                'locked_to_default_folder' => (bool) $conn->lock_to_default_folder,
+                'source' => $live['source'] ?? 'live',
+                'synced_at' => $live['synced_at'] ?? null,
+                'items' => $live['items'] ?? [],
+            ];
+        }
+
+        // Read from DB metadata cache (respecting locked default folder).
+        $resolvedFolderId = $folderId ?: ($conn->default_folder_id ?: 'root');
+        if ($conn->lock_to_default_folder && $conn->default_folder_id && ! $folderId) {
+            $resolvedFolderId = $conn->default_folder_id;
         }
 
         $q = GoogleDriveFile::query();
@@ -535,12 +614,13 @@ class McpServerService
                 $q->where('parent_folder_id', $conn->default_folder_id);
             }
         } else {
-            $q->where('parent_folder_id', $folderId);
+            $q->where('parent_folder_id', $resolvedFolderId);
         }
 
         return [
             'connected' => true,
             'locked_to_default_folder' => (bool) $conn->lock_to_default_folder,
+            'source' => 'cache',
             'items' => $q->orderByDesc('is_folder')->orderByDesc('modified_time')->limit(60)->get([
                 'drive_file_id', 'parent_folder_id', 'name', 'mime_type', 'is_folder', 'is_video', 'is_image', 'size', 'web_view_url', 'modified_time', 'synced_at',
             ])->toArray(),
@@ -744,6 +824,74 @@ class McpServerService
         $this->audit->log('social_content_published_now', $updated, "MCP published '{$updated->title}' to {$updated->platform}");
 
         return $updated->toArray();
+    }
+
+    protected function requireDriveConnection(): GoogleDriveConnection
+    {
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            throw new InvalidArgumentException('Google Drive is not connected in this workspace.');
+        }
+
+        return $conn;
+    }
+
+    protected function createDriveFolder(array $args): array
+    {
+        $conn = $this->requireDriveConnection();
+        $folder = $this->driveService->createFolder(
+            $conn,
+            (string) ($args['name'] ?? ''),
+            isset($args['parent_folder_id']) ? (string) $args['parent_folder_id'] : null
+        );
+
+        $this->audit->log('google_drive_folder_created', $conn, "MCP created Google Drive folder '{$folder['name']}' ({$folder['drive_file_id']})");
+
+        return $folder;
+    }
+
+    protected function renameDriveFile(array $args): array
+    {
+        $conn = $this->requireDriveConnection();
+        $fileId = trim((string) ($args['file_id'] ?? ''));
+        if ($fileId === '') {
+            throw new InvalidArgumentException('file_id is required.');
+        }
+
+        $updated = $this->driveService->renameFile($conn, $fileId, (string) ($args['name'] ?? ''));
+        $this->audit->log('google_drive_file_renamed', $conn, "MCP renamed Google Drive item {$fileId} to '{$updated['name']}'");
+
+        return $updated;
+    }
+
+    protected function moveDriveFile(array $args): array
+    {
+        $conn = $this->requireDriveConnection();
+        $fileId = trim((string) ($args['file_id'] ?? ''));
+        $targetFolderId = trim((string) ($args['target_folder_id'] ?? ''));
+        if ($fileId === '' || $targetFolderId === '') {
+            throw new InvalidArgumentException('file_id and target_folder_id are required.');
+        }
+
+        $updated = $this->driveService->moveFile($conn, $fileId, $targetFolderId);
+        $this->audit->log('google_drive_file_moved', $conn, "MCP moved Google Drive item {$fileId} to folder {$targetFolderId}");
+
+        return $updated;
+    }
+
+    protected function deleteDriveFile(array $args): array
+    {
+        $conn = $this->requireDriveConnection();
+        $fileId = trim((string) ($args['file_id'] ?? ''));
+        if ($fileId === '') {
+            throw new InvalidArgumentException('file_id is required.');
+        }
+
+        $permanent = (bool) ($args['permanent'] ?? false);
+        $result = $this->driveService->deleteFile($conn, $fileId, $permanent);
+        $this->audit->log('google_drive_file_deleted', $conn, "MCP ".($permanent ? 'permanently deleted' : 'trashed')." Google Drive item {$fileId}");
+
+        return $result;
     }
 
     protected function resolveDriveAttachments(array $args): array
