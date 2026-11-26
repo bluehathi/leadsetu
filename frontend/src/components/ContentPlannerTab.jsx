@@ -39,6 +39,8 @@ export default function ContentPlannerTab({
     const [platformFilter, setPlatformFilter] = useState('all');
     const [failedOnly, setFailedOnly] = useState(false);
     const [viewMode, setViewMode] = useState('list');
+    const [formTab, setFormTab] = useState('basics');
+    const [showCrossPost, setShowCrossPost] = useState(false);
     const [search, setSearch] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [aiSuggestion, setAiSuggestion] = useState(null);
@@ -238,18 +240,18 @@ export default function ContentPlannerTab({
     };
 
     return (
-        <div className="grid gap-6 lg:grid-cols-12">
+        <div className="grid gap-6 lg:grid-cols-12 items-start">
             {canManage && (
                 <form
                     onSubmit={handleSubmit}
-                    className="space-y-3.5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-5"
+                    className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-5"
                 >
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-3">
                         <div>
-                            <h2 className="font-semibold text-gray-900">
+                            <h2 className="text-base font-semibold text-gray-900">
                                 {editingId ? 'Edit Planned Content' : 'Plan New Content'}
                             </h2>
-                            <p className="text-xs text-gray-500">Draft, optimize SEO, schedule, or publish from Drive</p>
+                            <p className="text-xs text-gray-500">Draft, optimize SEO, schedule, or link Drive</p>
                         </div>
                         <button
                             type="button"
@@ -265,250 +267,50 @@ export default function ContentPlannerTab({
                                 })
                             }
                             disabled={optimizeMut.isPending}
-                            className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                            className="rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50"
                         >
                             {optimizeMut.isPending ? 'Optimizing…' : '✨ AI Optimize'}
                         </button>
                     </div>
 
                     {errorMsg && (
-                        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                             {errorMsg}
                         </div>
                     )}
 
-                    <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-700">Channel</label>
-                        <select
-                            required
-                            value={effectiveAccountId}
-                            onChange={(e) => {
-                                const acc = accounts.find((a) => String(a.id) === e.target.value);
-                                setExtraAccountIds((prev) => prev.filter((id) => String(id) !== e.target.value));
-                                setContentForm({
-                                    ...contentForm,
-                                    social_account_id: e.target.value,
-                                    platform: acc?.platform || contentForm.platform,
-                                    content_type: acc?.platform === 'instagram' ? 'reel' : acc?.platform === 'facebook' ? 'post' : 'video',
-                                });
-                            }}
-                            className="w-full rounded-lg border px-3 py-2 text-sm"
-                        >
-                            {accounts.length === 0 && <option value="">No channels connected</option>}
-                            {accounts.map((a) => (
-                                <option key={a.id} value={a.id}>
-                                    [{a.platform.toUpperCase()}] {a.account_name} ({a.handle})
-                                </option>
-                            ))}
-                        </select>
-                        {!editingId && accounts.length > 1 && (
-                            <div className="mt-2 space-y-1.5 rounded-lg border border-gray-100 bg-gray-50 p-2.5">
-                                <div className="text-[11px] font-medium text-gray-600">Also share to other channels:</div>
-                                {brands.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {brands.map((b) => (
-                                            <button
-                                                key={b.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    const ids = (b.accounts || [])
-                                                        .map((a) => a.id)
-                                                        .filter((id) => String(id) !== String(effectiveAccountId));
-                                                    setExtraAccountIds((prev) => Array.from(new Set([...prev, ...ids])));
-                                                }}
-                                                className="rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100"
-                                            >
-                                                + Brand: {b.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                                <div className="flex flex-wrap gap-2">
-                                    {accounts
-                                        .filter((a) => String(a.id) !== String(effectiveAccountId))
-                                        .map((a) => {
-                                            const checked = extraAccountIds.includes(a.id);
-                                            return (
-                                                <label key={a.id} className="inline-flex cursor-pointer items-center gap-1.5 rounded border bg-white px-2 py-1 text-xs">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        onChange={(e) =>
-                                                            setExtraAccountIds((prev) =>
-                                                                e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id)
-                                                            )
-                                                        }
-                                                    />
-                                                    <span className={`rounded px-1 text-[10px] font-semibold uppercase ${platformBadge(a.platform)}`}>
-                                                        {a.platform.slice(0, 2)}
-                                                    </span>
-                                                    <span className="max-w-[130px] truncate">{a.account_name}</span>
-                                                </label>
-                                            );
-                                        })}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-700">Format</label>
-                            <select
-                                value={contentForm.content_type}
-                                onChange={(e) => setContentForm({ ...contentForm, content_type: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            >
-                                <option value="video">YouTube Video</option>
-                                <option value="short">YouTube Short</option>
-                                <option value="reel">Instagram Reel</option>
-                                <option value="carousel">IG Carousel</option>
-                                <option value="post">IG Post</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-700">Pipeline Stage</label>
-                            <select
-                                value={contentForm.status}
-                                onChange={(e) => setContentForm({ ...contentForm, status: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            >
-                                <option value="idea">Idea</option>
-                                <option value="draft">Draft</option>
-                                <option value="scheduled">Scheduled</option>
-                                <option value="published">Published</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-700">Target Keyword</label>
-                            <input
-                                placeholder="e.g. krishna motivation"
-                                value={contentForm.target_keyword}
-                                onChange={(e) => setContentForm({ ...contentForm, target_keyword: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-700">Schedule Date (Optional)</label>
-                            <input
-                                type="datetime-local"
-                                value={contentForm.scheduled_at || ''}
-                                onChange={(e) => setContentForm({ ...contentForm, scheduled_at: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="mb-1 flex justify-between text-xs">
-                            <label className="font-medium text-gray-700">Video Title / Headline</label>
-                            <span className={contentForm.title.length >= 35 && contentForm.title.length <= 70 ? 'text-green-600' : 'text-gray-400'}>
-                                {contentForm.title.length} / 35–70 chars
-                            </span>
-                        </div>
-                        <input
-                            required
-                            placeholder="Write a clickable title with your keyword…"
-                            value={contentForm.title}
-                            onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })}
-                            className="w-full rounded-lg border px-3 py-2 text-sm"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-700">Opening Hook (first 3–15 sec)</label>
-                        <input
-                            placeholder="What grabs the viewer immediately?"
-                            value={contentForm.hook}
-                            onChange={(e) => setContentForm({ ...contentForm, hook: e.target.value })}
-                            className="w-full rounded-lg border px-3 py-2 text-sm"
-                        />
-                    </div>
-
-                    <div>
-                        <div className="mb-1 flex justify-between text-xs">
-                            <label className="font-medium text-gray-700">Description / Caption</label>
-                            <span className={contentForm.description.length >= 120 ? 'text-green-600' : 'text-gray-400'}>
-                                {contentForm.description.length} chars (120+ ideal)
-                            </span>
-                        </div>
-                        <textarea
-                            rows={3}
-                            placeholder="Video description, timestamps, links…"
-                            value={contentForm.description}
-                            onChange={(e) => setContentForm({ ...contentForm, description: e.target.value })}
-                            className="w-full rounded-lg border px-3 py-2 text-sm"
-                        />
-                    </div>
-
-                    <div className="space-y-1.5 rounded-lg border border-gray-100 bg-gray-50 p-3">
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs font-medium text-gray-700">First Comment (Auto-posted on publish)</label>
-                            <label className="flex items-center gap-1.5 text-[11px] text-gray-600">
-                                <input
-                                    type="checkbox"
-                                    checked={contentForm.pin_first_comment ?? true}
-                                    onChange={(e) => setContentForm({ ...contentForm, pin_first_comment: e.target.checked })}
-                                />
-                                Pin intent (manual pin in YT/FB Studio if API-restricted)
-                            </label>
-                        </div>
-                        <textarea
-                            rows={2}
-                            placeholder="Write the first comment to post automatically after publishing…"
-                            value={contentForm.first_comment || ''}
-                            onChange={(e) => setContentForm({ ...contentForm, first_comment: e.target.value })}
-                            className="w-full rounded-lg border bg-white px-3 py-2 text-sm"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-700">Tags (comma-separated)</label>
-                            <input
-                                placeholder="tag1, tag2, tag3"
-                                value={contentForm.tagsText}
-                                onChange={(e) => setContentForm({ ...contentForm, tagsText: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-700">Hashtags</label>
-                            <input
-                                placeholder="#shorts #motivation"
-                                value={contentForm.hashtagsText}
-                                onChange={(e) => setContentForm({ ...contentForm, hashtagsText: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            />
-                        </div>
-                    </div>
-
                     {aiSuggestion && (
-                        <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50 p-3 text-xs text-purple-900">
+                        <div className="space-y-2 rounded-xl border border-purple-200 bg-purple-50 p-3 text-xs text-purple-900">
                             <div className="flex items-center justify-between">
                                 <span className="font-semibold">AI SEO Score Preview: {aiSuggestion.seo_score}/100</span>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setContentForm((p) => ({
-                                            ...p,
-                                            title: aiSuggestion.suggested_titles?.[0] || p.title,
-                                            description: aiSuggestion.suggested_description || p.description,
-                                            tagsText: Array.isArray(aiSuggestion.suggested_tags)
-                                                ? aiSuggestion.suggested_tags.join(', ')
-                                                : p.tagsText,
-                                            hashtagsText: Array.isArray(aiSuggestion.suggested_hashtags)
-                                                ? aiSuggestion.suggested_hashtags.join(' ')
-                                                : p.hashtagsText,
-                                        }))
-                                    }
-                                    className="rounded bg-purple-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-purple-700"
-                                >
-                                    Apply All
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setContentForm((p) => ({
+                                                ...p,
+                                                title: aiSuggestion.suggested_titles?.[0] || p.title,
+                                                description: aiSuggestion.suggested_description || p.description,
+                                                tagsText: Array.isArray(aiSuggestion.suggested_tags)
+                                                    ? aiSuggestion.suggested_tags.join(', ')
+                                                    : p.tagsText,
+                                                hashtagsText: Array.isArray(aiSuggestion.suggested_hashtags)
+                                                    ? aiSuggestion.suggested_hashtags.join(' ')
+                                                    : p.hashtagsText,
+                                            }))
+                                        }
+                                        className="rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-purple-700"
+                                    >
+                                        Apply All
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAiSuggestion(null)}
+                                        className="text-purple-600 hover:underline"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
                             </div>
                             {aiSuggestion.suggested_titles?.length > 0 && (
                                 <ul className="list-disc space-y-0.5 pl-4">
@@ -526,111 +328,380 @@ export default function ContentPlannerTab({
                         </div>
                     )}
 
-                    <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-xs font-medium text-gray-700">Google Drive Attachments</span>
-                            <div className="flex flex-wrap gap-1.5">
-                                <button
-                                    type="button"
-                                    onClick={() => setDrivePickerMode('folder')}
-                                    className="rounded-lg border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
-                                >
-                                    📁 {contentForm.drive_folder_id ? 'Change Folder' : 'Link Folder'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setDrivePickerMode('video')}
-                                    className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
-                                >
-                                    🎬 {contentForm.drive_file_id ? 'Change Video' : 'Select Video'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setDrivePickerMode('image')}
-                                    className="rounded-lg border border-green-200 bg-white px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
-                                >
-                                    🖼️ {contentForm.drive_thumbnail_file_id ? 'Change Thumbnail' : 'Select Thumbnail'}
-                                </button>
-                            </div>
-                        </div>
-
-                        {contentForm.drive_folder_id && (
-                            <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
-                                <span className="truncate">
-                                    📁 Linked Folder: {contentForm.drive_folder_name || contentForm.drive_folder_id}
-                                </span>
-                                <div className="ml-2 flex items-center gap-2 flex-shrink-0">
-                                    <a
-                                        href={`https://drive.google.com/drive/folders/${contentForm.drive_folder_id}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-amber-800 underline"
-                                    >
-                                        Open ↗
-                                    </a>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setContentForm((p) => ({
-                                                ...p,
-                                                drive_folder_id: null,
-                                                drive_folder_name: null,
-                                            }))
-                                        }
-                                        className="text-amber-700 hover:underline"
-                                    >
-                                        Clear
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {contentForm.drive_file_name && (
-                            <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-900">
-                                <span className="truncate">🎬 Video: {contentForm.drive_file_name}</span>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setContentForm((p) => ({
-                                            ...p,
-                                            drive_file_id: null,
-                                            drive_file_name: null,
-                                            drive_file_url: null,
-                                            drive_mime_type: null,
-                                        }))
-                                    }
-                                    className="ml-2 text-indigo-700 hover:underline"
-                                >
-                                    Clear
-                                </button>
-                            </div>
-                        )}
-
-                        {contentForm.drive_thumbnail_name && (
-                            <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs text-green-900">
-                                <span className="truncate">🖼️ Thumbnail: {contentForm.drive_thumbnail_name}</span>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setContentForm((p) => ({
-                                            ...p,
-                                            drive_thumbnail_file_id: null,
-                                            drive_thumbnail_name: null,
-                                        }))
-                                    }
-                                    className="ml-2 text-green-700 hover:underline"
-                                >
-                                    Clear
-                                </button>
-                            </div>
-                        )}
+                    {/* Composer Section Tabs */}
+                    <div className="grid grid-cols-3 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 text-xs font-medium">
+                        <button
+                            type="button"
+                            onClick={() => setFormTab('basics')}
+                            className={`rounded-lg py-1.5 transition ${
+                                formTab === 'basics' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            1. Basics
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFormTab('seo')}
+                            className={`rounded-lg py-1.5 transition ${
+                                formTab === 'seo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            2. SEO &amp; Copy
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFormTab('media')}
+                            className={`rounded-lg py-1.5 transition ${
+                                formTab === 'media' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            3. Media &amp; Comment
+                            {(contentForm.drive_file_id || contentForm.drive_folder_id || contentForm.first_comment) && (
+                                <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-indigo-600 align-middle" />
+                            )}
+                        </button>
                     </div>
 
-                    <div className="flex gap-2 pt-1">
+                    {formTab === 'basics' && (
+                        <div className="space-y-3">
+                            <div>
+                                <div className="mb-1 flex items-center justify-between">
+                                    <label className="text-xs font-medium text-gray-700">Channel</label>
+                                    {!editingId && accounts.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCrossPost((v) => !v)}
+                                            className="text-[11px] font-medium text-indigo-600 hover:underline"
+                                        >
+                                            {showCrossPost
+                                                ? 'Hide cross-post'
+                                                : extraAccountIds.length > 0
+                                                ? `+${extraAccountIds.length} cross-post(s)`
+                                                : '+ Cross-post'}
+                                        </button>
+                                    )}
+                                </div>
+                                <select
+                                    required
+                                    value={effectiveAccountId}
+                                    onChange={(e) => {
+                                        const acc = accounts.find((a) => String(a.id) === e.target.value);
+                                        setExtraAccountIds((prev) => prev.filter((id) => String(id) !== e.target.value));
+                                        setContentForm({
+                                            ...contentForm,
+                                            social_account_id: e.target.value,
+                                            platform: acc?.platform || contentForm.platform,
+                                            content_type: acc?.platform === 'instagram' ? 'reel' : acc?.platform === 'facebook' ? 'post' : 'video',
+                                        });
+                                    }}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                                >
+                                    {accounts.length === 0 && <option value="">No channels connected</option>}
+                                    {accounts.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                            [{a.platform.toUpperCase()}] {a.account_name} ({a.handle})
+                                        </option>
+                                    ))}
+                                </select>
+                                {!editingId && showCrossPost && accounts.length > 1 && (
+                                    <div className="mt-2 space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-2.5">
+                                        {brands.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {brands.map((b) => (
+                                                    <button
+                                                        key={b.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const ids = (b.accounts || [])
+                                                                .map((a) => a.id)
+                                                                .filter((id) => String(id) !== String(effectiveAccountId));
+                                                            setExtraAccountIds((prev) => Array.from(new Set([...prev, ...ids])));
+                                                        }}
+                                                        className="rounded-lg bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100"
+                                                    >
+                                                        + Brand: {b.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {accounts
+                                                .filter((a) => String(a.id) !== String(effectiveAccountId))
+                                                .map((a) => {
+                                                    const checked = extraAccountIds.includes(a.id);
+                                                    return (
+                                                        <label key={a.id} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={checked}
+                                                                onChange={(e) =>
+                                                                    setExtraAccountIds((prev) =>
+                                                                        e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id)
+                                                                    )
+                                                                }
+                                                            />
+                                                            <span className={`rounded px-1 text-[10px] font-semibold uppercase ${platformBadge(a.platform)}`}>
+                                                                {a.platform.slice(0, 2)}
+                                                            </span>
+                                                            <span className="max-w-[120px] truncate">{a.account_name}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <div className="mb-1 flex justify-between text-xs">
+                                    <label className="font-medium text-gray-700">Title / Headline</label>
+                                    <span className={contentForm.title.length >= 35 && contentForm.title.length <= 70 ? 'text-green-600' : 'text-gray-400'}>
+                                        {contentForm.title.length} / 35–70 chars
+                                    </span>
+                                </div>
+                                <input
+                                    required
+                                    placeholder="Write a clickable title with your keyword…"
+                                    value={contentForm.title}
+                                    onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-gray-700">Format</label>
+                                    <select
+                                        value={contentForm.content_type}
+                                        onChange={(e) => setContentForm({ ...contentForm, content_type: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    >
+                                        <option value="video">YouTube Video</option>
+                                        <option value="short">YouTube Short</option>
+                                        <option value="reel">Instagram Reel</option>
+                                        <option value="carousel">IG Carousel</option>
+                                        <option value="post">Post</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-gray-700">Stage</label>
+                                    <select
+                                        value={contentForm.status}
+                                        onChange={(e) => setContentForm({ ...contentForm, status: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    >
+                                        <option value="idea">Idea</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="scheduled">Scheduled</option>
+                                        <option value="published">Published</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-gray-700">Target Keyword</label>
+                                    <input
+                                        placeholder="e.g. krishna motivation"
+                                        value={contentForm.target_keyword}
+                                        onChange={(e) => setContentForm({ ...contentForm, target_keyword: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-gray-700">Schedule Date</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={contentForm.scheduled_at || ''}
+                                        onChange={(e) => setContentForm({ ...contentForm, scheduled_at: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {formTab === 'seo' && (
+                        <div className="space-y-3">
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Opening Hook (first 3–15 sec)</label>
+                                <input
+                                    placeholder="What grabs the viewer immediately?"
+                                    value={contentForm.hook}
+                                    onChange={(e) => setContentForm({ ...contentForm, hook: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <div className="mb-1 flex justify-between text-xs">
+                                    <label className="font-medium text-gray-700">Description / Caption</label>
+                                    <span className={contentForm.description.length >= 120 ? 'text-green-600' : 'text-gray-400'}>
+                                        {contentForm.description.length} chars (120+ ideal)
+                                    </span>
+                                </div>
+                                <textarea
+                                    rows={4}
+                                    placeholder="Video description, timestamps, links…"
+                                    value={contentForm.description}
+                                    onChange={(e) => setContentForm({ ...contentForm, description: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-gray-700">Tags (comma-separated)</label>
+                                    <input
+                                        placeholder="tag1, tag2, tag3"
+                                        value={contentForm.tagsText}
+                                        onChange={(e) => setContentForm({ ...contentForm, tagsText: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-gray-700">Hashtags</label>
+                                    <input
+                                        placeholder="#shorts #motivation"
+                                        value={contentForm.hashtagsText}
+                                        onChange={(e) => setContentForm({ ...contentForm, hashtagsText: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {formTab === 'media' && (
+                        <div className="space-y-3">
+                            <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-xs font-medium text-gray-700">Google Drive</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDrivePickerMode('folder')}
+                                            className="rounded-lg border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                                        >
+                                            📁 {contentForm.drive_folder_id ? 'Change Folder' : 'Link Folder'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDrivePickerMode('video')}
+                                            className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                                        >
+                                            🎬 {contentForm.drive_file_id ? 'Change Video' : 'Select Video'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDrivePickerMode('image')}
+                                            className="rounded-lg border border-green-200 bg-white px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                                        >
+                                            🖼️ {contentForm.drive_thumbnail_file_id ? 'Change Thumb' : 'Select Thumb'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {contentForm.drive_folder_id && (
+                                    <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
+                                        <span className="truncate">
+                                            📁 {contentForm.drive_folder_name || contentForm.drive_folder_id}
+                                        </span>
+                                        <div className="ml-2 flex items-center gap-2 flex-shrink-0">
+                                            <a
+                                                href={`https://drive.google.com/drive/folders/${contentForm.drive_folder_id}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-amber-800 underline"
+                                            >
+                                                Open ↗
+                                            </a>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setContentForm((p) => ({
+                                                        ...p,
+                                                        drive_folder_id: null,
+                                                        drive_folder_name: null,
+                                                    }))
+                                                }
+                                                className="text-amber-700 hover:underline"
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {contentForm.drive_file_name && (
+                                    <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-900">
+                                        <span className="truncate">🎬 {contentForm.drive_file_name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setContentForm((p) => ({
+                                                    ...p,
+                                                    drive_file_id: null,
+                                                    drive_file_name: null,
+                                                    drive_file_url: null,
+                                                    drive_mime_type: null,
+                                                }))
+                                            }
+                                            className="ml-2 text-indigo-700 hover:underline"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                )}
+
+                                {contentForm.drive_thumbnail_name && (
+                                    <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs text-green-900">
+                                        <span className="truncate">🖼️ {contentForm.drive_thumbnail_name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setContentForm((p) => ({
+                                                    ...p,
+                                                    drive_thumbnail_file_id: null,
+                                                    drive_thumbnail_name: null,
+                                                }))
+                                            }
+                                            className="ml-2 text-green-700 hover:underline"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-1.5 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-medium text-gray-700">First Comment (Auto-posted)</label>
+                                    <label className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                        <input
+                                            type="checkbox"
+                                            checked={contentForm.pin_first_comment ?? true}
+                                            onChange={(e) => setContentForm({ ...contentForm, pin_first_comment: e.target.checked })}
+                                        />
+                                        Pin intent
+                                    </label>
+                                </div>
+                                <textarea
+                                    rows={3}
+                                    placeholder="Write the first comment to post automatically after publishing…"
+                                    value={contentForm.first_comment || ''}
+                                    onChange={(e) => setContentForm({ ...contentForm, first_comment: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex gap-2 border-t border-gray-100 pt-3">
                         <button
                             type="submit"
                             disabled={createMut.isPending || updateMut.isPending}
-                            className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            className="flex-1 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                         >
                             {editingId
                                 ? updateMut.isPending
@@ -647,7 +718,7 @@ export default function ContentPlannerTab({
                                     setEditingId(null);
                                     setContentForm({ ...emptyContent, social_account_id: effectiveAccountId });
                                 }}
-                                className="rounded-lg border px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                                className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
                             >
                                 Cancel
                             </button>
