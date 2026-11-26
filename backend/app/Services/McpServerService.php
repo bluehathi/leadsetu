@@ -248,6 +248,19 @@ class McpServerService
                         'required' => ['content_id', 'brand_id'],
                     ],
                 ],
+                [
+                    'name' => 'update_first_comment',
+                    'description' => 'Post or update the first comment on an already-published YouTube, Instagram, or Facebook Content Planner item.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'content_id' => ['type' => 'integer', 'description' => 'Published SocialContent ID from list_content_planner'],
+                            'first_comment' => ['type' => 'string', 'description' => 'Comment text to post or update'],
+                            'pin_first_comment' => ['type' => 'boolean', 'description' => 'Optional pin intent flag'],
+                        ],
+                        'required' => ['content_id', 'first_comment'],
+                    ],
+                ],
             ]);
         }
 
@@ -259,7 +272,7 @@ class McpServerService
         $limit = max(1, min(100, (int) ($args['limit'] ?? 25)));
         $canWriteContent = in_array('content:write', $scopes, true);
 
-        $writeTools = ['create_content_plan', 'update_content_plan', 'delete_content_plan', 'create_social_brand', 'share_content_to_brand'];
+        $writeTools = ['create_content_plan', 'update_content_plan', 'delete_content_plan', 'create_social_brand', 'share_content_to_brand', 'update_first_comment'];
         if (in_array($name, $writeTools, true) && ! $canWriteContent) {
             throw new InvalidArgumentException("Tool '{$name}' requires the 'content:write' scope. Enable Content Planner write access for this MCP token in LeadSetu Workspace.");
         }
@@ -282,6 +295,7 @@ class McpServerService
             'delete_content_plan' => $this->deleteContentPlan($args),
             'create_social_brand' => $this->createSocialBrand($args),
             'share_content_to_brand' => $this->shareContentToBrand($args),
+            'update_first_comment' => $this->updateFirstComment($args),
             default => throw new InvalidArgumentException("Unknown MCP tool: {$name}"),
         };
 
@@ -678,6 +692,27 @@ class McpServerService
             'created_count' => count($created),
             'created' => $created,
         ];
+    }
+
+    protected function updateFirstComment(array $args): array
+    {
+        $content = SocialContent::findOrFail((int) ($args['content_id'] ?? 0));
+        $text = trim((string) ($args['first_comment'] ?? ''));
+        if ($text === '') {
+            throw new InvalidArgumentException('first_comment is required.');
+        }
+
+        $content->update([
+            'first_comment' => $text,
+            'pin_first_comment' => array_key_exists('pin_first_comment', $args)
+                ? (bool) $args['pin_first_comment']
+                : $content->pin_first_comment,
+        ]);
+
+        $updated = $this->driveService->postOrUpdateFirstComment($content->fresh());
+        $this->audit->log('social_first_comment_updated', $updated, "MCP updated first comment on '{$updated->title}'");
+
+        return $updated->toArray();
     }
 
     protected function resolveDriveAttachments(array $args): array
