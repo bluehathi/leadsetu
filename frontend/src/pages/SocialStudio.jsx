@@ -348,12 +348,12 @@ export default function SocialStudio() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-3.5 shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Growth Studio</h1>
-                    <p className="mt-0.5 text-sm text-gray-500">
-                        YouTube, Instagram & Facebook Pages · Analytics, Content Planner, Google Drive & AI Growth Tools
+                    <h1 className="text-xl font-bold tracking-tight text-gray-900">Growth Studio</h1>
+                    <p className="text-xs text-gray-500">
+                        YouTube, Instagram &amp; Facebook · Planner, Drive &amp; Analytics
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -463,41 +463,34 @@ export default function SocialStudio() {
                 </div>
             )}
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
-                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 to-violet-500" />
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Channels</div>
-                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{totals.accounts ?? 0}</div>
-                    <div className="mt-0.5 text-[11px] text-gray-500">
-                        YT {totals.youtube_accounts ?? 0} · IG {totals.instagram_accounts ?? 0} · FB {totals.facebook_accounts ?? 0}
+            {/* Compact Metrics Strip */}
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+                <div className="rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm">
+                    <div className="text-[11px] font-medium text-gray-500">Channels</div>
+                    <div className="mt-0.5 flex items-baseline gap-2">
+                        <span className="text-lg font-bold tabular-nums text-gray-900">{totals.accounts ?? 0}</span>
+                        <span className="text-[10px] text-gray-400">
+                            YT {totals.youtube_accounts ?? 0} · IG {totals.instagram_accounts ?? 0} · FB {totals.facebook_accounts ?? 0}
+                        </span>
                     </div>
                 </div>
-                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
-                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 to-rose-500" />
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Audience</div>
-                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{(totals.followers ?? 0).toLocaleString()}</div>
-                    <div className="mt-0.5 text-[11px] text-gray-500">Followers & subscribers</div>
+                <div className="rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm">
+                    <div className="text-[11px] font-medium text-gray-500">Audience</div>
+                    <div className="mt-0.5 text-lg font-bold tabular-nums text-gray-900">{(totals.followers ?? 0).toLocaleString()}</div>
                 </div>
-                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
-                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 to-cyan-500" />
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Total Views</div>
-                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{(totals.views ?? 0).toLocaleString()}</div>
-                    <div className="mt-0.5 text-[11px] text-gray-500">Across synced channels</div>
+                <div className="rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm">
+                    <div className="text-[11px] font-medium text-gray-500">Total Views</div>
+                    <div className="mt-0.5 text-lg font-bold tabular-nums text-gray-900">{(totals.views ?? 0).toLocaleString()}</div>
                 </div>
-                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
-                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Avg SEO Score</div>
-                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
-                        {totals.avg_seo_score ?? 0}<span className="text-sm font-medium text-gray-400">/100</span>
+                <div className="rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm">
+                    <div className="text-[11px] font-medium text-gray-500">Avg SEO Score</div>
+                    <div className="mt-0.5 text-lg font-bold tabular-nums text-gray-900">
+                        {totals.avg_seo_score ?? 0}<span className="text-xs font-normal text-gray-400">/100</span>
                     </div>
-                    <div className="mt-0.5 text-[11px] text-gray-500">Content optimization</div>
                 </div>
-                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
-                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Daily Ideas</div>
-                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{totals.open_ideas_count ?? 0}</div>
-                    <div className="mt-0.5 text-[11px] text-gray-500">Ready to convert</div>
+                <div className="rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm">
+                    <div className="text-[11px] font-medium text-gray-500">Daily Ideas</div>
+                    <div className="mt-0.5 text-lg font-bold tabular-nums text-gray-900">{totals.open_ideas_count ?? 0}</div>
                 </div>
             </div>
 

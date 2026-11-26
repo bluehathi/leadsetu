@@ -43,6 +43,8 @@ export default function ContentPlannerTab({
     const [viewMode, setViewMode] = useState(() => localStorage.getItem('leadsetu_planner_view') || 'list');
     const [formTab, setFormTab] = useState('basics');
     const [showCrossPost, setShowCrossPost] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [expandedSeoId, setExpandedSeoId] = useState(null);
     const [search, setSearch] = useState(() => localStorage.getItem('leadsetu_planner_search') || '');
 
     useEffect(() => {
@@ -97,6 +99,7 @@ export default function ContentPlannerTab({
             setErrorMsg('');
             setAiSuggestion(null);
             setExtraAccountIds([]);
+            setDrawerOpen(false);
             setContentForm({ ...emptyContent, social_account_id: effectiveAccountId });
             onSaved();
         },
@@ -131,6 +134,7 @@ export default function ContentPlannerTab({
         onSuccess: () => {
             setErrorMsg('');
             setEditingId(null);
+            setDrawerOpen(false);
             setAiSuggestion(null);
             setContentForm({ ...emptyContent, social_account_id: effectiveAccountId });
             onSaved();
@@ -229,6 +233,12 @@ export default function ContentPlannerTab({
         });
     }, [brandScopedContents, stageFilter, platformFilter, failedOnly, search]);
 
+    useEffect(() => {
+        if (!editingId && (contentForm.drive_file_id || contentForm.drive_thumbnail_file_id)) {
+            setDrawerOpen(true);
+        }
+    }, [contentForm.drive_file_id, contentForm.drive_thumbnail_file_id, editingId]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!effectiveAccountId) {
@@ -274,6 +284,8 @@ export default function ContentPlannerTab({
     const startEdit = (item) => {
         setEditingId(item.id);
         setAiSuggestion(null);
+        setFormTab('basics');
+        setDrawerOpen(true);
         setContentForm({
             social_account_id: String(item.social_account_id),
             platform: item.platform,
@@ -300,38 +312,49 @@ export default function ContentPlannerTab({
     };
 
     return (
-        <div className="grid gap-6 lg:grid-cols-12 items-start">
-            {canManage && (
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-5"
-                >
-                    <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-3">
-                        <div>
-                            <h2 className="text-base font-semibold text-gray-900">
-                                {editingId ? 'Edit Planned Content' : 'Plan New Content'}
-                            </h2>
-                            <p className="text-xs text-gray-500">Draft, optimize SEO, schedule, or link Drive</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                optimizeMut.mutate({
-                                    platform: contentForm.platform,
-                                    topic: contentForm.title || contentForm.target_keyword || 'Creator Growth',
-                                    title: contentForm.title || 'Untitled Video',
-                                    target_keyword: contentForm.target_keyword || contentForm.title,
-                                    description: contentForm.description,
-                                    hook: contentForm.hook,
-                                    tags: splitList(contentForm.tagsText),
-                                })
-                            }
-                            disabled={optimizeMut.isPending}
-                            className="rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50"
-                        >
-                            {optimizeMut.isPending ? 'Optimizing…' : '✨ AI Optimize'}
-                        </button>
-                    </div>
+        <div className="space-y-4">
+            {canManage && drawerOpen && (
+                <div className="fixed inset-0 z-40 flex justify-end bg-black/40 backdrop-blur-[1px]">
+                    <form
+                        onSubmit={handleSubmit}
+                        className="flex h-full w-full max-w-xl flex-col justify-between overflow-y-auto bg-white p-6 shadow-2xl"
+                    >
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                                <div>
+                                    <h2 className="text-base font-semibold text-gray-900">
+                                        {editingId ? 'Edit Planned Content' : 'Plan New Content'}
+                                    </h2>
+                                    <p className="text-xs text-gray-500">Draft, optimize SEO, schedule, or link Drive</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            optimizeMut.mutate({
+                                                platform: contentForm.platform,
+                                                topic: contentForm.title || contentForm.target_keyword || 'Creator Growth',
+                                                title: contentForm.title || 'Untitled Video',
+                                                target_keyword: contentForm.target_keyword || contentForm.title,
+                                                description: contentForm.description,
+                                                hook: contentForm.hook,
+                                                tags: splitList(contentForm.tagsText),
+                                            })
+                                        }
+                                        disabled={optimizeMut.isPending}
+                                        className="rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50"
+                                    >
+                                        {optimizeMut.isPending ? 'Optimizing…' : '✨ AI Optimize'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDrawerOpen(false)}
+                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
 
                     {errorMsg && (
                         <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -754,37 +777,39 @@ export default function ContentPlannerTab({
                         </div>
                     )}
 
-                    <div className="flex gap-2 border-t border-gray-100 pt-3">
-                        <button
-                            type="submit"
-                            disabled={createMut.isPending || updateMut.isPending}
-                            className="flex-1 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-                        >
-                            {editingId
-                                ? updateMut.isPending
-                                    ? 'Updating…'
-                                    : 'Update Content'
-                                : createMut.isPending
-                                    ? 'Saving…'
-                                    : 'Save to Planner'}
-                        </button>
-                        {editingId && (
+                        </div>
+
+                        <div className="mt-4 flex gap-2 border-t border-gray-100 pt-4">
+                            <button
+                                type="submit"
+                                disabled={createMut.isPending || updateMut.isPending}
+                                className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {editingId
+                                    ? updateMut.isPending
+                                        ? 'Updating…'
+                                        : 'Update Content'
+                                    : createMut.isPending
+                                        ? 'Saving…'
+                                        : 'Save to Planner'}
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => {
                                     setEditingId(null);
+                                    setDrawerOpen(false);
                                     setContentForm({ ...emptyContent, social_account_id: effectiveAccountId });
                                 }}
-                                className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                                className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
                             >
                                 Cancel
                             </button>
-                        )}
-                    </div>
-                </form>
+                        </div>
+                    </form>
+                </div>
             )}
 
-            <div className={`space-y-4 ${canManage ? 'lg:col-span-7' : 'lg:col-span-12'}`}>
+            <div className="space-y-4">
                 <div className="space-y-2.5 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap gap-1">
@@ -814,6 +839,21 @@ export default function ContentPlannerTab({
                             )}
                         </div>
                         <div className="flex items-center gap-2">
+                            {canManage && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setEditingId(null);
+                                        setAiSuggestion(null);
+                                        setFormTab('basics');
+                                        setContentForm({ ...emptyContent, social_account_id: effectiveAccountId });
+                                        setDrawerOpen(true);
+                                    }}
+                                    className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+                                >
+                                    + Plan Content
+                                </button>
+                            )}
                             {canManage && accounts.some((a) => a.platform === 'youtube') && (
                                 <button
                                     type="button"
@@ -915,8 +955,15 @@ export default function ContentPlannerTab({
                 ) : (
                     <div className="space-y-3">
                         {filteredContents.map((item) => (
-                            <div key={item.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                                <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                    {item.thumbnail_url && (
+                                        <img
+                                            src={item.thumbnail_url}
+                                            alt=""
+                                            className="hidden h-20 w-36 flex-shrink-0 rounded-xl border border-gray-100 object-cover sm:block"
+                                        />
+                                    )}
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(item.platform)}`}>
@@ -1051,9 +1098,14 @@ export default function ContentPlannerTab({
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${scoreBadge(item.seo_score)}`}>
-                                            SEO {item.seo_score}/100
-                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setExpandedSeoId((id) => (id === item.id ? null : item.id))}
+                                            title="Click to toggle SEO breakdown"
+                                            className={`rounded-full px-2.5 py-1 text-xs font-bold transition ${scoreBadge(item.seo_score)}`}
+                                        >
+                                            SEO {item.seo_score}/100 {expandedSeoId === item.id ? '▴' : '▾'}
+                                        </button>
                                         {canManage && item.drive_file_id && item.platform === 'youtube' && !item.youtube_video_id && (
                                             <div className="flex items-center gap-1">
                                                 <select
@@ -1161,8 +1213,8 @@ export default function ContentPlannerTab({
                                     </div>
                                 </div>
 
-                                {Array.isArray(item.seo_breakdown) && item.seo_breakdown.length > 0 && (
-                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                {expandedSeoId === item.id && Array.isArray(item.seo_breakdown) && item.seo_breakdown.length > 0 && (
+                                    <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
                                         {item.seo_breakdown.map((chk) => (
                                             <span
                                                 key={chk.key}
