@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\GoogleDriveConnection;
+use App\Models\GoogleDriveFile;
 use App\Models\SocialAccount;
 use App\Models\SocialContent;
 use App\Services\ActivityLogService;
@@ -66,6 +67,7 @@ class GoogleDriveController extends Controller
                 $conn,
                 $request->query('folder_id') ?: null,
                 $request->query('search') ?: null,
+                $request->boolean('refresh'),
             );
 
             return response()->json(['data' => $files]);
@@ -78,6 +80,7 @@ class GoogleDriveController extends Controller
     {
         Gate::authorize('create', SocialAccount::class);
 
+        GoogleDriveFile::query()->delete();
         GoogleDriveConnection::query()->delete();
 
         return response()->json(null, 204);

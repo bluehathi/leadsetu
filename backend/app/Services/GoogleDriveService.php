@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\GoogleDriveConnection;
+use App\Models\GoogleDriveFile;
 use App\Models\SocialContent;
 use App\Models\User;
 use Illuminate\Support\Facades\Crypt;
@@ -128,8 +129,44 @@ class GoogleDriveService
         return $conn->access_token;
     }
 
-    public function listFiles(GoogleDriveConnection $conn, ?string $folderId = null, ?string $search = null): array
-    {
+    public function listFiles(
+        GoogleDriveConnection $conn,
+        ?string $folderId = null,
+        ?string $search = null,
+        bool $forceRefresh = false
+    ): array {
+        $parent = $folderId ?: 'root';
+
+        if (! $forceRefresh) {
+            $query = GoogleDriveFile::query();
+            if ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            } else {
+                $query->where('parent_folder_id', $parent);
+            }
+
+            $cached = $query->orderByDesc('is_folder')->orderByDesc('modified_time')->get();
+            if ($cached->isNotEmpty()) {
+                return [
+                    'items' => $cached->map(fn (GoogleDriveFile $f) => [
+                        'id' => $f->drive_file_id,
+                        'name' => $f->name,
+                        'mime_type' => $f->mime_type,
+                        'is_folder' => $f->is_folder,
+                        'is_video' => $f->is_video,
+                        'is_image' => $f->is_image,
+                        'size' => $f->size,
+                        'thumbnail_url' => $f->thumbnail_url,
+                        'web_view_url' => $f->web_view_url,
+                        'modified_time' => $f->modified_time?->toIso8601String(),
+                        'duration_millis' => $f->duration_millis,
+                    ])->values()->all(),
+                    'source' => 'cache',
+                    'synced_at' => $cached->max('synced_at')?->toIso8601String(),
+                ];
+            }
+        }
+
         $token = $this->ensureFreshToken($conn);
 
         $clauses = ['trashed = false'];
@@ -137,14 +174,13 @@ class GoogleDriveService
             $escaped = str_replace("'", "\\'", $search);
             $clauses[] = "name contains '{$escaped}'";
         } else {
-            $parent = $folderId ?: 'root';
             $clauses[] = "'{$parent}' in parents";
         }
         $clauses[] = "(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'video/' or mimeType contains 'image/')";
 
         $resp = Http::withToken($token)->get('https://www.googleapis.com/drive/v3/files', [
             'q' => implode(' and ', $clauses),
-            'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,modifiedTime,videoMediaMetadata)',
+            'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,modifiedTime,videoMediaMetadata,parents)',
             'orderBy' => 'folder,modifiedTime desc',
             'pageSize' => 60,
             'supportsAllDrives' => 'true',
@@ -156,21 +192,68 @@ class GoogleDriveService
             throw new RuntimeException($msg);
         }
 
-        return collect($resp->json('files', []))->map(fn (array $f) => [
-            'id' => $f['id'],
-            'name' => $f['name'],
-            'mime_type' => $f['mimeType'],
-            'is_folder' => ($f['mimeType'] ?? '') === 'application/vnd.google-apps.folder',
-            'is_video' => str_starts_with((string) ($f['mimeType'] ?? ''), 'video/'),
-            'is_image' => str_starts_with((string) ($f['mimeType'] ?? ''), 'image/'),
-            'size' => isset($f['size']) ? (int) $f['size'] : null,
-            'thumbnail_url' => $f['thumbnailLink'] ?? null,
-            'web_view_url' => $f['webViewLink'] ?? null,
-            'modified_time' => $f['modifiedTime'] ?? null,
-            'duration_millis' => isset($f['videoMediaMetadata']['durationMillis'])
-                ? (int) $f['videoMediaMetadata']['durationMillis']
-                : null,
-        ])->values()->all();
+        $now = now();
+        $items = collect($resp->json('files', []))->map(function (array $f) use ($conn, $parent, $search, $now) {
+            $isFolder = ($f['mimeType'] ?? '') === 'application/vnd.google-apps.folder';
+            $isVideo = str_starts_with((string) ($f['mimeType'] ?? ''), 'video/');
+            $isImage = str_starts_with((string) ($f['mimeType'] ?? ''), 'image/');
+            $itemParent = $search ? ($f['parents'][0] ?? $parent) : $parent;
+
+            // Cache only folder/file metadata in DB — never copy file contents.
+            $record = GoogleDriveFile::withoutGlobalScopes()->firstOrNew([
+                'workspace_id' => $conn->workspace_id,
+                'drive_file_id' => $f['id'],
+            ]);
+            $record->forceFill([
+                'workspace_id' => $conn->workspace_id,
+                'drive_file_id' => $f['id'],
+                'parent_folder_id' => $itemParent,
+                'name' => $f['name'],
+                'mime_type' => $f['mimeType'],
+                'is_folder' => $isFolder,
+                'is_video' => $isVideo,
+                'is_image' => $isImage,
+                'size' => isset($f['size']) ? (int) $f['size'] : null,
+                'thumbnail_url' => $f['thumbnailLink'] ?? null,
+                'web_view_url' => $f['webViewLink'] ?? null,
+                'modified_time' => isset($f['modifiedTime']) ? \Illuminate\Support\Carbon::parse($f['modifiedTime']) : null,
+                'duration_millis' => isset($f['videoMediaMetadata']['durationMillis'])
+                    ? (int) $f['videoMediaMetadata']['durationMillis']
+                    : null,
+                'synced_at' => $now,
+            ])->save();
+
+            return [
+                'id' => $f['id'],
+                'name' => $f['name'],
+                'mime_type' => $f['mimeType'],
+                'is_folder' => $isFolder,
+                'is_video' => $isVideo,
+                'is_image' => $isImage,
+                'size' => isset($f['size']) ? (int) $f['size'] : null,
+                'thumbnail_url' => $f['thumbnailLink'] ?? null,
+                'web_view_url' => $f['webViewLink'] ?? null,
+                'modified_time' => $f['modifiedTime'] ?? null,
+                'duration_millis' => isset($f['videoMediaMetadata']['durationMillis'])
+                    ? (int) $f['videoMediaMetadata']['durationMillis']
+                    : null,
+            ];
+        })->values()->all();
+
+        if (! $search) {
+            $fetchedIds = array_column($items, 'id');
+            GoogleDriveFile::withoutGlobalScopes()
+                ->where('workspace_id', $conn->workspace_id)
+                ->where('parent_folder_id', $parent)
+                ->when(count($fetchedIds) > 0, fn ($q) => $q->whereNotIn('drive_file_id', $fetchedIds))
+                ->delete();
+        }
+
+        return [
+            'items' => $items,
+            'source' => 'live',
+            'synced_at' => $now->toIso8601String(),
+        ];
     }
 
     public function publishContentToYouTube(

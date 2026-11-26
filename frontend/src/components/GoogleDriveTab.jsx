@@ -27,7 +27,7 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
         queryFn: socialApi.getDriveStatus,
     });
 
-    const { data: files = [], isLoading: filesLoading, error: filesError, refetch } = useQuery({
+    const { data: filesData, isLoading: filesLoading, error: filesError } = useQuery({
         queryKey: ['social-drive-files', currentFolder.id, search],
         queryFn: () =>
             socialApi.listDriveFiles({
@@ -36,6 +36,22 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
             }),
         enabled: Boolean(status?.connected),
     });
+
+    const refreshMut = useMutation({
+        mutationFn: () =>
+            socialApi.listDriveFiles({
+                ...(currentFolder.id && !search ? { folder_id: currentFolder.id } : {}),
+                ...(search ? { search } : {}),
+                refresh: 1,
+            }),
+        onSuccess: (fresh) => {
+            qc.setQueryData(['social-drive-files', currentFolder.id, search], fresh);
+        },
+    });
+
+    const files = filesData?.items ?? [];
+    const filesSource = filesData?.source;
+    const filesSyncedAt = filesData?.synced_at;
 
     const disconnectMut = useMutation({
         mutationFn: socialApi.disconnectDrive,
@@ -84,17 +100,24 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                     <div className="flex items-center gap-2">
                         <span className="rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
                         <span className="text-sm font-semibold text-gray-900">{status.google_email || 'Google Drive'}</span>
+                        {filesSource && (
+                            <span className={`rounded px-2 py-0.5 text-xs ${filesSource === 'live' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                {filesSource === 'live' ? 'Live API' : 'DB Cache'}
+                            </span>
+                        )}
                     </div>
                     <p className="mt-0.5 text-xs text-gray-500">
-                        Select a video to import into Content & SEO Scorer, or an image to attach as a thumbnail.
+                        Folder & file metadata is cached in DB (files are never copied).
+                        {filesSyncedAt ? ` · Synced ${new Date(filesSyncedAt).toLocaleString()}` : ''}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => refetch()}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                        onClick={() => refreshMut.mutate()}
+                        disabled={refreshMut.isPending}
+                        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                     >
-                        Refresh
+                        {refreshMut.isPending ? 'Refreshing…' : 'Refresh from Drive'}
                     </button>
                     <button
                         onClick={handleConnect}
