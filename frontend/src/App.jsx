@@ -20,6 +20,7 @@ import ResetPassword from './pages/ResetPassword';
 import ProspectLists from './pages/ProspectLists';
 import Roles from './pages/Roles';
 import SmtpSettings from './pages/SmtpSettings';
+import SocialStudio from './pages/SocialStudio';
 import Users from './pages/Users';
 import Workspace from './pages/Workspace';
 
@@ -33,7 +34,7 @@ function RequireAuth({ children }) {
 // Land on the first area the user is allowed to see.
 const HOME = [
     ['view_dashboard', '/dashboard'], ['view_invoices', '/invoices'], ['view_leads', '/leads'], ['view_contacts', '/contacts'],
-    ['view_companies', '/companies'], ['view_campaigns', '/campaigns'], ['view_users', '/users'],
+    ['view_companies', '/companies'], ['view_campaigns', '/campaigns'], ['view_social_accounts', '/social'], ['view_users', '/users'],
 ];
 
 function Home() {
@@ -58,6 +59,7 @@ export default function App() {
                 <Route path="/prospect-lists" element={<ProspectLists />} />
                 <Route path="/campaigns" element={<Campaigns />} />
                 <Route path="/campaigns/:id" element={<CampaignDetail />} />
+                <Route path="/social" element={<SocialStudio />} />
                 <Route path="/business" element={<BusinessSettings />} />
                 <Route path="/items" element={<Items />} />
                 <Route path="/quotes" element={<DocumentList kind="quote" />} />

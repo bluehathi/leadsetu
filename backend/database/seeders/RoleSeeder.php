@@ -24,16 +24,19 @@ class RoleSeeder extends Seeder
                 'view_items', 'create_items', 'edit_items', 'view_tax_rates',
                 'view_quotes', 'create_quotes', 'edit_quotes',
                 'view_invoices', 'create_invoices', 'edit_invoices', 'issue_invoices', 'record_payments',
+                'view_social_accounts', 'manage_social_accounts', 'manage_social_content', 'use_growth_tools',
             ],
             'Sales' => [
                 'view_leads', 'create_leads', 'edit_leads',
                 'view_workspaces',
                 'view_dashboard',
                 'view_items', 'view_tax_rates', 'view_quotes', 'create_quotes', 'edit_quotes', 'view_invoices',
+                'view_social_accounts',
             ],
             'Viewer' => [
                 'view_leads', 'view_users', 'view_workspaces', 'view_roles', 'view_permissions', 'view_activity_logs', 'view_dashboard',
                 'view_items', 'view_tax_rates', 'view_quotes', 'view_invoices',
+                'view_social_accounts',
             ],
         ];
 

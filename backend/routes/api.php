@@ -14,6 +14,8 @@ Route::prefix('v1')->group(function () {
     // Target of the signed link in the verification email (name required by Laravel's notification).
     Route::get('auth/verify-email/{id}/{hash}', [V1\EmailVerificationController::class, 'verify'])
         ->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+    // OAuth callback from Google (YouTube) / Meta (Instagram) — secured via encrypted state payload.
+    Route::get('social/oauth/{platform}/callback', [V1\SocialAccountController::class, 'oauthCallback']);
 
     // Signed-in account endpoints: available even before the email is verified.
     Route::middleware('auth:sanctum')->group(function () {
@@ -66,6 +68,25 @@ Route::prefix('v1')->group(function () {
         Route::post('contacts/import', [V1\ContactController::class, 'import'])->middleware('throttle:5,1');
         Route::post('contacts/{contact}/send-email', [V1\ContactController::class, 'sendEmail'])->middleware('throttle:30,1');
         Route::apiResource('contacts', V1\ContactController::class);
+
+        // Social Growth Studio (multi-account YouTube & Instagram management + vidIQ-style tools)
+        Route::get('social/overview', [V1\SocialAccountController::class, 'overview']);
+        Route::get('social/oauth/{platform}/url', [V1\SocialAccountController::class, 'oauthUrl']);
+        Route::post('social/accounts/sync-all', [V1\SocialAccountController::class, 'syncAll']);
+        Route::post('social/accounts/{social_account}/sync', [V1\SocialAccountController::class, 'sync']);
+        Route::apiResource('social/accounts', V1\SocialAccountController::class)->parameters(['accounts' => 'social_account']);
+        Route::post('social/contents/optimize', [V1\SocialContentController::class, 'optimize']);
+        Route::apiResource('social/contents', V1\SocialContentController::class)->parameters(['contents' => 'social_content']);
+        Route::get('social/keywords', [V1\SocialGrowthController::class, 'keywords']);
+        Route::post('social/keywords/analyze', [V1\SocialGrowthController::class, 'analyzeKeyword']);
+        Route::delete('social/keywords/{social_keyword}', [V1\SocialGrowthController::class, 'destroyKeyword']);
+        Route::get('social/competitors', [V1\SocialGrowthController::class, 'competitors']);
+        Route::post('social/competitors', [V1\SocialGrowthController::class, 'storeCompetitor']);
+        Route::delete('social/competitors/{social_competitor}', [V1\SocialGrowthController::class, 'destroyCompetitor']);
+        Route::get('social/ideas', [V1\SocialGrowthController::class, 'ideas']);
+        Route::post('social/ideas/generate', [V1\SocialGrowthController::class, 'generateIdeas']);
+        Route::patch('social/ideas/{social_idea}/status', [V1\SocialGrowthController::class, 'updateIdeaStatus']);
+        Route::post('social/ideas/{social_idea}/convert', [V1\SocialGrowthController::class, 'convertIdea']);
     });
 });
 

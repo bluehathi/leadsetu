@@ -14,6 +14,7 @@ const NAV = [
     { to: '/contacts', label: 'Contacts', permission: 'view_contacts' },
     { to: '/prospect-lists', label: 'Prospect lists', permission: 'view_prospect_lists' },
     { to: '/campaigns', label: 'Campaigns', permission: 'view_campaigns' },
+    { to: '/social', label: 'Growth Studio', permission: 'view_social_accounts' },
     { to: '/users', label: 'Users', permission: 'view_users' },
     { to: '/roles', label: 'Roles', permission: 'view_roles' },
     { to: '/permissions', label: 'Permissions', permission: 'view_permissions' },

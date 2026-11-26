@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Concerns\BelongsToWorkspace;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class SocialContent extends Model
+{
+    use BelongsToWorkspace, HasFactory;
+
+    public const PLATFORMS = ['youtube', 'instagram'];
+    public const TYPES = ['video', 'short', 'reel', 'post', 'carousel'];
+    public const STATUSES = ['idea', 'draft', 'scheduled', 'published'];
+
+    protected $fillable = [
+        'social_account_id',
+        'platform',
+        'content_type',
+        'title',
+        'description',
+        'hook',
+        'script',
+        'tags',
+        'hashtags',
+        'thumbnail_url',
+        'target_keyword',
+        'status',
+        'scheduled_at',
+        'published_at',
+        'seo_score',
+        'seo_breakdown',
+        'views_count',
+        'likes_count',
+        'comments_count',
+    ];
+
+    protected $casts = [
+        'tags' => 'array',
+        'hashtags' => 'array',
+        'seo_breakdown' => 'array',
+        'scheduled_at' => 'datetime',
+        'published_at' => 'datetime',
+        'seo_score' => 'integer',
+        'views_count' => 'integer',
+        'likes_count' => 'integer',
+        'comments_count' => 'integer',
+    ];
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(SocialAccount::class, 'social_account_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}

@@ -1,0 +1,927 @@
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { socialApi } from '../api/social';
+import { useMe } from '../hooks/useMe';
+
+const TABS = [
+    { id: 'accounts', label: 'YT & IG Accounts' },
+    { id: 'content', label: 'Content & SEO Scorer' },
+    { id: 'keywords', label: 'Keyword Research' },
+    { id: 'competitors', label: 'Competitors' },
+    { id: 'ideas', label: 'Daily Ideas' },
+];
+
+const scoreBadge = (score) => {
+    if (score >= 80) return 'bg-green-100 text-green-800';
+    if (score >= 50) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+};
+
+const platformBadge = (platform) =>
+    platform === 'youtube' ? 'bg-red-100 text-red-700' : 'bg-pink-100 text-pink-700';
+
+const EMPTY_ACCOUNT = {
+    platform: 'youtube',
+    account_name: '',
+    handle: '',
+    niche: '',
+    followers_count: 0,
+    views_count: 0,
+    posts_count: 0,
+    engagement_rate: 0,
+};
+
+const EMPTY_CONTENT = {
+    social_account_id: '',
+    platform: 'youtube',
+    content_type: 'video',
+    title: '',
+    target_keyword: '',
+    hook: '',
+    description: '',
+    tagsText: '',
+    hashtagsText: '',
+    status: 'draft',
+};
+
+export default function SocialStudio() {
+    const { can } = useMe();
+    const qc = useQueryClient();
+    const [searchParams] = useSearchParams();
+    const [tab, setTab] = useState('accounts');
+    const [platformFilter, setPlatformFilter] = useState('');
+    const [selectedAccountId, setSelectedAccountId] = useState('');
+    const [oauthError, setOauthError] = useState(searchParams.get('oauth_error') || '');
+    const connectedNotice = searchParams.get('connected');
+
+    // Form states
+    const [accountForm, setAccountForm] = useState(EMPTY_ACCOUNT);
+    const [contentForm, setContentForm] = useState(EMPTY_CONTENT);
+    const [aiSuggestion, setAiSuggestion] = useState(null);
+    const [kwInput, setKwInput] = useState({ keyword: '', platform: 'youtube' });
+    const [compForm, setCompForm] = useState({
+        platform: 'youtube',
+        channel_name: '',
+        handle: '',
+        followers_count: 0,
+        avg_views: 0,
+        engagement_rate: 0,
+        top_video_title: '',
+    });
+
+    const invalidateAll = () => {
+        qc.invalidateQueries({ queryKey: ['social-overview'] });
+        qc.invalidateQueries({ queryKey: ['social-accounts'] });
+        qc.invalidateQueries({ queryKey: ['social-contents'] });
+        qc.invalidateQueries({ queryKey: ['social-keywords'] });
+        qc.invalidateQueries({ queryKey: ['social-competitors'] });
+        qc.invalidateQueries({ queryKey: ['social-ideas'] });
+    };
+
+    const { data: overview } = useQuery({
+        queryKey: ['social-overview', platformFilter],
+        queryFn: () => socialApi.overview(platformFilter || undefined),
+    });
+
+    const { data: accounts = [] } = useQuery({
+        queryKey: ['social-accounts', platformFilter],
+        queryFn: () => socialApi.listAccounts(platformFilter ? { platform: platformFilter } : {}),
+    });
+
+    const { data: contents = [] } = useQuery({
+        queryKey: ['social-contents', platformFilter, selectedAccountId],
+        queryFn: () =>
+            socialApi.listContents({
+                ...(platformFilter ? { platform: platformFilter } : {}),
+                ...(selectedAccountId ? { social_account_id: selectedAccountId } : {}),
+            }),
+    });
+
+    const { data: keywords = [] } = useQuery({
+        queryKey: ['social-keywords', platformFilter],
+        queryFn: () => socialApi.listKeywords(platformFilter ? { platform: platformFilter } : {}),
+    });
+
+    const { data: competitors = [] } = useQuery({
+        queryKey: ['social-competitors', platformFilter],
+        queryFn: () => socialApi.listCompetitors(platformFilter ? { platform: platformFilter } : {}),
+    });
+
+    const { data: ideas = [] } = useQuery({
+        queryKey: ['social-ideas', platformFilter],
+        queryFn: () => socialApi.listIdeas(platformFilter ? { platform: platformFilter } : {}),
+    });
+
+    const createAccountMut = useMutation({
+        mutationFn: socialApi.createAccount,
+        onSuccess: () => {
+            setAccountForm(EMPTY_ACCOUNT);
+            invalidateAll();
+        },
+    });
+
+    const syncAccountMut = useMutation({
+        mutationFn: socialApi.syncAccount,
+        onSuccess: invalidateAll,
+    });
+
+    const syncAllMut = useMutation({
+        mutationFn: socialApi.syncAllAccounts,
+        onSuccess: invalidateAll,
+    });
+
+    const startOAuth = async (platform) => {
+        setOauthError('');
+        try {
+            const { url } = await socialApi.getOAuthUrl(platform);
+            window.location.href = url;
+        } catch (err) {
+            setOauthError(err?.response?.data?.message || `Unable to start ${platform} OAuth.`);
+        }
+    };
+
+    const deleteAccountMut = useMutation({
+        mutationFn: socialApi.deleteAccount,
+        onSuccess: invalidateAll,
+    });
+
+    const createContentMut = useMutation({
+        mutationFn: socialApi.createContent,
+        onSuccess: () => {
+            setContentForm(EMPTY_CONTENT);
+            setAiSuggestion(null);
+            invalidateAll();
+        },
+    });
+
+    const optimizeMut = useMutation({
+        mutationFn: socialApi.optimizeContent,
+        onSuccess: (res) => {
+            setAiSuggestion(res);
+            setContentForm((prev) => ({
+                ...prev,
+                title: res.recommended_title || prev.title,
+                hook: res.hook || prev.hook,
+                description: res.description || prev.description,
+                tagsText: (res.tags || []).join(', '),
+                hashtagsText: (res.hashtags || []).join(' '),
+            }));
+        },
+    });
+
+    const deleteContentMut = useMutation({
+        mutationFn: socialApi.deleteContent,
+        onSuccess: invalidateAll,
+    });
+
+    const analyzeKwMut = useMutation({
+        mutationFn: socialApi.analyzeKeyword,
+        onSuccess: () => {
+            setKwInput((prev) => ({ ...prev, keyword: '' }));
+            invalidateAll();
+        },
+    });
+
+    const deleteKwMut = useMutation({
+        mutationFn: socialApi.deleteKeyword,
+        onSuccess: invalidateAll,
+    });
+
+    const createCompMut = useMutation({
+        mutationFn: socialApi.createCompetitor,
+        onSuccess: () => {
+            setCompForm({
+                platform: 'youtube',
+                channel_name: '',
+                handle: '',
+                followers_count: 0,
+                avg_views: 0,
+                engagement_rate: 0,
+                top_video_title: '',
+            });
+            invalidateAll();
+        },
+    });
+
+    const deleteCompMut = useMutation({
+        mutationFn: socialApi.deleteCompetitor,
+        onSuccess: invalidateAll,
+    });
+
+    const generateIdeasMut = useMutation({
+        mutationFn: socialApi.generateIdeas,
+        onSuccess: invalidateAll,
+    });
+
+    const updateIdeaMut = useMutation({
+        mutationFn: ({ id, status }) => socialApi.updateIdeaStatus(id, status),
+        onSuccess: invalidateAll,
+    });
+
+    const convertIdeaMut = useMutation({
+        mutationFn: ({ id, accountId }) => socialApi.convertIdea(id, accountId),
+        onSuccess: () => {
+            invalidateAll();
+            setTab('content');
+        },
+    });
+
+    const totals = overview?.totals || {};
+    const splitList = (str) =>
+        str
+            .split(/[,\s]+/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+    const handleContentSubmit = (e) => {
+        e.preventDefault();
+        if (!contentForm.social_account_id) return;
+        createContentMut.mutate({
+            social_account_id: Number(contentForm.social_account_id),
+            platform: contentForm.platform,
+            content_type: contentForm.content_type,
+            title: contentForm.title,
+            target_keyword: contentForm.target_keyword || null,
+            hook: contentForm.hook || null,
+            description: contentForm.description || null,
+            tags: splitList(contentForm.tagsText),
+            hashtags: splitList(contentForm.hashtagsText),
+            status: contentForm.status,
+        });
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold">Growth Studio (YouTube & Instagram)</h1>
+                    <p className="text-sm text-gray-500">
+                        Manage multiple YT & IG accounts, score SEO, research keywords, track competitors & generate daily ideas.
+                    </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    {can('manage_social_accounts') && (
+                        <>
+                            <button
+                                onClick={() => startOAuth('youtube')}
+                                className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                            >
+                                + Connect YouTube (OAuth)
+                            </button>
+                            <button
+                                onClick={() => startOAuth('instagram')}
+                                className="rounded bg-pink-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-pink-700"
+                            >
+                                + Connect Instagram (OAuth)
+                            </button>
+                        </>
+                    )}
+                    <button
+                        onClick={() => syncAllMut.mutate()}
+                        disabled={syncAllMut.isPending}
+                        className="rounded border bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                    >
+                        {syncAllMut.isPending ? 'Syncing…' : 'Sync All'}
+                    </button>
+                    <select
+                        value={platformFilter}
+                        onChange={(e) => setPlatformFilter(e.target.value)}
+                        className="rounded border bg-white px-3 py-1.5 text-sm"
+                    >
+                        <option value="">All Platforms</option>
+                        <option value="youtube">YouTube Only</option>
+                        <option value="instagram">Instagram Only</option>
+                    </select>
+                    <select
+                        value={selectedAccountId}
+                        onChange={(e) => setSelectedAccountId(e.target.value)}
+                        className="rounded border bg-white px-3 py-1.5 text-sm"
+                    >
+                        <option value="">All Accounts</option>
+                        {accounts.map((a) => (
+                            <option key={a.id} value={a.id}>
+                                [{a.platform.toUpperCase()}] {a.account_name} ({a.handle})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            {connectedNotice && (
+                <div className="rounded border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
+                    Successfully connected {connectedNotice} account(s) for auto-sync.
+                </div>
+            )}
+            {oauthError && (
+                <div className="rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+                    {oauthError}
+                </div>
+            )}
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+                <div className="rounded border bg-white p-4">
+                    <div className="text-xs text-gray-500">Connected Accounts</div>
+                    <div className="mt-1 text-2xl font-bold">{totals.accounts ?? 0}</div>
+                    <div className="mt-1 text-xs text-gray-500">
+                        YT: {totals.youtube_accounts ?? 0} · IG: {totals.instagram_accounts ?? 0}
+                    </div>
+                </div>
+                <div className="rounded border bg-white p-4">
+                    <div className="text-xs text-gray-500">Total Followers / Subs</div>
+                    <div className="mt-1 text-2xl font-bold">{(totals.followers ?? 0).toLocaleString()}</div>
+                </div>
+                <div className="rounded border bg-white p-4">
+                    <div className="text-xs text-gray-500">Total Views</div>
+                    <div className="mt-1 text-2xl font-bold">{(totals.views ?? 0).toLocaleString()}</div>
+                </div>
+                <div className="rounded border bg-white p-4">
+                    <div className="text-xs text-gray-500">Avg SEO Score</div>
+                    <div className="mt-1 text-2xl font-bold">{totals.avg_seo_score ?? 0}/100</div>
+                </div>
+                <div className="rounded border bg-white p-4">
+                    <div className="text-xs text-gray-500">Open Daily Ideas</div>
+                    <div className="mt-1 text-2xl font-bold">{totals.open_ideas_count ?? 0}</div>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex flex-wrap gap-2 border-b pb-2">
+                {TABS.map((t) => (
+                    <button
+                        key={t.id}
+                        onClick={() => setTab(t.id)}
+                        className={`rounded px-3 py-1.5 text-sm font-medium ${
+                            tab === t.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+                        }`}
+                    >
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* TAB 1: ACCOUNTS */}
+            {tab === 'accounts' && (
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {can('manage_social_accounts') && (
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                createAccountMut.mutate(accountForm);
+                            }}
+                            className="space-y-3 rounded border bg-white p-4"
+                        >
+                            <h2 className="font-semibold">Connect YT / IG Account</h2>
+                            <select
+                                value={accountForm.platform}
+                                onChange={(e) => setAccountForm({ ...accountForm, platform: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            >
+                                <option value="youtube">YouTube</option>
+                                <option value="instagram">Instagram</option>
+                            </select>
+                            <input
+                                required
+                                placeholder="Account / Channel Name"
+                                value={accountForm.account_name}
+                                onChange={(e) => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <input
+                                required
+                                placeholder="Handle (e.g. @leadsetu)"
+                                value={accountForm.handle}
+                                onChange={(e) => setAccountForm({ ...accountForm, handle: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <input
+                                placeholder="Niche (e.g. SaaS, Fitness, Tech)"
+                                value={accountForm.niche}
+                                onChange={(e) => setAccountForm({ ...accountForm, niche: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="Followers / Subs"
+                                    value={accountForm.followers_count}
+                                    onChange={(e) => setAccountForm({ ...accountForm, followers_count: Number(e.target.value) })}
+                                    className="w-full rounded border px-3 py-2 text-sm"
+                                />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="Total Views"
+                                    value={accountForm.views_count}
+                                    onChange={(e) => setAccountForm({ ...accountForm, views_count: Number(e.target.value) })}
+                                    className="w-full rounded border px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={createAccountMut.isPending}
+                                className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                                {createAccountMut.isPending ? 'Connecting…' : 'Connect Account'}
+                            </button>
+                        </form>
+                    )}
+
+                    <div className="space-y-3 lg:col-span-2">
+                        {accounts.length === 0 ? (
+                            <div className="rounded border bg-white p-6 text-sm text-gray-500">
+                                No YouTube or Instagram accounts connected yet. Add your first account to start tracking!
+                            </div>
+                        ) : (
+                            accounts.map((acc) => (
+                                <div key={acc.id} className="flex flex-wrap items-center justify-between gap-4 rounded border bg-white p-4">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(acc.platform)}`}>
+                                                {acc.platform}
+                                            </span>
+                                            <span className="font-semibold">{acc.account_name}</span>
+                                            <span className="text-sm text-gray-500">{acc.handle}</span>
+                                            <span
+                                                className={`rounded px-2 py-0.5 text-xs ${
+                                                    acc.status === 'connected'
+                                                        ? 'bg-green-50 text-green-700'
+                                                        : 'bg-yellow-50 text-yellow-700'
+                                                }`}
+                                            >
+                                                {acc.status}
+                                            </span>
+                                        </div>
+                                        <div className="mt-1 text-xs text-gray-500">
+                                            Niche: {acc.niche || 'General'} · Followers: {acc.followers_count.toLocaleString()} · Views:{' '}
+                                            {acc.views_count.toLocaleString()} · Engagement: {acc.engagement_rate}%
+                                            {acc.last_synced_at
+                                                ? ` · Last synced: ${new Date(acc.last_synced_at).toLocaleString()}`
+                                                : ''}
+                                        </div>
+                                    </div>
+                                    {can('manage_social_accounts') && (
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => syncAccountMut.mutate(acc.id)}
+                                                className="rounded border px-3 py-1 text-xs hover:bg-gray-50"
+                                            >
+                                                Sync
+                                            </button>
+                                            <button
+                                                onClick={() => deleteAccountMut.mutate(acc.id)}
+                                                className="rounded border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 2: CONTENT & SEO SCORER */}
+            {tab === 'content' && (
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {can('manage_social_content') && (
+                        <form onSubmit={handleContentSubmit} className="space-y-3 rounded border bg-white p-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="font-semibold">Create & Optimize Content</h2>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        optimizeMut.mutate({
+                                            platform: contentForm.platform,
+                                            topic: contentForm.title || contentForm.target_keyword || 'Creator Growth',
+                                            target_keyword: contentForm.target_keyword,
+                                        })
+                                    }
+                                    disabled={optimizeMut.isPending}
+                                    className="rounded bg-purple-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-purple-700"
+                                >
+                                    {optimizeMut.isPending ? 'Optimizing…' : 'AI Optimize'}
+                                </button>
+                            </div>
+                            <select
+                                required
+                                value={contentForm.social_account_id}
+                                onChange={(e) => {
+                                    const acc = accounts.find((a) => String(a.id) === e.target.value);
+                                    setContentForm({
+                                        ...contentForm,
+                                        social_account_id: e.target.value,
+                                        platform: acc?.platform || contentForm.platform,
+                                        content_type: acc?.platform === 'instagram' ? 'reel' : 'video',
+                                    });
+                                }}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            >
+                                <option value="">Select YT / IG Account…</option>
+                                {accounts.map((a) => (
+                                    <option key={a.id} value={a.id}>
+                                        [{a.platform.toUpperCase()}] {a.account_name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="grid grid-cols-2 gap-2">
+                                <select
+                                    value={contentForm.content_type}
+                                    onChange={(e) => setContentForm({ ...contentForm, content_type: e.target.value })}
+                                    className="rounded border px-3 py-2 text-sm"
+                                >
+                                    <option value="video">YouTube Video</option>
+                                    <option value="short">YouTube Short</option>
+                                    <option value="reel">Instagram Reel</option>
+                                    <option value="carousel">IG Carousel</option>
+                                    <option value="post">IG Post</option>
+                                </select>
+                                <select
+                                    value={contentForm.status}
+                                    onChange={(e) => setContentForm({ ...contentForm, status: e.target.value })}
+                                    className="rounded border px-3 py-2 text-sm"
+                                >
+                                    <option value="idea">Idea</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="scheduled">Scheduled</option>
+                                    <option value="published">Published</option>
+                                </select>
+                            </div>
+                            <input
+                                placeholder="Target Keyword (e.g. youtube seo)"
+                                value={contentForm.target_keyword}
+                                onChange={(e) => setContentForm({ ...contentForm, target_keyword: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <input
+                                required
+                                placeholder="Title / Headline"
+                                value={contentForm.title}
+                                onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <input
+                                placeholder="Opening Hook (first 3-15 sec)"
+                                value={contentForm.hook}
+                                onChange={(e) => setContentForm({ ...contentForm, hook: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <textarea
+                                rows={3}
+                                placeholder="Description / Caption"
+                                value={contentForm.description}
+                                onChange={(e) => setContentForm({ ...contentForm, description: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <input
+                                placeholder="Tags (comma-separated)"
+                                value={contentForm.tagsText}
+                                onChange={(e) => setContentForm({ ...contentForm, tagsText: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <input
+                                placeholder="Hashtags (space-separated)"
+                                value={contentForm.hashtagsText}
+                                onChange={(e) => setContentForm({ ...contentForm, hashtagsText: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+
+                            {aiSuggestion && (
+                                <div className="rounded bg-purple-50 p-3 text-xs text-purple-900">
+                                    <div className="font-semibold">AI SEO Score Preview: {aiSuggestion.seo_score}/100</div>
+                                    <ul className="mt-1 list-disc pl-4">
+                                        {aiSuggestion.suggested_titles?.map((t, i) => (
+                                            <li
+                                                key={i}
+                                                onClick={() => setContentForm((p) => ({ ...p, title: t }))}
+                                                className="cursor-pointer hover:underline"
+                                            >
+                                                {t}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={createContentMut.isPending}
+                                className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                                {createContentMut.isPending ? 'Saving…' : 'Save & Score Content'}
+                            </button>
+                        </form>
+                    )}
+
+                    <div className="space-y-3 lg:col-span-2">
+                        {contents.length === 0 ? (
+                            <div className="rounded border bg-white p-6 text-sm text-gray-500">
+                                No content items yet. Create a video, Short, or Reel to see its vidIQ-style SEO score!
+                            </div>
+                        ) : (
+                            contents.map((item) => (
+                                <div key={item.id} className="rounded border bg-white p-4">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(item.platform)}`}>
+                                                    {item.platform} · {item.content_type}
+                                                </span>
+                                                <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{item.status}</span>
+                                                <span className="text-xs text-gray-500">{item.account?.handle}</span>
+                                            </div>
+                                            <h3 className="mt-1 font-semibold">{item.title}</h3>
+                                            {item.hook && <p className="mt-1 text-xs text-gray-600">Hook: {item.hook}</p>}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${scoreBadge(item.seo_score)}`}>
+                                                SEO {item.seo_score}/100
+                                            </span>
+                                            {can('manage_social_content') && (
+                                                <button
+                                                    onClick={() => deleteContentMut.mutate(item.id)}
+                                                    className="text-xs text-red-600 hover:underline"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {Array.isArray(item.seo_breakdown) && item.seo_breakdown.length > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {item.seo_breakdown.map((chk) => (
+                                                <span
+                                                    key={chk.key}
+                                                    className={`rounded px-2 py-0.5 text-xs ${
+                                                        chk.passed ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+                                                    }`}
+                                                >
+                                                    {chk.passed ? '✓' : '○'} {chk.label} ({chk.points}/{chk.max})
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 3: KEYWORD RESEARCH */}
+            {tab === 'keywords' && (
+                <div className="space-y-4">
+                    {can('use_growth_tools') && (
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                analyzeKwMut.mutate(kwInput);
+                            }}
+                            className="flex flex-wrap gap-2 rounded border bg-white p-4"
+                        >
+                            <input
+                                required
+                                placeholder="Enter keyword or topic (e.g. instagram reels hooks)"
+                                value={kwInput.keyword}
+                                onChange={(e) => setKwInput({ ...kwInput, keyword: e.target.value })}
+                                className="min-w-[240px] flex-1 rounded border px-3 py-2 text-sm"
+                            />
+                            <select
+                                value={kwInput.platform}
+                                onChange={(e) => setKwInput({ ...kwInput, platform: e.target.value })}
+                                className="rounded border px-3 py-2 text-sm"
+                            >
+                                <option value="youtube">YouTube</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="both">Both</option>
+                            </select>
+                            <button
+                                type="submit"
+                                disabled={analyzeKwMut.isPending}
+                                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                                {analyzeKwMut.isPending ? 'Analyzing…' : 'Analyze Keyword'}
+                            </button>
+                        </form>
+                    )}
+
+                    <div className="overflow-x-auto rounded border bg-white">
+                        <table className="w-full text-left text-sm">
+                            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                                <tr>
+                                    <th className="px-4 py-3">Keyword</th>
+                                    <th className="px-4 py-3">Platform</th>
+                                    <th className="px-4 py-3">Volume</th>
+                                    <th className="px-4 py-3">Competition</th>
+                                    <th className="px-4 py-3">Overall Score</th>
+                                    <th className="px-4 py-3">Trend</th>
+                                    <th className="px-4 py-3">Related Tags</th>
+                                    <th className="px-4 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {keywords.map((kw) => (
+                                    <tr key={kw.id}>
+                                        <td className="px-4 py-3 font-medium">{kw.keyword}</td>
+                                        <td className="px-4 py-3 uppercase text-xs">{kw.platform}</td>
+                                        <td className="px-4 py-3">{kw.search_volume.toLocaleString()}</td>
+                                        <td className="px-4 py-3">{kw.competition_score}/100</td>
+                                        <td className="px-4 py-3">
+                                            <span className={`rounded px-2 py-0.5 text-xs font-bold ${scoreBadge(kw.overall_score)}`}>
+                                                {kw.overall_score}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 capitalize">{kw.trend}</td>
+                                        <td className="px-4 py-3 text-xs text-gray-500">{(kw.related_tags || []).join(', ')}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            {can('use_growth_tools') && (
+                                                <button onClick={() => deleteKwMut.mutate(kw.id)} className="text-xs text-red-600 hover:underline">
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 4: COMPETITORS */}
+            {tab === 'competitors' && (
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {can('use_growth_tools') && (
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                createCompMut.mutate(compForm);
+                            }}
+                            className="space-y-3 rounded border bg-white p-4"
+                        >
+                            <h2 className="font-semibold">Track Competitor</h2>
+                            <select
+                                value={compForm.platform}
+                                onChange={(e) => setCompForm({ ...compForm, platform: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            >
+                                <option value="youtube">YouTube</option>
+                                <option value="instagram">Instagram</option>
+                            </select>
+                            <input
+                                required
+                                placeholder="Channel / Profile Name"
+                                value={compForm.channel_name}
+                                onChange={(e) => setCompForm({ ...compForm, channel_name: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <input
+                                required
+                                placeholder="Handle (e.g. @competitor)"
+                                value={compForm.handle}
+                                onChange={(e) => setCompForm({ ...compForm, handle: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="Followers"
+                                    value={compForm.followers_count}
+                                    onChange={(e) => setCompForm({ ...compForm, followers_count: Number(e.target.value) })}
+                                    className="w-full rounded border px-3 py-2 text-sm"
+                                />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="Avg Views"
+                                    value={compForm.avg_views}
+                                    onChange={(e) => setCompForm({ ...compForm, avg_views: Number(e.target.value) })}
+                                    className="w-full rounded border px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <input
+                                placeholder="Top Performing Video / Reel Title"
+                                value={compForm.top_video_title}
+                                onChange={(e) => setCompForm({ ...compForm, top_video_title: e.target.value })}
+                                className="w-full rounded border px-3 py-2 text-sm"
+                            />
+                            <button
+                                type="submit"
+                                disabled={createCompMut.isPending}
+                                className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                                Add Competitor
+                            </button>
+                        </form>
+                    )}
+
+                    <div className="space-y-3 lg:col-span-2">
+                        {competitors.map((c) => (
+                            <div key={c.id} className="flex items-center justify-between rounded border bg-white p-4">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(c.platform)}`}>
+                                            {c.platform}
+                                        </span>
+                                        <span className="font-semibold">{c.channel_name}</span>
+                                        <span className="text-sm text-gray-500">{c.handle}</span>
+                                    </div>
+                                    <div className="mt-1 text-xs text-gray-500">
+                                        Followers: {c.followers_count.toLocaleString()} · Avg Views: {c.avg_views.toLocaleString()}
+                                        {c.top_video_title ? ` · Top: "${c.top_video_title}"` : ''}
+                                    </div>
+                                </div>
+                                {can('use_growth_tools') && (
+                                    <button onClick={() => deleteCompMut.mutate(c.id)} className="text-xs text-red-600 hover:underline">
+                                        Remove
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 5: DAILY IDEAS */}
+            {tab === 'ideas' && (
+                <div className="space-y-4">
+                    {can('use_growth_tools') && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded border bg-white p-4">
+                            <span className="text-sm text-gray-600">
+                                Generate vidIQ-style daily video & Reel ideas tailored to your connected YT & IG accounts.
+                            </span>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() =>
+                                        generateIdeasMut.mutate({
+                                            social_account_id: selectedAccountId ? Number(selectedAccountId) : null,
+                                            platform: platformFilter || 'youtube',
+                                        })
+                                    }
+                                    disabled={generateIdeasMut.isPending}
+                                    className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                                >
+                                    {generateIdeasMut.isPending ? 'Generating…' : 'Generate Daily Ideas'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {ideas.map((idea) => (
+                            <div key={idea.id} className="rounded border bg-white p-4">
+                                <div className="flex items-center justify-between">
+                                    <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(idea.platform)}`}>
+                                        {idea.platform} · {idea.angle || 'Idea'}
+                                    </span>
+                                    <span className={`rounded px-2 py-0.5 text-xs font-bold ${scoreBadge(idea.predicted_score)}`}>
+                                        Score {idea.predicted_score}
+                                    </span>
+                                </div>
+                                <h3 className="mt-2 font-semibold">{idea.title}</h3>
+                                {idea.hook && <p className="mt-1 text-xs text-gray-600">{idea.hook}</p>}
+                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                                    <span className="rounded bg-gray-100 px-2 py-0.5 capitalize">{idea.status}</span>
+                                    {can('use_growth_tools') && idea.status !== 'converted' && (
+                                        <>
+                                            <button
+                                                onClick={() => updateIdeaMut.mutate({ id: idea.id, status: 'saved' })}
+                                                className="rounded border px-2 py-1 hover:bg-gray-50"
+                                            >
+                                                Save
+                                            </button>
+                                            <button
+                                                onClick={() => updateIdeaMut.mutate({ id: idea.id, status: 'dismissed' })}
+                                                className="rounded border px-2 py-1 text-gray-500 hover:bg-gray-50"
+                                            >
+                                                Dismiss
+                                            </button>
+                                            {accounts.length > 0 && (
+                                                <button
+                                                    onClick={() =>
+                                                        convertIdeaMut.mutate({
+                                                            id: idea.id,
+                                                            accountId: Number(selectedAccountId || accounts[0].id),
+                                                        })
+                                                    }
+                                                    className="rounded bg-green-600 px-2.5 py-1 text-white hover:bg-green-700"
+                                                >
+                                                    Convert to Draft
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

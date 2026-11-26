@@ -36,6 +36,19 @@ return [
     ],
     'brevo' => [
         'webhook_secret' => env('BREVO_WEBHOOK_SECRET')
-    ]
+    ],
+
+    'youtube' => [
+        'client_id' => env('YOUTUBE_CLIENT_ID'),
+        'client_secret' => env('YOUTUBE_CLIENT_SECRET'),
+        'redirect' => env('YOUTUBE_REDIRECT_URI'),
+    ],
+
+    'instagram' => [
+        'client_id' => env('INSTAGRAM_CLIENT_ID'),
+        'client_secret' => env('INSTAGRAM_CLIENT_SECRET'),
+        'redirect' => env('INSTAGRAM_REDIRECT_URI'),
+        'graph_version' => env('INSTAGRAM_GRAPH_VERSION', 'v21.0'),
+    ],
 
 ];

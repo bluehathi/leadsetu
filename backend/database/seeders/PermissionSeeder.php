@@ -41,6 +41,8 @@ class PermissionSeeder extends Seeder
             'view_quotes', 'create_quotes', 'edit_quotes', 'delete_quotes',
             'view_invoices', 'create_invoices', 'edit_invoices', 'delete_invoices', 'issue_invoices', 'void_invoices',
             'record_payments', 'void_payments',
+            // social growth studio (YT & IG multi-account vidIQ-like subsystem)
+            'view_social_accounts', 'manage_social_accounts', 'manage_social_content', 'use_growth_tools',
         ];
         foreach ($permissions as $permission) {
             $perm = Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
