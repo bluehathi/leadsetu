@@ -130,6 +130,8 @@ class SocialOAuthSyncService
                 'token_expires_at' => $expiresAt,
                 'status' => 'connected',
                 'last_synced_at' => now(),
+                'analytics_cache' => null,
+                'analytics_synced_at' => null,
             ]);
 
             $connected[] = $account;
@@ -195,6 +197,8 @@ class SocialOAuthSyncService
                 'token_expires_at' => $expiresAt,
                 'status' => 'connected',
                 'last_synced_at' => now(),
+                'analytics_cache' => null,
+                'analytics_synced_at' => null,
             ]);
 
             $connected[] = $this->syncInstagram($account);
