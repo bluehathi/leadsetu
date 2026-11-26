@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
 import ContentCalendarView from './ContentCalendarView';
@@ -39,8 +39,6 @@ export default function ContentPlannerTab({
     const [platformFilter, setPlatformFilter] = useState('all');
     const [failedOnly, setFailedOnly] = useState(false);
     const [viewMode, setViewMode] = useState('list');
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
     const [formTab, setFormTab] = useState('basics');
     const [showCrossPost, setShowCrossPost] = useState(false);
     const [search, setSearch] = useState('');
@@ -148,6 +146,15 @@ export default function ContentPlannerTab({
         },
     });
 
+    const syncYtMut = useMutation({
+        mutationFn: (id) => socialApi.syncContentToYouTube(id),
+        onSuccess: () => {
+            setErrorMsg('');
+            onSaved();
+        },
+        onError: (err) => setErrorMsg(err?.response?.data?.message || 'Failed to sync updates to YouTube.'),
+    });
+
     const stageCounts = useMemo(() => {
         const counts = { all: contents.length, idea: 0, draft: 0, scheduled: 0, published: 0 };
         contents.forEach((c) => {
@@ -170,19 +177,6 @@ export default function ContentPlannerTab({
             return true;
         });
     }, [contents, stageFilter, platformFilter, failedOnly, search]);
-
-    useEffect(() => {
-        setPage(1);
-    }, [stageFilter, platformFilter, failedOnly, search]);
-
-    const totalPages = Math.max(1, Math.ceil(filteredContents.length / pageSize));
-    const currentPage = Math.min(page, totalPages);
-    const startIdx = (currentPage - 1) * pageSize;
-    const endIdx = Math.min(startIdx + pageSize, filteredContents.length);
-    const paginatedContents = useMemo(
-        () => filteredContents.slice(startIdx, endIdx),
-        [filteredContents, startIdx, endIdx]
-    );
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -845,7 +839,7 @@ export default function ContentPlannerTab({
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {paginatedContents.map((item) => (
+                        {filteredContents.map((item) => (
                             <div key={item.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
@@ -1030,6 +1024,16 @@ export default function ContentPlannerTab({
                                         )}
                                         {canManage && (
                                             <>
+                                                {item.status === 'published' && item.platform === 'youtube' && item.youtube_video_id && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={syncYtMut.isPending}
+                                                        onClick={() => syncYtMut.mutate(item.id)}
+                                                        className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                                    >
+                                                        {syncYtMut.isPending ? 'Syncing…' : '↻ Sync to YT'}
+                                                    </button>
+                                                )}
                                                 {item.status === 'published' && (
                                                     <button
                                                         onClick={() => {
@@ -1088,48 +1092,6 @@ export default function ContentPlannerTab({
                                 )}
                             </div>
                         ))}
-
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600 shadow-sm">
-                            <div className="flex items-center gap-2">
-                                <span>
-                                    Showing <strong className="text-gray-900">{startIdx + 1}–{endIdx}</strong> of{' '}
-                                    <strong className="text-gray-900">{filteredContents.length}</strong>
-                                </span>
-                                <select
-                                    value={pageSize}
-                                    onChange={(e) => {
-                                        setPageSize(Number(e.target.value));
-                                        setPage(1);
-                                    }}
-                                    className="rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-700"
-                                >
-                                    <option value={10}>10 / page</option>
-                                    <option value={20}>20 / page</option>
-                                    <option value={50}>50 / page</option>
-                                </select>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <button
-                                    type="button"
-                                    disabled={currentPage <= 1}
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                    className="rounded-lg border border-gray-200 px-3 py-1 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-                                >
-                                    ← Prev
-                                </button>
-                                <span className="px-2 font-medium text-gray-800">
-                                    Page {currentPage} of {totalPages}
-                                </span>
-                                <button
-                                    type="button"
-                                    disabled={currentPage >= totalPages}
-                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                    className="rounded-lg border border-gray-200 px-3 py-1 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-                                >
-                                    Next →
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 )}
             </div>

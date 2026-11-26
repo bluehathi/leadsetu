@@ -205,8 +205,12 @@ class McpServerService
                             'pin_first_comment' => ['type' => 'boolean'],
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string']],
-                            'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled'],
+                            'status' => ['type' => 'string', 'description' => 'idea, draft, scheduled, or published'],
                             'scheduled_at' => ['type' => 'string'],
+                            'youtube_video_id' => ['type' => 'string', 'description' => 'Optional live YouTube video ID to link with this planner item'],
+                            'instagram_media_id' => ['type' => 'string', 'description' => 'Optional live Instagram media ID to link with this planner item'],
+                            'published_url' => ['type' => 'string', 'description' => 'Optional live post/video URL'],
+                            'push_to_youtube' => ['type' => 'boolean', 'description' => 'If true and youtube_video_id is linked, also push updated title/description/tags live to YouTube'],
                             'drive_folder_id' => ['type' => 'string', 'description' => 'Optional Google Drive folder ID to link with this content (pass empty string to clear)'],
                             'drive_file_id' => ['type' => 'string'],
                             'drive_thumbnail_file_id' => ['type' => 'string'],
@@ -260,8 +264,26 @@ class McpServerService
                             'content_id' => ['type' => 'integer', 'description' => 'Published SocialContent ID from list_content_planner'],
                             'first_comment' => ['type' => 'string', 'description' => 'Comment text to post or update'],
                             'pin_first_comment' => ['type' => 'boolean', 'description' => 'Optional pin intent flag'],
+                            'youtube_video_id' => ['type' => 'string', 'description' => 'Optional live YouTube video ID to link if not already linked'],
                         ],
                         'required' => ['content_id', 'first_comment'],
+                    ],
+                ],
+                [
+                    'name' => 'update_live_youtube_video',
+                    'description' => 'Update a live YouTube video’s title, description, tags, hashtags, or privacy status directly on YouTube (and sync the planner item). Can also link a youtube_video_id if not yet linked.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'content_id' => ['type' => 'integer', 'description' => 'SocialContent ID from list_content_planner'],
+                            'youtube_video_id' => ['type' => 'string', 'description' => 'Optional live YouTube video ID (e.g. from YouTube URL) to link if not already set'],
+                            'title' => ['type' => 'string', 'description' => 'New YouTube video title (max 100 chars)'],
+                            'description' => ['type' => 'string', 'description' => 'New YouTube video description'],
+                            'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Updated YouTube tags'],
+                            'hashtags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Updated hashtags appended to description'],
+                            'privacy_status' => ['type' => 'string', 'enum' => ['public', 'unlisted', 'private'], 'description' => 'Optional new privacy status'],
+                        ],
+                        'required' => ['content_id'],
                     ],
                 ],
                 [
@@ -346,6 +368,7 @@ class McpServerService
             'create_social_brand',
             'share_content_to_brand',
             'update_first_comment',
+            'update_live_youtube_video',
             'publish_content_now',
             'create_drive_folder',
             'rename_drive_file',
@@ -375,6 +398,7 @@ class McpServerService
             'create_social_brand' => $this->createSocialBrand($args),
             'share_content_to_brand' => $this->shareContentToBrand($args),
             'update_first_comment' => $this->updateFirstComment($args),
+            'update_live_youtube_video' => $this->updateLiveYouTubeVideo($args),
             'publish_content_now' => $this->publishContentNow($args),
             'create_drive_folder' => $this->createDriveFolder($args),
             'rename_drive_file' => $this->renameDriveFile($args),
@@ -690,7 +714,7 @@ class McpServerService
         $content = SocialContent::findOrFail((int) ($args['content_id'] ?? 0));
 
         $updates = [];
-        foreach (['title', 'target_keyword', 'hook', 'description', 'first_comment', 'scheduled_at'] as $field) {
+        foreach (['title', 'target_keyword', 'hook', 'description', 'first_comment', 'scheduled_at', 'youtube_video_id', 'instagram_media_id', 'published_url'] as $field) {
             if (array_key_exists($field, $args)) {
                 $updates[$field] = $args[$field];
             }
@@ -701,7 +725,7 @@ class McpServerService
         if (isset($args['content_type']) && in_array($args['content_type'], SocialContent::TYPES, true)) {
             $updates['content_type'] = $args['content_type'];
         }
-        if (isset($args['status']) && in_array($args['status'], ['idea', 'draft', 'scheduled'], true)) {
+        if (isset($args['status']) && in_array($args['status'], SocialContent::STATUSES, true)) {
             $updates['status'] = $args['status'];
         }
         if (isset($args['tags']) && is_array($args['tags'])) {
@@ -717,6 +741,10 @@ class McpServerService
 
         $content->update(array_merge($updates, $scored));
         $this->audit->log('social_content_updated', $content, "MCP updated {$content->platform} content: {$content->title}");
+
+        if (! empty($args['push_to_youtube'])) {
+            $content = $this->driveService->updateLiveYouTubeVideo($content->fresh());
+        }
 
         return $content->fresh()->load('account:id,platform,account_name,handle')->toArray();
     }
@@ -819,15 +847,53 @@ class McpServerService
             throw new InvalidArgumentException('first_comment is required.');
         }
 
-        $content->update([
+        $updatePayload = [
             'first_comment' => $text,
             'pin_first_comment' => array_key_exists('pin_first_comment', $args)
                 ? (bool) $args['pin_first_comment']
                 : $content->pin_first_comment,
-        ]);
+        ];
+        if (! empty($args['youtube_video_id'])) {
+            $updatePayload['youtube_video_id'] = trim((string) $args['youtube_video_id']);
+        }
+
+        $content->update($updatePayload);
 
         $updated = $this->driveService->postOrUpdateFirstComment($content->fresh());
         $this->audit->log('social_first_comment_updated', $updated, "MCP updated first comment on '{$updated->title}'");
+
+        return $updated->toArray();
+    }
+
+    protected function updateLiveYouTubeVideo(array $args): array
+    {
+        $content = SocialContent::with('account')->findOrFail((int) ($args['content_id'] ?? 0));
+
+        $updates = [];
+        foreach (['title', 'description', 'youtube_video_id'] as $field) {
+            if (array_key_exists($field, $args) && $args[$field] !== null) {
+                $updates[$field] = $args[$field];
+            }
+        }
+        if (isset($args['tags']) && is_array($args['tags'])) {
+            $updates['tags'] = array_values($args['tags']);
+        }
+        if (isset($args['hashtags']) && is_array($args['hashtags'])) {
+            $updates['hashtags'] = array_values($args['hashtags']);
+        }
+        if (! empty($updates)) {
+            $merged = array_merge($content->toArray(), $updates);
+            $scored = $this->growthService->scoreContent($merged);
+            $content->update(array_merge($updates, $scored));
+        }
+
+        $privacy = isset($args['privacy_status']) ? (string) $args['privacy_status'] : null;
+        if ($privacy !== null && ! in_array($privacy, ['public', 'unlisted', 'private'], true)) {
+            throw new InvalidArgumentException("privacy_status must be 'public', 'unlisted', or 'private'.");
+        }
+
+        $updated = $this->driveService->updateLiveYouTubeVideo($content->fresh(), $privacy);
+        $this->audit->log('youtube_video_updated', $updated, "MCP updated live YouTube video '{$updated->title}' ({$updated->youtube_video_id})");
 
         return $updated->toArray();
     }

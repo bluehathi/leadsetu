@@ -73,4 +73,6 @@ export const socialApi = {
     disconnectDrive: () => api.delete('/social/drive/disconnect'),
     publishFromDrive: (contentId, privacy_status = 'private') =>
         api.post(`/social/contents/${contentId}/publish-from-drive`, { privacy_status }).then((r) => r.data.data),
+    syncContentToYouTube: (contentId, privacy_status = null) =>
+        api.post(`/social/contents/${contentId}/sync-youtube`, privacy_status ? { privacy_status } : {}).then((r) => r.data.data),
 };

@@ -370,4 +370,22 @@ class GoogleDriveController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }
+
+    public function updateLiveYouTube(Request $request, SocialContent $socialContent): JsonResponse
+    {
+        Gate::authorize('update', $socialContent);
+
+        $validated = $request->validate([
+            'privacy_status' => ['nullable', 'in:public,unlisted,private'],
+        ]);
+
+        try {
+            $updated = $this->drive->updateLiveYouTubeVideo($socialContent, $validated['privacy_status'] ?? null);
+            $this->audit->log('youtube_video_updated', $updated, "Updated live YouTube video metadata for {$updated->title} ({$updated->youtube_video_id})");
+
+            return response()->json(['data' => $updated]);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
 }

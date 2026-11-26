@@ -1068,4 +1068,96 @@ class GoogleDriveService
             'modified_time' => $record->modified_time?->toIso8601String(),
         ];
     }
+
+    /**
+     * Push updated title, description, tags, and optional privacy status to a live YouTube video.
+     */
+    public function updateLiveYouTubeVideo(SocialContent $content, ?string $privacyStatus = null): SocialContent
+    {
+        $content->loadMissing('account');
+        $account = $content->account;
+        if (! $account || $account->platform !== 'youtube') {
+            throw new RuntimeException('Selected content must belong to a connected YouTube channel.');
+        }
+
+        $videoId = trim((string) $content->youtube_video_id);
+        if ($videoId === '' && $content->published_url) {
+            if (preg_match('/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{6,})/', $content->published_url, $m)) {
+                $videoId = $m[1];
+            }
+        }
+        if ($videoId === '') {
+            throw new RuntimeException('No youtube_video_id is linked to this content item.');
+        }
+
+        $ytToken = $this->socialSync->getFreshYouTubeToken($account);
+        if (! $ytToken) {
+            throw new RuntimeException('YouTube channel token is missing or expired. Please reconnect your YouTube channel.');
+        }
+
+        $getResp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/videos', [
+            'part' => 'snippet,status',
+            'id' => $videoId,
+        ]);
+        if (! $getResp->successful()) {
+            throw new RuntimeException($getResp->json('error.message') ?: 'Failed to fetch live YouTube video details.');
+        }
+
+        $videoItem = $getResp->json('items.0');
+        if (! $videoItem) {
+            throw new RuntimeException("YouTube video {$videoId} was not found or is not accessible by this channel.");
+        }
+
+        $existingSnippet = $videoItem['snippet'] ?? [];
+        $existingStatus = $videoItem['status'] ?? [];
+
+        $description = (string) ($content->description ?? '');
+        if (is_array($content->hashtags) && count($content->hashtags) > 0) {
+            $tagsLine = implode(' ', array_map(fn ($h) => str_starts_with($h, '#') ? $h : "#{$h}", $content->hashtags));
+            if ($tagsLine !== '' && ! str_contains($description, $tagsLine)) {
+                $description = trim($description."\n\n".$tagsLine);
+            }
+        }
+
+        $snippet = [
+            'title' => mb_substr((string) ($content->title ?: ($existingSnippet['title'] ?? 'Untitled')), 0, 100),
+            'description' => $description !== '' ? $description : (string) ($existingSnippet['description'] ?? ''),
+            'categoryId' => (string) ($existingSnippet['categoryId'] ?? '22'),
+        ];
+
+        $tags = is_array($content->tags) && count($content->tags) > 0
+            ? array_values(array_filter(array_map('strval', $content->tags)))
+            : ($existingSnippet['tags'] ?? []);
+        if (! empty($tags)) {
+            $snippet['tags'] = array_slice($tags, 0, 30);
+        }
+
+        $statusPayload = [
+            'privacyStatus' => $privacyStatus && in_array($privacyStatus, ['public', 'unlisted', 'private'], true)
+                ? $privacyStatus
+                : ($existingStatus['privacyStatus'] ?? 'public'),
+        ];
+        if (array_key_exists('selfDeclaredMadeForKids', $existingStatus)) {
+            $statusPayload['selfDeclaredMadeForKids'] = (bool) $existingStatus['selfDeclaredMadeForKids'];
+        }
+
+        $putResp = Http::withToken($ytToken)->put('https://www.googleapis.com/youtube/v3/videos?part=snippet,status', [
+            'id' => $videoId,
+            'snippet' => $snippet,
+            'status' => $statusPayload,
+        ]);
+
+        if (! $putResp->successful()) {
+            throw new RuntimeException($putResp->json('error.message') ?: 'Failed to update live YouTube video.');
+        }
+
+        $content->forceFill([
+            'youtube_video_id' => $videoId,
+            'published_url' => $content->published_url ?: "https://www.youtube.com/watch?v={$videoId}",
+            'status' => 'published',
+            'published_at' => $content->published_at ?: now(),
+        ])->save();
+
+        return $content->fresh()->load('account:id,platform,account_name,handle');
+    }
 }
