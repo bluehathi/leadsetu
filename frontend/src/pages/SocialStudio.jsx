@@ -57,6 +57,7 @@ export default function SocialStudio() {
     const qc = useQueryClient();
     const [searchParams] = useSearchParams();
     const [tab, setTab] = useState(searchParams.get('tab') || 'accounts');
+    const [connectMenuOpen, setConnectMenuOpen] = useState(false);
     const [publishPrivacy, setPublishPrivacy] = useState({});
     const [publishError, setPublishError] = useState('');
     const [platformFilter, setPlatformFilter] = useState('');
@@ -294,65 +295,87 @@ export default function SocialStudio() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold">Growth Studio (YouTube, Instagram & Facebook)</h1>
-                    <p className="text-sm text-gray-500">
-                        Manage multiple YT, IG & FB accounts, score SEO, research keywords, track competitors & generate daily ideas.
+                    <h1 className="text-2xl font-bold text-gray-900">Growth Studio</h1>
+                    <p className="mt-0.5 text-sm text-gray-500">
+                        YouTube, Instagram & Facebook Pages · Analytics, Content Planner, Google Drive & AI Growth Tools
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {can('manage_social_accounts') && (
-                        <>
+                    <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-0.5 text-xs">
+                        {[
+                            { id: '', label: 'All' },
+                            { id: 'youtube', label: 'YouTube' },
+                            { id: 'instagram', label: 'Instagram' },
+                            { id: 'facebook', label: 'Facebook' },
+                        ].map((p) => (
                             <button
-                                onClick={() => startOAuth('youtube')}
-                                className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                                key={p.id || 'all'}
+                                onClick={() => setPlatformFilter(p.id)}
+                                className={`rounded-lg px-2.5 py-1.5 font-medium transition ${
+                                    platformFilter === p.id
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
                             >
-                                + Connect YouTube (OAuth)
+                                {p.label}
                             </button>
-                            <button
-                                onClick={() => startOAuth('instagram')}
-                                className="rounded bg-pink-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-pink-700"
-                            >
-                                + Connect Instagram (OAuth)
-                            </button>
-                            <button
-                                onClick={() => startOAuth('facebook')}
-                                className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-                            >
-                                + Connect Facebook Page (OAuth)
-                            </button>
-                        </>
-                    )}
+                        ))}
+                    </div>
+
                     <button
                         onClick={() => syncAllMut.mutate()}
                         disabled={syncAllMut.isPending}
-                        className="rounded-xl border border-gray-200 bg-white shadow-sm px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                        className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
-                        {syncAllMut.isPending ? 'Syncing…' : 'Sync All'}
+                        {syncAllMut.isPending ? 'Syncing…' : '↻ Sync All'}
                     </button>
-                    <select
-                        value={platformFilter}
-                        onChange={(e) => setPlatformFilter(e.target.value)}
-                        className="rounded-xl border border-gray-200 bg-white shadow-sm px-3 py-1.5 text-sm"
-                    >
-                        <option value="">All Platforms</option>
-                        <option value="youtube">YouTube Only</option>
-                        <option value="instagram">Instagram Only</option>
-                        <option value="facebook">Facebook Only</option>
-                    </select>
-                    <select
-                        value={selectedAccountId}
-                        onChange={(e) => setSelectedAccountId(e.target.value)}
-                        className="rounded-xl border border-gray-200 bg-white shadow-sm px-3 py-1.5 text-sm"
-                    >
-                        <option value="">All Accounts</option>
-                        {accounts.map((a) => (
-                            <option key={a.id} value={a.id}>
-                                [{a.platform.toUpperCase()}] {a.account_name} ({a.handle})
-                            </option>
-                        ))}
-                    </select>
+
+                    {can('manage_social_accounts') && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setConnectMenuOpen((o) => !o)}
+                                className="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+                            >
+                                + Connect Channel ▾
+                            </button>
+                            {connectMenuOpen && (
+                                <div className="absolute right-0 z-20 mt-1.5 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+                                    <button
+                                        onClick={() => {
+                                            setConnectMenuOpen(false);
+                                            startOAuth('youtube');
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-700"
+                                    >
+                                        <span className="h-2 w-2 rounded-full bg-red-600" />
+                                        YouTube Channel
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setConnectMenuOpen(false);
+                                            startOAuth('instagram');
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-xs font-medium text-gray-700 hover:bg-pink-50 hover:text-pink-700"
+                                    >
+                                        <span className="h-2 w-2 rounded-full bg-pink-600" />
+                                        Instagram Business
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setConnectMenuOpen(false);
+                                            startOAuth('facebook');
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-xs font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                                    >
+                                        <span className="h-2 w-2 rounded-full bg-blue-600" />
+                                        Facebook Page
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
