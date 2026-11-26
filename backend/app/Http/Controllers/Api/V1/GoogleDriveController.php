@@ -32,10 +32,90 @@ class GoogleDriveController extends Controller
             'data' => $conn ? [
                 'connected' => true,
                 'google_email' => $conn->google_email,
+                'default_folder_id' => $conn->default_folder_id,
+                'default_folder_name' => $conn->default_folder_name,
+                'favorite_folders' => $conn->favorite_folders ?? [],
                 'connected_at' => $conn->updated_at?->toIso8601String(),
             ] : [
                 'connected' => false,
                 'google_email' => null,
+                'default_folder_id' => null,
+                'default_folder_name' => null,
+                'favorite_folders' => [],
+            ],
+        ]);
+    }
+
+    public function toggleFavorite(Request $request): JsonResponse
+    {
+        Gate::authorize('create', SocialAccount::class);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return response()->json(['message' => 'Google Drive is not connected.'], 422);
+        }
+
+        $folderId = (string) $request->input('folder_id');
+        $folderName = (string) $request->input('folder_name');
+        if (! $folderId || ! $folderName) {
+            return response()->json(['message' => 'folder_id and folder_name are required.'], 422);
+        }
+
+        $favorites = collect($conn->favorite_folders ?? []);
+        $exists = $favorites->contains(fn ($f) => ($f['id'] ?? null) === $folderId);
+
+        if ($exists) {
+            $favorites = $favorites->reject(fn ($f) => ($f['id'] ?? null) === $folderId)->values();
+            if ($conn->default_folder_id === $folderId) {
+                $conn->default_folder_id = null;
+                $conn->default_folder_name = null;
+            }
+        } else {
+            $favorites->push(['id' => $folderId, 'name' => $folderName]);
+        }
+
+        $conn->favorite_folders = $favorites->all();
+        $conn->save();
+
+        return response()->json([
+            'data' => [
+                'default_folder_id' => $conn->default_folder_id,
+                'default_folder_name' => $conn->default_folder_name,
+                'favorite_folders' => $conn->favorite_folders ?? [],
+            ],
+        ]);
+    }
+
+    public function setDefaultFolder(Request $request): JsonResponse
+    {
+        Gate::authorize('create', SocialAccount::class);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return response()->json(['message' => 'Google Drive is not connected.'], 422);
+        }
+
+        $folderId = $request->input('folder_id') ?: null;
+        $folderName = $request->input('folder_name') ?: null;
+
+        $conn->default_folder_id = $folderId;
+        $conn->default_folder_name = $folderName;
+
+        if ($folderId && $folderName) {
+            $favorites = collect($conn->favorite_folders ?? []);
+            if (! $favorites->contains(fn ($f) => ($f['id'] ?? null) === $folderId)) {
+                $favorites->push(['id' => $folderId, 'name' => $folderName]);
+                $conn->favorite_folders = $favorites->all();
+            }
+        }
+
+        $conn->save();
+
+        return response()->json([
+            'data' => [
+                'default_folder_id' => $conn->default_folder_id,
+                'default_folder_name' => $conn->default_folder_name,
+                'favorite_folders' => $conn->favorite_folders ?? [],
             ],
         ]);
     }

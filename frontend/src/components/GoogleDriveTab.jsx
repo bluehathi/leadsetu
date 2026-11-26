@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
 
@@ -17,6 +17,7 @@ function formatBytes(bytes) {
 export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
     const qc = useQueryClient();
     const [breadcrumbs, setBreadcrumbs] = useState([{ id: null, name: 'My Drive' }]);
+    const [initializedDefault, setInitializedDefault] = useState(false);
     const [search, setSearch] = useState('');
     const [connecting, setConnecting] = useState(false);
 
@@ -26,6 +27,19 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
         queryKey: ['social-drive-status'],
         queryFn: socialApi.getDriveStatus,
     });
+
+    // Open the user's default favorite folder automatically instead of My Drive root.
+    useEffect(() => {
+        if (!initializedDefault && status?.connected) {
+            if (status.default_folder_id && status.default_folder_name) {
+                setBreadcrumbs([
+                    { id: null, name: 'My Drive' },
+                    { id: status.default_folder_id, name: status.default_folder_name },
+                ]);
+            }
+            setInitializedDefault(true);
+        }
+    }, [status, initializedDefault]);
 
     const { data: filesData, isLoading: filesLoading, error: filesError } = useQuery({
         queryKey: ['social-drive-files', currentFolder.id, search],
@@ -49,13 +63,25 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
         },
     });
 
-    const files = filesData?.items ?? [];
-    const filesSource = filesData?.source;
-    const filesSyncedAt = filesData?.synced_at;
+    const toggleFavMut = useMutation({
+        mutationFn: ({ folderId, folderName }) => socialApi.toggleDriveFavorite(folderId, folderName),
+        onSuccess: (updated) => {
+            qc.setQueryData(['social-drive-status'], (prev) => ({ ...(prev || {}), ...updated }));
+        },
+    });
+
+    const setDefaultMut = useMutation({
+        mutationFn: ({ folderId, folderName }) => socialApi.setDriveDefaultFolder(folderId, folderName),
+        onSuccess: (updated) => {
+            qc.setQueryData(['social-drive-status'], (prev) => ({ ...(prev || {}), ...updated }));
+        },
+    });
 
     const disconnectMut = useMutation({
         mutationFn: socialApi.disconnectDrive,
         onSuccess: () => {
+            setBreadcrumbs([{ id: null, name: 'My Drive' }]);
+            setInitializedDefault(false);
             qc.invalidateQueries({ queryKey: ['social-drive-status'] });
             qc.removeQueries({ queryKey: ['social-drive-files'] });
         },
@@ -68,6 +94,25 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
             window.location.href = url;
         } finally {
             setConnecting(false);
+        }
+    };
+
+    const files = filesData?.items ?? [];
+    const filesSource = filesData?.source;
+    const filesSyncedAt = filesData?.synced_at;
+    const favorites = status?.favorite_folders ?? [];
+    const isFav = (id) => favorites.some((f) => f.id === id);
+    const isDefault = (id) => status?.default_folder_id === id;
+
+    const jumpToFavorite = (fav) => {
+        setSearch('');
+        if (!fav) {
+            setBreadcrumbs([{ id: null, name: 'My Drive' }]);
+        } else {
+            setBreadcrumbs([
+                { id: null, name: 'My Drive' },
+                { id: fav.id, name: fav.name },
+            ]);
         }
     };
 
@@ -136,6 +181,57 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                 </div>
             </div>
 
+            {/* Favorite Folders Bar */}
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                <span className="text-xs font-semibold text-gray-500">Favorite Folders:</span>
+                <button
+                    onClick={() => jumpToFavorite(null)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+                        currentFolder.id === null
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                    My Drive
+                </button>
+                {favorites.map((fav) => (
+                    <div key={fav.id} className="inline-flex items-center overflow-hidden rounded-lg border border-gray-200">
+                        <button
+                            onClick={() => jumpToFavorite(fav)}
+                            className={`px-2.5 py-1 text-xs font-medium ${
+                                currentFolder.id === fav.id
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            {isDefault(fav.id) ? '★ ' : '📁 '}
+                            {fav.name}
+                        </button>
+                        {!isDefault(fav.id) && (
+                            <button
+                                onClick={() => setDefaultMut.mutate({ folderId: fav.id, folderName: fav.name })}
+                                title="Make default folder"
+                                className="border-l border-gray-200 bg-gray-50 px-1.5 py-1 text-[11px] text-gray-500 hover:bg-indigo-50 hover:text-indigo-700"
+                            >
+                                Default
+                            </button>
+                        )}
+                        <button
+                            onClick={() => toggleFavMut.mutate({ folderId: fav.id, folderName: fav.name })}
+                            title="Remove from favorites"
+                            className="border-l border-gray-200 bg-gray-50 px-1.5 py-1 text-[11px] text-gray-400 hover:bg-red-50 hover:text-red-600"
+                        >
+                            ×
+                        </button>
+                    </div>
+                ))}
+                {favorites.length === 0 && (
+                    <span className="text-xs text-gray-400">
+                        Star any folder below to pin it here & set it as your default view.
+                    </span>
+                )}
+            </div>
+
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="flex flex-wrap items-center gap-1 text-sm">
                     {breadcrumbs.map((b, idx) => (
@@ -156,6 +252,38 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                             </button>
                         </span>
                     ))}
+                    {currentFolder.id && (
+                        <div className="ml-2 flex items-center gap-1.5">
+                            <button
+                                onClick={() =>
+                                    toggleFavMut.mutate({ folderId: currentFolder.id, folderName: currentFolder.name })
+                                }
+                                className={`rounded border px-2 py-0.5 text-xs ${
+                                    isFav(currentFolder.id)
+                                        ? 'border-amber-300 bg-amber-50 text-amber-800'
+                                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
+                                {isFav(currentFolder.id) ? '★ Favorited' : '☆ Favorite'}
+                            </button>
+                            <button
+                                onClick={() =>
+                                    setDefaultMut.mutate(
+                                        isDefault(currentFolder.id)
+                                            ? { folderId: null, folderName: null }
+                                            : { folderId: currentFolder.id, folderName: currentFolder.name }
+                                    )
+                                }
+                                className={`rounded border px-2 py-0.5 text-xs ${
+                                    isDefault(currentFolder.id)
+                                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
+                                {isDefault(currentFolder.id) ? 'Default Folder ✓' : 'Set as Default'}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <input
@@ -163,7 +291,7 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search files across Drive…"
-                    className="rounded-lg border px-3 py-1.5 text-xs w-64"
+                    className="w-64 rounded-lg border px-3 py-1.5 text-xs"
                 />
             </div>
 
@@ -233,7 +361,36 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                                 </div>
                             </div>
 
-                            {!file.is_folder && (
+                            {file.is_folder ? (
+                                <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                                    <button
+                                        onClick={() => toggleFavMut.mutate({ folderId: file.id, folderName: file.name })}
+                                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                                            isFav(file.id)
+                                                ? 'border-amber-300 bg-amber-50 text-amber-800'
+                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {isFav(file.id) ? '★ Favorited' : '☆ Favorite'}
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            setDefaultMut.mutate(
+                                                isDefault(file.id)
+                                                    ? { folderId: null, folderName: null }
+                                                    : { folderId: file.id, folderName: file.name }
+                                            )
+                                        }
+                                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                                            isDefault(file.id)
+                                                ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {isDefault(file.id) ? 'Default ✓' : 'Set Default'}
+                                    </button>
+                                </div>
+                            ) : (
                                 <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
                                     {file.is_video && (
                                         <button

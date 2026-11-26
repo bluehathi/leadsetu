@@ -83,6 +83,8 @@ Route::prefix('v1')->group(function () {
         Route::get('social/drive/status', [V1\GoogleDriveController::class, 'status']);
         Route::get('social/drive/oauth/url', [V1\GoogleDriveController::class, 'oauthUrl']);
         Route::get('social/drive/files', [V1\GoogleDriveController::class, 'files']);
+        Route::post('social/drive/favorites', [V1\GoogleDriveController::class, 'toggleFavorite']);
+        Route::post('social/drive/default-folder', [V1\GoogleDriveController::class, 'setDefaultFolder']);
         Route::delete('social/drive/disconnect', [V1\GoogleDriveController::class, 'disconnect']);
         Route::get('social/keywords', [V1\SocialGrowthController::class, 'keywords']);
         Route::post('social/keywords/analyze', [V1\SocialGrowthController::class, 'analyzeKeyword']);

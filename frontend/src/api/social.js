@@ -39,6 +39,10 @@ export const socialApi = {
     getDriveStatus: () => api.get('/social/drive/status').then((r) => r.data.data),
     getDriveOAuthUrl: () => api.get('/social/drive/oauth/url').then((r) => r.data.data),
     listDriveFiles: (params) => api.get('/social/drive/files', { params }).then((r) => r.data.data),
+    toggleDriveFavorite: (folder_id, folder_name) =>
+        api.post('/social/drive/favorites', { folder_id, folder_name }).then((r) => r.data.data),
+    setDriveDefaultFolder: (folder_id, folder_name) =>
+        api.post('/social/drive/default-folder', { folder_id, folder_name }).then((r) => r.data.data),
     disconnectDrive: () => api.delete('/social/drive/disconnect'),
     publishFromDrive: (contentId, privacy_status = 'private') =>
         api.post(`/social/contents/${contentId}/publish-from-drive`, { privacy_status }).then((r) => r.data.data),

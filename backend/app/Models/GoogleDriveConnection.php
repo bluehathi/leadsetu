@@ -14,6 +14,7 @@ class GoogleDriveConnection extends Model
         'google_email',
         'default_folder_id',
         'default_folder_name',
+        'favorite_folders',
     ];
 
     protected $hidden = [
@@ -25,6 +26,7 @@ class GoogleDriveConnection extends Model
         'access_token' => 'encrypted',
         'refresh_token' => 'encrypted',
         'token_expires_at' => 'datetime',
+        'favorite_folders' => 'array',
     ];
 
     public function user(): BelongsTo
