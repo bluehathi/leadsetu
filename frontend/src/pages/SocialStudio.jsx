@@ -404,73 +404,7 @@ export default function SocialStudio() {
 
             {/* TAB 1: ACCOUNTS */}
             {tab === 'accounts' && (
-                <div className="grid gap-6 lg:grid-cols-3">
-                    {can('manage_social_accounts') && (
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                createAccountMut.mutate(accountForm);
-                            }}
-                            className="space-y-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4"
-                        >
-                            <h2 className="font-semibold">Connect YT / IG Account</h2>
-                            <select
-                                value={accountForm.platform}
-                                onChange={(e) => setAccountForm({ ...accountForm, platform: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            >
-                                <option value="youtube">YouTube</option>
-                                <option value="instagram">Instagram</option>
-                            </select>
-                            <input
-                                required
-                                placeholder="Account / Channel Name"
-                                value={accountForm.account_name}
-                                onChange={(e) => setAccountForm({ ...accountForm, account_name: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            />
-                            <input
-                                required
-                                placeholder="Handle (e.g. @leadsetu)"
-                                value={accountForm.handle}
-                                onChange={(e) => setAccountForm({ ...accountForm, handle: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            />
-                            <input
-                                placeholder="Niche (e.g. SaaS, Fitness, Tech)"
-                                value={accountForm.niche}
-                                onChange={(e) => setAccountForm({ ...accountForm, niche: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
-                            />
-                            <div className="grid grid-cols-2 gap-2">
-                                <input
-                                    type="number"
-                                    min="0"
-                                    placeholder="Followers / Subs"
-                                    value={accountForm.followers_count}
-                                    onChange={(e) => setAccountForm({ ...accountForm, followers_count: Number(e.target.value) })}
-                                    className="w-full rounded-lg border px-3 py-2 text-sm"
-                                />
-                                <input
-                                    type="number"
-                                    min="0"
-                                    placeholder="Total Views"
-                                    value={accountForm.views_count}
-                                    onChange={(e) => setAccountForm({ ...accountForm, views_count: Number(e.target.value) })}
-                                    className="w-full rounded-lg border px-3 py-2 text-sm"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={createAccountMut.isPending}
-                                className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                            >
-                                {createAccountMut.isPending ? 'Connecting…' : 'Connect Account'}
-                            </button>
-                        </form>
-                    )}
-
-                    <div className="space-y-3 lg:col-span-2">
+                <div className="space-y-3">
                         {accounts.length === 0 ? (
                             <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 text-sm text-gray-500">
                                 No YouTube or Instagram accounts connected yet. Add your first account to start tracking!
@@ -542,7 +476,6 @@ export default function SocialStudio() {
                                 </div>
                             ))
                         )}
-                    </div>
 
                     {analyticsAccountId && (
                         <div className="lg:col-span-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-5">
