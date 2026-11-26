@@ -175,6 +175,8 @@ class McpServerService
                             'target_keyword' => ['type' => 'string', 'description' => 'Primary SEO target keyword'],
                             'hook' => ['type' => 'string', 'description' => 'Opening hook (first 3-15 sec)'],
                             'description' => ['type' => 'string', 'description' => 'Video description or caption'],
+                            'first_comment' => ['type' => 'string', 'description' => 'Optional first comment to post automatically on publish'],
+                            'pin_first_comment' => ['type' => 'boolean', 'description' => 'Whether to mark the first comment as pinned (default true)'],
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of tags'],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of hashtags'],
                             'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled (default: draft)'],
@@ -197,6 +199,8 @@ class McpServerService
                             'target_keyword' => ['type' => 'string'],
                             'hook' => ['type' => 'string'],
                             'description' => ['type' => 'string'],
+                            'first_comment' => ['type' => 'string'],
+                            'pin_first_comment' => ['type' => 'boolean'],
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled'],
@@ -474,7 +478,7 @@ class McpServerService
         }
 
         return $q->latest()->limit($limit)->get([
-            'id', 'social_account_id', 'platform', 'content_type', 'title', 'target_keyword', 'hook', 'status', 'seo_score', 'scheduled_at', 'published_at', 'drive_file_name', 'youtube_video_id',
+            'id', 'social_account_id', 'platform', 'content_type', 'title', 'target_keyword', 'hook', 'first_comment', 'pin_first_comment', 'first_comment_id', 'status', 'seo_score', 'scheduled_at', 'published_at', 'drive_file_name', 'youtube_video_id', 'instagram_media_id', 'published_url',
         ])->toArray();
     }
 
@@ -535,6 +539,8 @@ class McpServerService
             'target_keyword' => $args['target_keyword'] ?? null,
             'hook' => $args['hook'] ?? null,
             'description' => $args['description'] ?? null,
+            'first_comment' => $args['first_comment'] ?? null,
+            'pin_first_comment' => array_key_exists('pin_first_comment', $args) ? (bool) $args['pin_first_comment'] : true,
             'tags' => is_array($args['tags'] ?? null) ? array_values($args['tags']) : [],
             'hashtags' => is_array($args['hashtags'] ?? null) ? array_values($args['hashtags']) : [],
             'status' => $status,
@@ -555,10 +561,13 @@ class McpServerService
         $content = SocialContent::findOrFail((int) ($args['content_id'] ?? 0));
 
         $updates = [];
-        foreach (['title', 'target_keyword', 'hook', 'description', 'scheduled_at'] as $field) {
+        foreach (['title', 'target_keyword', 'hook', 'description', 'first_comment', 'scheduled_at'] as $field) {
             if (array_key_exists($field, $args)) {
                 $updates[$field] = $args[$field];
             }
+        }
+        if (array_key_exists('pin_first_comment', $args)) {
+            $updates['pin_first_comment'] = (bool) $args['pin_first_comment'];
         }
         if (isset($args['content_type']) && in_array($args['content_type'], SocialContent::TYPES, true)) {
             $updates['content_type'] = $args['content_type'];
@@ -640,6 +649,8 @@ class McpServerService
                 'content_type' => $type,
                 'title' => $source->title,
                 'description' => $source->description,
+                'first_comment' => $source->first_comment,
+                'pin_first_comment' => (bool) $source->pin_first_comment,
                 'hook' => $source->hook,
                 'script' => $source->script,
                 'tags' => $source->tags ?? [],

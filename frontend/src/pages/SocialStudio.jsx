@@ -47,6 +47,8 @@ const EMPTY_CONTENT = {
     target_keyword: '',
     hook: '',
     description: '',
+    first_comment: '',
+    pin_first_comment: true,
     tagsText: '',
     hashtagsText: '',
     status: 'draft',

@@ -141,6 +141,8 @@ class SocialContentController extends Controller implements HasMiddleware
                 'content_type' => $contentType,
                 'title' => $socialContent->title,
                 'description' => $socialContent->description,
+                'first_comment' => $socialContent->first_comment,
+                'pin_first_comment' => (bool) $socialContent->pin_first_comment,
                 'hook' => $socialContent->hook,
                 'script' => $socialContent->script,
                 'tags' => $socialContent->tags ?? [],
@@ -190,6 +192,31 @@ class SocialContentController extends Controller implements HasMiddleware
                 'errors' => $errors,
             ],
         ], 201);
+    }
+
+    public function updateFirstComment(Request $request, SocialContent $socialContent): JsonResponse
+    {
+        Gate::authorize('update', $socialContent);
+
+        $validated = $request->validate([
+            'first_comment' => ['required', 'string', 'max:2000'],
+            'pin_first_comment' => ['sometimes', 'boolean'],
+        ]);
+
+        $socialContent->update([
+            'first_comment' => $validated['first_comment'],
+            'pin_first_comment' => $validated['pin_first_comment'] ?? $socialContent->pin_first_comment,
+        ]);
+
+        try {
+            $updated = $this->drive->postOrUpdateFirstComment($socialContent->fresh());
+            $this->audit->log('social_first_comment_updated', $updated, "Updated first comment on '{$updated->title}'");
+
+            return response()->json(['data' => $updated]);
+        } catch (Throwable $e) {
+            $socialContent->forceFill(['first_comment_error' => $e->getMessage()])->save();
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     protected function mapContentTypeForPlatform(string $type, string $platform): string

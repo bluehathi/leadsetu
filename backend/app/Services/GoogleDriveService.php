@@ -421,6 +421,8 @@ class GoogleDriveService
                 'published_at' => now(),
             ])->save();
 
+            $this->tryPostFirstComment($content);
+
             return $content->fresh()->load('account:id,platform,account_name,handle');
         } finally {
             if ($tempVideoPath && file_exists($tempVideoPath)) {
@@ -540,6 +542,8 @@ class GoogleDriveService
             'published_at' => now(),
         ])->save();
 
+        $this->tryPostFirstComment($content);
+
         return $content->fresh()->load('account:id,platform,account_name,handle');
     }
 
@@ -600,6 +604,125 @@ class GoogleDriveService
             'published_url' => $postId ? "https://www.facebook.com/{$postId}" : "https://www.facebook.com/{$account->external_id}",
             'status' => 'published',
             'published_at' => now(),
+        ])->save();
+
+        $this->tryPostFirstComment($content, $postId);
+
+        return $content->fresh()->load('account:id,platform,account_name,handle');
+    }
+
+    protected function tryPostFirstComment(SocialContent $content, ?string $fbPostId = null): void
+    {
+        if (! trim((string) $content->first_comment)) {
+            return;
+        }
+
+        try {
+            $this->postOrUpdateFirstComment($content, $fbPostId);
+        } catch (\Throwable $e) {
+            $content->forceFill(['first_comment_error' => $e->getMessage()])->save();
+        }
+    }
+
+    /**
+     * Post or update the first comment on a published YouTube, Instagram, or Facebook post.
+     * Note: YouTube/Instagram/Facebook public APIs do not expose a comment-pinning endpoint.
+     */
+    public function postOrUpdateFirstComment(SocialContent $content, ?string $fbPostId = null): SocialContent
+    {
+        $text = trim((string) $content->first_comment);
+        if ($text === '') {
+            throw new RuntimeException('First comment text cannot be empty.');
+        }
+
+        $account = $content->account;
+        if (! $account || ! $account->access_token) {
+            throw new RuntimeException('Connected account token is missing.');
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $commentId = $content->first_comment_id;
+
+        if ($account->platform === 'youtube') {
+            if (! $content->youtube_video_id) {
+                throw new RuntimeException('YouTube video is not published yet.');
+            }
+            $ytToken = $this->socialSync->getFreshYouTubeToken($account);
+            if (! $ytToken) {
+                throw new RuntimeException('YouTube token expired. Please reconnect your channel.');
+            }
+
+            if ($commentId) {
+                $resp = Http::withToken($ytToken)->put('https://www.googleapis.com/youtube/v3/comments?part=snippet', [
+                    'id' => $commentId,
+                    'snippet' => ['textOriginal' => $text],
+                ]);
+                if (! $resp->successful()) {
+                    throw new RuntimeException($resp->json('error.message') ?: 'Failed to update YouTube comment.');
+                }
+            } else {
+                $resp = Http::withToken($ytToken)->post('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet', [
+                    'snippet' => [
+                        'videoId' => $content->youtube_video_id,
+                        'topLevelComment' => [
+                            'snippet' => ['textOriginal' => $text],
+                        ],
+                    ],
+                ]);
+                if (! $resp->successful()) {
+                    throw new RuntimeException($resp->json('error.message') ?: 'Failed to post YouTube comment (ensure youtube.force-ssl permission is granted).');
+                }
+                $commentId = $resp->json('snippet.topLevelComment.id') ?: $resp->json('id');
+            }
+        } elseif ($account->platform === 'instagram') {
+            if (! $content->instagram_media_id) {
+                throw new RuntimeException('Instagram post is not published yet.');
+            }
+            if ($commentId) {
+                Http::delete("https://graph.facebook.com/{$version}/{$commentId}", [
+                    'access_token' => $account->access_token,
+                ]);
+            }
+            $resp = Http::post("https://graph.facebook.com/{$version}/{$content->instagram_media_id}/comments", [
+                'message' => $text,
+                'access_token' => $account->access_token,
+            ]);
+            if (! $resp->successful()) {
+                throw new RuntimeException($resp->json('error.message') ?: 'Failed to post Instagram comment.');
+            }
+            $commentId = $resp->json('id');
+        } elseif ($account->platform === 'facebook') {
+            $postId = $fbPostId;
+            if (! $postId && $content->published_url && preg_match('/facebook\.com\/([^\/\?]+)/', $content->published_url, $m)) {
+                $postId = $m[1];
+            }
+            if (! $postId) {
+                throw new RuntimeException('Facebook post ID not found.');
+            }
+
+            if ($commentId) {
+                $resp = Http::post("https://graph.facebook.com/{$version}/{$commentId}", [
+                    'message' => $text,
+                    'access_token' => $account->access_token,
+                ]);
+                if (! $resp->successful()) {
+                    throw new RuntimeException($resp->json('error.message') ?: 'Failed to update Facebook comment.');
+                }
+            } else {
+                $resp = Http::post("https://graph.facebook.com/{$version}/{$postId}/comments", [
+                    'message' => $text,
+                    'access_token' => $account->access_token,
+                ]);
+                if (! $resp->successful()) {
+                    throw new RuntimeException($resp->json('error.message') ?: 'Failed to post Facebook comment.');
+                }
+                $commentId = $resp->json('id');
+            }
+        }
+
+        $content->forceFill([
+            'first_comment_id' => $commentId,
+            'first_comment_error' => null,
         ])->save();
 
         return $content->fresh()->load('account:id,platform,account_name,handle');

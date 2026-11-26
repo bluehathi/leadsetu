@@ -36,7 +36,7 @@ class SocialOAuthSyncService
                 'client_id' => $clientId,
                 'redirect_uri' => $redirect,
                 'response_type' => 'code',
-                'scope' => 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/youtube.upload',
+                'scope' => 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl',
                 'access_type' => 'offline',
                 'prompt' => 'consent',
                 'state' => $state,
@@ -52,7 +52,7 @@ class SocialOAuthSyncService
 
         $scopes = $platform === 'facebook'
             ? 'pages_show_list,pages_read_engagement,pages_manage_posts,business_management'
-            : 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_content_publish,business_management';
+            : 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_content_publish,instagram_manage_comments,business_management';
 
         return "https://www.facebook.com/{$version}/dialog/oauth?".http_build_query([
             'client_id' => $clientId,

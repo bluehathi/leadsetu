@@ -27,6 +27,8 @@ class StoreSocialContentRequest extends FormRequest
             'content_type' => ['required', Rule::in(SocialContent::TYPES)],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'first_comment' => ['nullable', 'string', 'max:2000'],
+            'pin_first_comment' => ['sometimes', 'boolean'],
             'hook' => ['nullable', 'string', 'max:1000'],
             'script' => ['nullable', 'string', 'max:20000'],
             'tags' => ['nullable', 'array', 'max:30'],

@@ -48,6 +48,9 @@ export default function ContentPlannerTab({
     const [sharePublishNow, setSharePublishNow] = useState(false);
     const [shareYtPrivacy, setShareYtPrivacy] = useState('private');
     const [shareResult, setShareResult] = useState(null);
+    const [commentItem, setCommentItem] = useState(null);
+    const [commentText, setCommentText] = useState('');
+    const [commentError, setCommentError] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
 
     // Auto-select first available channel if none is selected yet.
@@ -85,6 +88,18 @@ export default function ContentPlannerTab({
         },
         onError: (err) => {
             setShareResult({ created: [], errors: [err?.response?.data?.message || 'Failed to share content.'] });
+        },
+    });
+
+    const commentMut = useMutation({
+        mutationFn: ({ id, payload }) => socialApi.updateFirstComment(id, payload),
+        onSuccess: () => {
+            setCommentError('');
+            setCommentItem(null);
+            onSaved();
+        },
+        onError: (err) => {
+            setCommentError(err?.response?.data?.message || 'Failed to post/update comment.');
         },
     });
 
@@ -158,6 +173,8 @@ export default function ContentPlannerTab({
             target_keyword: contentForm.target_keyword || null,
             hook: contentForm.hook || null,
             description: contentForm.description || null,
+            first_comment: contentForm.first_comment || null,
+            pin_first_comment: contentForm.pin_first_comment ?? true,
             tags: splitList(contentForm.tagsText),
             hashtags: splitList(contentForm.hashtagsText),
             status: contentForm.status,
@@ -192,6 +209,8 @@ export default function ContentPlannerTab({
             target_keyword: item.target_keyword || '',
             hook: item.hook || '',
             description: item.description || '',
+            first_comment: item.first_comment || '',
+            pin_first_comment: item.pin_first_comment ?? true,
             tagsText: Array.isArray(item.tags) ? item.tags.join(', ') : '',
             hashtagsText: Array.isArray(item.hashtags) ? item.hashtags.join(' ') : '',
             status: item.status || 'draft',
@@ -409,6 +428,27 @@ export default function ContentPlannerTab({
                             value={contentForm.description}
                             onChange={(e) => setContentForm({ ...contentForm, description: e.target.value })}
                             className="w-full rounded-lg border px-3 py-2 text-sm"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-medium text-gray-700">First Comment (Auto-posted on publish)</label>
+                            <label className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                <input
+                                    type="checkbox"
+                                    checked={contentForm.pin_first_comment ?? true}
+                                    onChange={(e) => setContentForm({ ...contentForm, pin_first_comment: e.target.checked })}
+                                />
+                                Pin intent (manual pin in YT/FB Studio if API-restricted)
+                            </label>
+                        </div>
+                        <textarea
+                            rows={2}
+                            placeholder="Write the first comment to post automatically after publishing…"
+                            value={contentForm.first_comment || ''}
+                            onChange={(e) => setContentForm({ ...contentForm, first_comment: e.target.value })}
+                            className="w-full rounded-lg border bg-white px-3 py-2 text-sm"
                         />
                     </div>
 
@@ -717,6 +757,17 @@ export default function ContentPlannerTab({
                                                 ⚠ Auto-publish failed: {item.publish_error}
                                             </div>
                                         )}
+                                        {item.first_comment && (
+                                            <div className="mt-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700">
+                                                <span className="font-medium">💬 First Comment:</span> {item.first_comment}
+                                                {item.first_comment_id && <span className="ml-2 text-green-700 font-medium">✓ Posted</span>}
+                                            </div>
+                                        )}
+                                        {item.first_comment_error && (
+                                            <div className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                                                ⚠ Comment error: {item.first_comment_error}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
@@ -768,6 +819,18 @@ export default function ContentPlannerTab({
                                         )}
                                         {canManage && (
                                             <>
+                                                {item.status === 'published' && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setCommentItem(item);
+                                                            setCommentText(item.first_comment || '');
+                                                            setCommentError('');
+                                                        }}
+                                                        className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                                                    >
+                                                        {item.first_comment_id ? 'Edit Comment' : 'Post Comment'}
+                                                    </button>
+                                                )}
                                                 {accounts.length > 1 && (
                                                     <button
                                                         onClick={() => {
@@ -982,6 +1045,66 @@ export default function ContentPlannerTab({
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {commentItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            commentMut.mutate({
+                                id: commentItem.id,
+                                payload: { first_comment: commentText },
+                            });
+                        }}
+                        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl space-y-4"
+                    >
+                        <div>
+                            <h3 className="text-base font-semibold text-gray-900">
+                                {commentItem.first_comment_id ? 'Edit Posted Comment' : 'Post First Comment'}
+                            </h3>
+                            <p className="mt-0.5 text-xs text-gray-500">
+                                {commentItem.platform.toUpperCase()} · {commentItem.title}
+                            </p>
+                        </div>
+
+                        {commentError && (
+                            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                {commentError}
+                            </div>
+                        )}
+
+                        <textarea
+                            rows={3}
+                            required
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Write your comment…"
+                            className="w-full rounded-lg border px-3 py-2 text-sm"
+                        />
+
+                        <p className="text-[11px] text-gray-500">
+                            Note: YouTube/Facebook/Instagram APIs do not support programmatic pinning — click Pin in the platform app if needed.
+                        </p>
+
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setCommentItem(null)}
+                                className="rounded-lg border px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={commentMut.isPending}
+                                className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {commentMut.isPending ? 'Saving…' : commentItem.first_comment_id ? 'Update Comment' : 'Post Comment'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
         </div>
