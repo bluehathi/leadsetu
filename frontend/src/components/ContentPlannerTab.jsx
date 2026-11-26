@@ -28,6 +28,8 @@ const platformBadge = (platform) =>
 export default function ContentPlannerTab({
     accounts,
     brands = [],
+    brandFilter = '',
+    setBrandFilter = null,
     contents,
     contentForm,
     setContentForm,
@@ -57,8 +59,13 @@ export default function ContentPlannerTab({
     const [commentError, setCommentError] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
 
-    // Auto-select first available channel if none is selected yet.
-    const effectiveAccountId = contentForm.social_account_id || (accounts[0] ? String(accounts[0].id) : '');
+    // Auto-select first available channel (within active brand filter if set).
+    const effectiveAccountId =
+        contentForm.social_account_id && accounts.some((a) => String(a.id) === String(contentForm.social_account_id))
+            ? contentForm.social_account_id
+            : accounts[0]
+            ? String(accounts[0].id)
+            : '';
 
     const splitList = (str) =>
         String(str || '')
@@ -178,19 +185,28 @@ export default function ContentPlannerTab({
         onError: (err) => setErrorMsg(err?.response?.data?.message || 'Failed to import YouTube videos.'),
     });
 
+    const brandScopedContents = useMemo(() => {
+        if (!brandFilter) return contents;
+        const selectedBrand = brands.find((b) => String(b.id) === String(brandFilter));
+        const allowedIds = new Set(
+            (selectedBrand?.accounts || accounts).map((a) => Number(a.id))
+        );
+        return contents.filter((c) => allowedIds.has(Number(c.social_account_id)));
+    }, [contents, brands, accounts, brandFilter]);
+
     const stageCounts = useMemo(() => {
-        const counts = { all: contents.length, idea: 0, draft: 0, scheduled: 0, published: 0 };
-        contents.forEach((c) => {
+        const counts = { all: brandScopedContents.length, idea: 0, draft: 0, scheduled: 0, published: 0 };
+        brandScopedContents.forEach((c) => {
             if (counts[c.status] !== undefined) counts[c.status]++;
         });
         return counts;
-    }, [contents]);
+    }, [brandScopedContents]);
 
-    const failedCount = useMemo(() => contents.filter((c) => Boolean(c.publish_error)).length, [contents]);
+    const failedCount = useMemo(() => brandScopedContents.filter((c) => Boolean(c.publish_error)).length, [brandScopedContents]);
 
     const filteredContents = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return contents.filter((item) => {
+        return brandScopedContents.filter((item) => {
             if (stageFilter !== 'all' && item.status !== stageFilter) return false;
             if (platformFilter !== 'all' && item.platform !== platformFilter) return false;
             if (failedOnly && !item.publish_error) return false;
@@ -199,7 +215,7 @@ export default function ContentPlannerTab({
             }
             return true;
         });
-    }, [contents, stageFilter, platformFilter, failedOnly, search]);
+    }, [brandScopedContents, stageFilter, platformFilter, failedOnly, search]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -835,13 +851,33 @@ export default function ContentPlannerTab({
                                 </button>
                             ))}
                         </div>
-                        <input
-                            type="search"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search title or keyword…"
-                            className="w-56 rounded-lg border border-gray-200 px-3 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                            {brands.length > 0 && setBrandFilter && (
+                                <select
+                                    value={brandFilter}
+                                    onChange={(e) => setBrandFilter(e.target.value)}
+                                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                                        brandFilter
+                                            ? 'border-indigo-300 bg-indigo-50 text-indigo-800'
+                                            : 'border-gray-200 bg-white text-gray-700'
+                                    }`}
+                                >
+                                    <option value="">All Brands</option>
+                                    {brands.map((b) => (
+                                        <option key={b.id} value={String(b.id)}>
+                                            🏷️ {b.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            <input
+                                type="search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search title or keyword…"
+                                className="w-48 rounded-lg border border-gray-200 px-3 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
                     </div>
                 </div>
 

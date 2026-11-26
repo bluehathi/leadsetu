@@ -348,6 +348,25 @@ export default function SocialStudio() {
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                    {brands.length > 0 && (
+                        <select
+                            value={brandFilter}
+                            onChange={(e) => setBrandFilter(e.target.value)}
+                            aria-label="Filter by Brand"
+                            className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                                brandFilter
+                                    ? 'border-indigo-300 bg-indigo-50 text-indigo-800'
+                                    : 'border-gray-200 bg-white text-gray-700'
+                            }`}
+                        >
+                            <option value="">All Brands</option>
+                            {brands.map((b) => (
+                                <option key={b.id} value={String(b.id)}>
+                                    🏷️ {b.name}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                     <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-0.5 text-xs">
                         {[
                             { id: '', label: 'All' },
@@ -921,6 +940,8 @@ export default function SocialStudio() {
                 <ContentPlannerTab
                     accounts={accounts}
                     brands={brands}
+                    brandFilter={brandFilter}
+                    setBrandFilter={setBrandFilter}
                     contents={contents}
                     contentForm={contentForm}
                     setContentForm={setContentForm}
