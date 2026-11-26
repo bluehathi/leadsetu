@@ -39,24 +39,7 @@ export default function ChannelAnalytics() {
         },
     });
 
-    if (isLoading) {
-        return <div className="p-6 text-sm text-gray-500">Loading channel analytics…</div>;
-    }
-
-    if (isError || !data) {
-        return (
-            <div className="space-y-4">
-                <Link to="/social" className="text-sm text-indigo-600 hover:underline">
-                    ← Back to Growth Studio
-                </Link>
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                    {error?.response?.data?.message || 'Unable to load channel analytics.'}
-                </div>
-            </div>
-        );
-    }
-
-    const { account, summary, studio, source, synced_at: syncedAt, channel_meta: meta, top_items: topItems, recent_items: recentItems, deep_analytics: deepAnalytics, warning } = data;
+    const recentItems = data?.recent_items ?? [];
 
     const filteredItems = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -74,6 +57,25 @@ export default function ChannelAnalytics() {
 
         return sorted;
     }, [recentItems, search, typeFilter, sortBy]);
+
+    if (isLoading) {
+        return <div className="p-6 text-sm text-gray-500">Loading channel analytics…</div>;
+    }
+
+    if (isError || !data) {
+        return (
+            <div className="space-y-4">
+                <Link to="/social" className="text-sm text-indigo-600 hover:underline">
+                    ← Back to Growth Studio
+                </Link>
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    {error?.response?.data?.message || 'Unable to load channel analytics.'}
+                </div>
+            </div>
+        );
+    }
+
+    const { account, summary, studio, source, synced_at: syncedAt, channel_meta: meta, top_items: topItems, deep_analytics: deepAnalytics, warning } = data;
 
     const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
     const currentPage = Math.min(page, totalPages);
