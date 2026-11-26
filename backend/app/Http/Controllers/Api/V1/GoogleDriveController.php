@@ -227,23 +227,16 @@ class GoogleDriveController extends Controller
     {
         Gate::authorize('update', $socialContent);
 
-        $conn = GoogleDriveConnection::query()->first();
-        if (! $conn) {
-            return response()->json(['message' => 'Google Drive is not connected.'], 422);
-        }
-
         try {
-            if ($socialContent->platform === 'instagram') {
-                $updated = $this->drive->publishContentToInstagram($socialContent, $conn);
-                $this->audit->log('instagram_media_published', $updated, "Published {$updated->title} from Google Drive to Instagram ({$updated->instagram_media_id})");
-            } elseif ($socialContent->platform === 'facebook') {
-                $updated = $this->drive->publishContentToFacebook($socialContent, $conn);
-                $this->audit->log('facebook_post_published', $updated, "Published {$updated->title} to Facebook Page");
-            } else {
-                $privacy = $request->input('privacy_status', 'private');
-                $updated = $this->drive->publishContentToYouTube($socialContent, $conn, $privacy);
-                $this->audit->log('youtube_video_published', $updated, "Published {$updated->title} from Google Drive to YouTube ({$updated->youtube_video_id})");
-            }
+            $privacy = (string) $request->input('privacy_status', 'private');
+            $updated = $this->drive->publishContent($socialContent, $privacy);
+
+            $action = match ($updated->platform) {
+                'instagram' => 'instagram_media_published',
+                'facebook' => 'facebook_post_published',
+                default => 'youtube_video_published',
+            };
+            $this->audit->log($action, $updated, "Published {$updated->title} to {$updated->platform}");
 
             return response()->json(['data' => $updated]);
         } catch (Throwable $e) {

@@ -9,7 +9,7 @@ const platformBadge = (platform) =>
         ? 'bg-blue-100 text-blue-700'
         : 'bg-pink-100 text-pink-700';
 
-export default function ContentCalendarView({ contents, onSelectItem }) {
+export default function ContentCalendarView({ contents, onSelectItem, onRetryItem, canManage = false, isRetrying = false }) {
     const [cursor, setCursor] = useState(() => {
         const d = new Date();
         return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -114,18 +114,44 @@ export default function ContentCalendarView({ contents, onSelectItem }) {
                             </div>
                             <div className="space-y-1">
                                 {dayItems.map((item) => (
-                                    <button
+                                    <div
                                         key={item.id}
-                                        type="button"
-                                        onClick={() => onSelectItem(item)}
-                                        title={`${item.title} (${item.status})`}
-                                        className="flex w-full items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-left text-[11px] hover:border-indigo-300 hover:bg-indigo-50/40"
+                                        className={`flex w-full items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] ${
+                                            item.publish_error
+                                                ? 'border-red-300 bg-red-50'
+                                                : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40'
+                                        }`}
                                     >
-                                        <span className={`rounded px-1 text-[9px] font-bold uppercase flex-shrink-0 ${platformBadge(item.platform)}`}>
-                                            {item.platform.slice(0, 2)}
-                                        </span>
-                                        <span className="truncate text-gray-800">{item.title}</span>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => onSelectItem(item)}
+                                            title={item.publish_error ? `${item.title} (Failed: ${item.publish_error})` : `${item.title} (${item.status})`}
+                                            className="flex min-w-0 flex-1 items-center gap-1 text-left"
+                                        >
+                                            <span className={`rounded px-1 text-[9px] font-bold uppercase flex-shrink-0 ${platformBadge(item.platform)}`}>
+                                                {item.platform.slice(0, 2)}
+                                            </span>
+                                            {item.publish_error && <span className="text-red-600 flex-shrink-0">⚠</span>}
+                                            {!item.publish_error && item.status === 'published' && (
+                                                <span className="text-green-600 flex-shrink-0">✓</span>
+                                            )}
+                                            <span className="truncate text-gray-800">{item.title}</span>
+                                        </button>
+                                        {item.publish_error && canManage && onRetryItem && (
+                                            <button
+                                                type="button"
+                                                disabled={isRetrying}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onRetryItem(item);
+                                                }}
+                                                title="Retry publish now"
+                                                className="flex-shrink-0 rounded bg-red-600 px-1 py-0.5 text-[9px] font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                                            >
+                                                Retry
+                                            </button>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
                         </div>

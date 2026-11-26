@@ -727,4 +727,58 @@ class GoogleDriveService
 
         return $content->fresh()->load('account:id,platform,account_name,handle');
     }
+
+    /**
+     * Publish a Content Planner item immediately to its target platform,
+     * clearing publish_error on success or recording it on failure.
+     */
+    public function publishContent(SocialContent $content, string $privacyStatus = 'public'): SocialContent
+    {
+        $content->loadMissing('account');
+        $account = $content->account;
+        if (! $account) {
+            throw new RuntimeException('Target social account not found.');
+        }
+
+        $alreadyPublished = ($account->platform === 'youtube' && ! empty($content->youtube_video_id))
+            || ($account->platform === 'instagram' && ! empty($content->instagram_media_id))
+            || ($account->platform === 'facebook' && $content->status === 'published' && ! empty($content->published_url));
+
+        if ($alreadyPublished) {
+            throw new RuntimeException('Content is already published.');
+        }
+
+        $driveConn = GoogleDriveConnection::withoutGlobalScopes()
+            ->where('workspace_id', $content->workspace_id)
+            ->first();
+
+        try {
+            if ($account->platform === 'youtube') {
+                if (! $driveConn) {
+                    throw new RuntimeException('Google Drive is not connected.');
+                }
+                $updated = $this->publishContentToYouTube($content, $driveConn, $privacyStatus);
+            } elseif ($account->platform === 'instagram') {
+                if (! $driveConn) {
+                    throw new RuntimeException('Google Drive is not connected.');
+                }
+                $updated = $this->publishContentToInstagram($content, $driveConn);
+            } elseif ($account->platform === 'facebook') {
+                $hasMedia = (bool) ($content->drive_file_id ?: $content->drive_thumbnail_file_id);
+                if ($hasMedia && ! $driveConn) {
+                    throw new RuntimeException('Google Drive is not connected for attached media.');
+                }
+                $updated = $this->publishContentToFacebook($content, $driveConn ?? new GoogleDriveConnection());
+            } else {
+                throw new RuntimeException("Unsupported platform for publishing: {$account->platform}");
+            }
+
+            $updated->forceFill(['publish_error' => null])->save();
+
+            return $updated->fresh()->load('account:id,platform,account_name,handle');
+        } catch (Throwable $e) {
+            $content->forceFill(['publish_error' => $e->getMessage()])->save();
+            throw $e;
+        }
+    }
 }

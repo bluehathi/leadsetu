@@ -136,7 +136,10 @@ export default function ContentPlannerTab({
             setErrorMsg('');
             onSaved();
         },
-        onError: (err) => setErrorMsg(err?.response?.data?.message || 'Failed to publish video to YouTube.'),
+        onError: (err) => {
+            setErrorMsg(err?.response?.data?.message || 'Failed to publish content.');
+            onSaved();
+        },
     });
 
     const stageCounts = useMemo(() => {
@@ -652,9 +655,17 @@ export default function ContentPlannerTab({
                 {viewMode === 'calendar' ? (
                     <ContentCalendarView
                         contents={filteredContents}
+                        canManage={canManage}
+                        isRetrying={publishMut.isPending}
                         onSelectItem={(item) => {
                             if (canManage) startEdit(item);
                         }}
+                        onRetryItem={(item) =>
+                            publishMut.mutate({
+                                id: item.id,
+                                privacy: item.platform === 'youtube' ? (publishPrivacy[item.id] || 'public') : 'public',
+                            })
+                        }
                     />
                 ) : filteredContents.length === 0 ? (
                     <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 shadow-sm">
@@ -753,8 +764,23 @@ export default function ContentPlannerTab({
                                             </div>
                                         )}
                                         {item.publish_error && (
-                                            <div className="mt-1 rounded bg-red-50 px-2 py-1 text-xs text-red-700">
-                                                ⚠ Auto-publish failed: {item.publish_error}
+                                            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
+                                                <span>⚠ Publish failed: {item.publish_error}</span>
+                                                {canManage && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={publishMut.isPending}
+                                                        onClick={() =>
+                                                            publishMut.mutate({
+                                                                id: item.id,
+                                                                privacy: item.platform === 'youtube' ? (publishPrivacy[item.id] || 'public') : 'public',
+                                                            })
+                                                        }
+                                                        className="rounded bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                                                    >
+                                                        {publishMut.isPending ? 'Retrying…' : 'Retry Publish'}
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                         {item.first_comment && (

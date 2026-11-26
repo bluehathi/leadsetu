@@ -261,6 +261,22 @@ class McpServerService
                         'required' => ['content_id', 'first_comment'],
                     ],
                 ],
+                [
+                    'name' => 'publish_content_now',
+                    'description' => 'Immediately publish (or retry publishing) a draft, scheduled, or failed Content Planner item to YouTube, Instagram, or Facebook.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'content_id' => ['type' => 'integer', 'description' => 'SocialContent ID from list_content_planner'],
+                            'privacy_status' => [
+                                'type' => 'string',
+                                'enum' => ['public', 'unlisted', 'private'],
+                                'description' => 'YouTube privacy status (default: public). Ignored for Instagram/Facebook.',
+                            ],
+                        ],
+                        'required' => ['content_id'],
+                    ],
+                ],
             ]);
         }
 
@@ -272,7 +288,7 @@ class McpServerService
         $limit = max(1, min(100, (int) ($args['limit'] ?? 25)));
         $canWriteContent = in_array('content:write', $scopes, true);
 
-        $writeTools = ['create_content_plan', 'update_content_plan', 'delete_content_plan', 'create_social_brand', 'share_content_to_brand', 'update_first_comment'];
+        $writeTools = ['create_content_plan', 'update_content_plan', 'delete_content_plan', 'create_social_brand', 'share_content_to_brand', 'update_first_comment', 'publish_content_now'];
         if (in_array($name, $writeTools, true) && ! $canWriteContent) {
             throw new InvalidArgumentException("Tool '{$name}' requires the 'content:write' scope. Enable Content Planner write access for this MCP token in LeadSetu Workspace.");
         }
@@ -296,6 +312,7 @@ class McpServerService
             'create_social_brand' => $this->createSocialBrand($args),
             'share_content_to_brand' => $this->shareContentToBrand($args),
             'update_first_comment' => $this->updateFirstComment($args),
+            'publish_content_now' => $this->publishContentNow($args),
             default => throw new InvalidArgumentException("Unknown MCP tool: {$name}"),
         };
 
@@ -711,6 +728,20 @@ class McpServerService
 
         $updated = $this->driveService->postOrUpdateFirstComment($content->fresh());
         $this->audit->log('social_first_comment_updated', $updated, "MCP updated first comment on '{$updated->title}'");
+
+        return $updated->toArray();
+    }
+
+    protected function publishContentNow(array $args): array
+    {
+        $content = SocialContent::with('account')->findOrFail((int) ($args['content_id'] ?? 0));
+        $privacy = (string) ($args['privacy_status'] ?? 'public');
+        if (! in_array($privacy, ['public', 'unlisted', 'private'], true)) {
+            throw new InvalidArgumentException("privacy_status must be 'public', 'unlisted', or 'private'.");
+        }
+
+        $updated = $this->driveService->publishContent($content, $privacy);
+        $this->audit->log('social_content_published_now', $updated, "MCP published '{$updated->title}' to {$updated->platform}");
 
         return $updated->toArray();
     }

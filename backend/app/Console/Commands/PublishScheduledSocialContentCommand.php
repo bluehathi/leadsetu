@@ -33,35 +33,11 @@ class PublishScheduledSocialContentCommand extends Command
         foreach ($due as $content) {
             WorkspaceContext::run((int) $content->workspace_id, function () use ($content, $drive, $audit, &$published, &$failed) {
                 try {
-                    $account = $content->account;
-                    if (! $account) {
-                        throw new \RuntimeException('Target social account not found.');
-                    }
-
-                    $driveConn = GoogleDriveConnection::withoutGlobalScopes()
-                        ->where('workspace_id', $content->workspace_id)
-                        ->first();
-
-                    if ($account->platform === 'youtube') {
-                        if (! $driveConn) {
-                            throw new \RuntimeException('Google Drive is not connected.');
-                        }
-                        $drive->publishContentToYouTube($content, $driveConn, 'public');
-                    } elseif ($account->platform === 'instagram') {
-                        if (! $driveConn) {
-                            throw new \RuntimeException('Google Drive is not connected.');
-                        }
-                        $drive->publishContentToInstagram($content, $driveConn);
-                    } elseif ($account->platform === 'facebook') {
-                        $drive->publishContentToFacebook($content, $driveConn ?? new GoogleDriveConnection());
-                    }
-
-                    $content->forceFill(['publish_error' => null])->save();
-                    $audit->log('social_content_auto_published', $content, "Auto-published '{$content->title}' to {$account->platform}");
+                    $updated = $drive->publishContent($content, 'public');
+                    $audit->log('social_content_auto_published', $updated, "Auto-published '{$updated->title}' to {$updated->platform}");
                     $published++;
                 } catch (\Throwable $e) {
                     $failed++;
-                    $content->forceFill(['publish_error' => $e->getMessage()])->save();
                     report($e);
                     $this->warn("Content #{$content->id} failed: {$e->getMessage()}");
                 }
