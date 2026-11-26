@@ -218,6 +218,32 @@ class McpServerService
                         'required' => ['content_id'],
                     ],
                 ],
+                [
+                    'name' => 'create_social_brand',
+                    'description' => 'Create a Social Brand grouping YouTube, Instagram, and Facebook channels together.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'name' => ['type' => 'string', 'description' => 'Brand name (e.g. Krishna Motivation)'],
+                            'niche' => ['type' => 'string', 'description' => 'Optional brand niche'],
+                            'description' => ['type' => 'string'],
+                            'account_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'description' => 'Optional SocialAccount IDs to link to this brand'],
+                        ],
+                        'required' => ['name'],
+                    ],
+                ],
+                [
+                    'name' => 'share_content_to_brand',
+                    'description' => 'Cross-post/clone an existing Content Planner item to all other channels in a Social Brand (YouTube, Instagram, Facebook).',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'content_id' => ['type' => 'integer', 'description' => 'Source SocialContent ID from list_content_planner'],
+                            'brand_id' => ['type' => 'integer', 'description' => 'Target SocialBrand ID from list_social_brands'],
+                        ],
+                        'required' => ['content_id', 'brand_id'],
+                    ],
+                ],
             ]);
         }
 
@@ -229,7 +255,7 @@ class McpServerService
         $limit = max(1, min(100, (int) ($args['limit'] ?? 25)));
         $canWriteContent = in_array('content:write', $scopes, true);
 
-        $writeTools = ['create_content_plan', 'update_content_plan', 'delete_content_plan'];
+        $writeTools = ['create_content_plan', 'update_content_plan', 'delete_content_plan', 'create_social_brand', 'share_content_to_brand'];
         if (in_array($name, $writeTools, true) && ! $canWriteContent) {
             throw new InvalidArgumentException("Tool '{$name}' requires the 'content:write' scope. Enable Content Planner write access for this MCP token in LeadSetu Workspace.");
         }
@@ -250,6 +276,8 @@ class McpServerService
             'create_content_plan' => $this->createContentPlan($args),
             'update_content_plan' => $this->updateContentPlan($args),
             'delete_content_plan' => $this->deleteContentPlan($args),
+            'create_social_brand' => $this->createSocialBrand($args),
+            'share_content_to_brand' => $this->shareContentToBrand($args),
             default => throw new InvalidArgumentException("Unknown MCP tool: {$name}"),
         };
 
@@ -564,6 +592,81 @@ class McpServerService
         $this->audit->log('social_content_deleted', $content, "MCP deleted social content: {$title}");
 
         return ['deleted' => true, 'id' => $id, 'title' => $title];
+    }
+
+    protected function createSocialBrand(array $args): array
+    {
+        $name = trim((string) ($args['name'] ?? ''));
+        if ($name === '') {
+            throw new InvalidArgumentException('name is required.');
+        }
+
+        $brand = SocialBrand::create([
+            'name' => $name,
+            'niche' => $args['niche'] ?? null,
+            'description' => $args['description'] ?? null,
+        ]);
+
+        if (! empty($args['account_ids']) && is_array($args['account_ids'])) {
+            SocialAccount::whereIn('id', $args['account_ids'])
+                ->update(['social_brand_id' => $brand->id]);
+        }
+
+        $this->audit->log('social_brand_created', $brand, "MCP created social brand {$brand->name}");
+
+        return $brand->load('accounts:id,social_brand_id,platform,account_name,handle')->toArray();
+    }
+
+    protected function shareContentToBrand(array $args): array
+    {
+        $source = SocialContent::findOrFail((int) ($args['content_id'] ?? 0));
+        $brand = SocialBrand::findOrFail((int) ($args['brand_id'] ?? 0));
+
+        $targets = $brand->accounts()
+            ->where('id', '!=', $source->social_account_id)
+            ->get();
+
+        $created = [];
+        foreach ($targets as $target) {
+            $type = match ($target->platform) {
+                'youtube' => in_array($source->content_type, ['reel', 'short'], true) ? 'short' : 'video',
+                'instagram' => in_array($source->content_type, ['short', 'video', 'reel'], true) ? 'reel' : (in_array($source->content_type, ['carousel', 'post'], true) ? $source->content_type : 'post'),
+                default => in_array($source->content_type, ['reel', 'post', 'video'], true) ? $source->content_type : 'post',
+            };
+
+            $data = [
+                'social_account_id' => $target->id,
+                'platform' => $target->platform,
+                'content_type' => $type,
+                'title' => $source->title,
+                'description' => $source->description,
+                'hook' => $source->hook,
+                'script' => $source->script,
+                'tags' => $source->tags ?? [],
+                'hashtags' => $source->hashtags ?? [],
+                'thumbnail_url' => $source->thumbnail_url,
+                'drive_file_id' => $source->drive_file_id,
+                'drive_file_name' => $source->drive_file_name,
+                'drive_file_url' => $source->drive_file_url,
+                'drive_mime_type' => $source->drive_mime_type,
+                'drive_thumbnail_file_id' => $source->drive_thumbnail_file_id,
+                'target_keyword' => $source->target_keyword,
+                'status' => $source->status === 'published' ? 'draft' : $source->status,
+                'scheduled_at' => $source->scheduled_at,
+            ];
+
+            $scored = $this->growthService->scoreContent($data);
+            $clone = SocialContent::create(array_merge($data, $scored));
+            $created[] = $clone->load('account:id,platform,account_name,handle')->toArray();
+        }
+
+        $this->audit->log('social_content_shared', $source, "MCP shared '{$source->title}' to brand {$brand->name}");
+
+        return [
+            'brand' => $brand->name,
+            'created_count' => count($created),
+            'created' => $created,
+        ];
     }
 
     protected function resolveDriveAttachments(array $args): array

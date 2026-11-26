@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
+import ContentCalendarView from './ContentCalendarView';
 import DriveFilePickerModal from './DriveFilePickerModal';
 
 const STAGES = [
@@ -35,6 +36,7 @@ export default function ContentPlannerTab({
     onSaved,
 }) {
     const [stageFilter, setStageFilter] = useState('all');
+    const [viewMode, setViewMode] = useState('list');
     const [search, setSearch] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [aiSuggestion, setAiSuggestion] = useState(null);
@@ -580,16 +582,41 @@ export default function ContentPlannerTab({
                             </button>
                         ))}
                     </div>
-                    <input
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search planner…"
-                        className="rounded-lg border px-3 py-1.5 text-xs"
-                    />
+                    <div className="flex items-center gap-2">
+                        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs">
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('list')}
+                                className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
+                            >
+                                List
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('calendar')}
+                                className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
+                            >
+                                Calendar
+                            </button>
+                        </div>
+                        <input
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search planner…"
+                            className="rounded-lg border px-3 py-1.5 text-xs"
+                        />
+                    </div>
                 </div>
 
-                {filteredContents.length === 0 ? (
+                {viewMode === 'calendar' ? (
+                    <ContentCalendarView
+                        contents={filteredContents}
+                        onSelectItem={(item) => {
+                            if (canManage) startEdit(item);
+                        }}
+                    />
+                ) : filteredContents.length === 0 ? (
                     <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 shadow-sm">
                         No planned content in this stage yet. Use the planner on the left or import a video from the Google Drive tab!
                     </div>
