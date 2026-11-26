@@ -613,7 +613,7 @@ class SocialOAuthSyncService
         }
 
         $count = count($items);
-        $totalViews = array_sum(array_column($items, 'views'));
+        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById));
         $totalLikes = array_sum(array_column($items, 'likes'));
         $totalComments = array_sum(array_column($items, 'comments'));
         $shortsCount = count(array_filter($items, fn ($i) => $i['type'] === 'short'));
@@ -816,7 +816,7 @@ class SocialOAuthSyncService
             ];
         }
 
-        $totalViews = array_sum(array_column($items, 'views'));
+        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById));
         $count = count($items);
         $base['summary']['views_count'] = $totalViews;
         $base['summary']['recent_videos_count'] = $count;
@@ -875,20 +875,21 @@ class SocialOAuthSyncService
         $followers = (int) ($pageData['followers_count'] ?? ($pageData['fan_count'] ?? $account->followers_count));
 
         $postsResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/posts", [
-            'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares,insights.metric(post_media_view)',
+            'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares,attachments{target{id}},insights.metric(post_media_view)',
             'limit' => 25,
             'access_token' => $account->access_token,
         ]);
 
         if (! $postsResp->successful()) {
             $postsResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/posts", [
-                'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares',
+                'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares,attachments{target{id}}',
                 'limit' => 25,
                 'access_token' => $account->access_token,
             ]);
         }
 
         $videoViewsByUrl = [];
+        $videoViewsById = [];
         $videosResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/videos", [
             'fields' => 'id,views,permalink_url',
             'limit' => 25,
@@ -896,8 +897,12 @@ class SocialOAuthSyncService
         ]);
         if ($videosResp->successful()) {
             foreach ($videosResp->json('data', []) as $v) {
+                $vViews = (int) ($v['views'] ?? 0);
+                if (! empty($v['id'])) {
+                    $videoViewsById[$v['id']] = $vViews;
+                }
                 if (! empty($v['permalink_url'])) {
-                    $videoViewsByUrl[$v['permalink_url']] = (int) ($v['views'] ?? 0);
+                    $videoViewsByUrl[$v['permalink_url']] = $vViews;
                 }
             }
         }
@@ -914,6 +919,10 @@ class SocialOAuthSyncService
             $comments = (int) ($post['comments']['summary']['total_count'] ?? 0);
             $shares = (int) ($post['shares']['count'] ?? 0);
             $views = (int) ($post['insights']['data'][0]['values'][0]['value'] ?? 0);
+            $targetId = $post['attachments']['data'][0]['target']['id'] ?? null;
+            if ($views === 0 && $targetId && isset($videoViewsById[$targetId])) {
+                $views = $videoViewsById[$targetId];
+            }
             if ($views === 0 && ! empty($post['permalink_url']) && isset($videoViewsByUrl[$post['permalink_url']])) {
                 $views = $videoViewsByUrl[$post['permalink_url']];
             }
@@ -933,7 +942,7 @@ class SocialOAuthSyncService
             ];
         }
 
-        $totalViews = array_sum(array_column($items, 'views'));
+        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById));
         $count = count($items);
         $base['summary']['posts_count'] = max($account->posts_count, $count);
         $base['summary']['views_count'] = $totalViews;
