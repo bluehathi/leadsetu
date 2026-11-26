@@ -32,11 +32,12 @@ class McpController extends Controller
     {
         $plainToken = $request->bearerToken();
         if (! $plainToken) {
+            $metaUrl = rtrim((string) config('app.url'), '/').'/.well-known/oauth-protected-resource';
             return response()->json([
                 'jsonrpc' => '2.0',
                 'id' => $request->input('id'),
                 'error' => ['code' => -32001, 'message' => 'Missing Bearer token.'],
-            ], 401);
+            ], 401)->header('WWW-Authenticate', "Bearer resource_metadata=\"{$metaUrl}\"");
         }
 
         $token = McpToken::withoutGlobalScopes()

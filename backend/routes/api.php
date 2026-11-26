@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\BrevoWebhookController;
 use App\Http\Controllers\Api\McpController;
+use App\Http\Controllers\Api\McpOAuthController;
 use App\Http\Controllers\Api\V1;
 
 // Versioned API consumed by the SPA (Sanctum cookie auth).
@@ -36,6 +37,7 @@ Route::prefix('v1')->group(function () {
         Route::get('mcp/tokens', [V1\McpTokenController::class, 'index']);
         Route::post('mcp/tokens', [V1\McpTokenController::class, 'store']);
         Route::delete('mcp/tokens/{mcp_token}', [V1\McpTokenController::class, 'destroy']);
+        Route::post('mcp/oauth/approve', [McpOAuthController::class, 'approve']);
         Route::get('settings/smtp', [V1\SmtpSettingsController::class, 'show']);
         Route::put('settings/smtp', [V1\SmtpSettingsController::class, 'update']);
         Route::post('settings/smtp/test', [V1\SmtpSettingsController::class, 'test'])->middleware('throttle:3,1');
@@ -107,4 +109,6 @@ Route::prefix('v1')->group(function () {
 Route::post('webhooks/brevo', [BrevoWebhookController::class, 'handle']);
 Route::get('mcp', [McpController::class, 'info']);
 Route::post('mcp', [McpController::class, 'handle']);
+Route::post('mcp/oauth/register', [McpOAuthController::class, 'register']);
+Route::post('mcp/oauth/token', [McpOAuthController::class, 'token']);
 

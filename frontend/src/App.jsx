@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import ForgotPassword from './pages/ForgotPassword';
 import Login from './pages/Login';
+import McpAuthorize from './pages/McpAuthorize';
 import Permissions from './pages/Permissions';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/mcp/oauth/authorize" element={<McpAuthorize />} />
             <Route element={<RequireAuth><Layout /></RequireAuth>}>
                 <Route index element={<Home />} />
                 <Route path="/dashboard" element={<Dashboard />} />

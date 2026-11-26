@@ -1,7 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\McpOAuthController;
 use App\Http\Controllers\UnsubscribeController;
 use Illuminate\Support\Facades\Route;
+
+// MCP OAuth 2.1 Discovery endpoints (RFC 9728 / RFC 8414)
+Route::get('/.well-known/oauth-protected-resource', [McpOAuthController::class, 'protectedResourceMetadata']);
+Route::get('/.well-known/oauth-protected-resource/{any}', [McpOAuthController::class, 'protectedResourceMetadata'])->where('any', '.*');
+Route::get('/.well-known/oauth-authorization-server', [McpOAuthController::class, 'authorizationServerMetadata']);
 
 // The backend is API-only (see routes/api.php). The few web routes below serve links that
 // are opened from outside the SPA.
