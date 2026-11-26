@@ -6,6 +6,7 @@ use App\Models\GoogleDriveConnection;
 use App\Models\GoogleDriveFile;
 use App\Models\SocialContent;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
@@ -804,6 +805,53 @@ class GoogleDriveService
         $this->assertDriveWriteResponse($resp, 'Failed to create Google Drive folder.');
 
         return $this->upsertCachedDriveFile($conn, $resp->json(), $parent);
+    }
+
+    public function uploadFile(GoogleDriveConnection $conn, UploadedFile $file, ?string $parentFolderId = null): array
+    {
+        $parent = $parentFolderId ?: ($conn->default_folder_id ?: 'root');
+        $this->assertFolderAllowed($conn, $parent);
+
+        $token = $this->ensureFreshToken($conn);
+        $mimeType = $file->getMimeType() ?: 'application/octet-stream';
+        $fileName = $file->getClientOriginalName() ?: ('upload_'.now()->timestamp);
+        $size = (int) $file->getSize();
+
+        $initResp = Http::withToken($token)
+            ->withHeaders([
+                'X-Upload-Content-Type' => $mimeType,
+                'X-Upload-Content-Length' => (string) $size,
+            ])
+            ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,size,thumbnailLink,webViewLink,modifiedTime,parents&supportsAllDrives=true', [
+                'name' => $fileName,
+                'parents' => [$parent],
+            ]);
+        $this->assertDriveWriteResponse($initResp, 'Failed to initialize Google Drive file upload.');
+
+        $uploadUrl = $initResp->header('Location');
+        if (! $uploadUrl) {
+            throw new RuntimeException('Google Drive did not return an upload URL.');
+        }
+
+        $stream = fopen($file->getRealPath(), 'rb');
+        try {
+            $uploadResp = Http::withToken($token)
+                ->timeout(300)
+                ->withHeaders([
+                    'Content-Type' => $mimeType,
+                    'Content-Length' => (string) $size,
+                ])
+                ->withBody($stream, $mimeType)
+                ->put($uploadUrl);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        $this->assertDriveWriteResponse($uploadResp, 'Failed to upload file to Google Drive.');
+
+        return $this->upsertCachedDriveFile($conn, $uploadResp->json(), $parent);
     }
 
     public function renameFile(GoogleDriveConnection $conn, string $fileId, string $newName): array

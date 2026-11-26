@@ -198,6 +198,120 @@ class GoogleDriveController extends Controller
         }
     }
 
+    public function createFolder(Request $request): JsonResponse
+    {
+        Gate::authorize('create', SocialAccount::class);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'parent_folder_id' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return response()->json(['message' => 'Google Drive is not connected.'], 422);
+        }
+
+        try {
+            $folder = $this->drive->createFolder($conn, $validated['name'], $validated['parent_folder_id'] ?? null);
+            $this->audit->log('google_drive_folder_created', $conn, "Created Google Drive folder '{$folder['name']}'");
+
+            return response()->json(['data' => $folder], 201);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function uploadFile(Request $request): JsonResponse
+    {
+        Gate::authorize('create', SocialAccount::class);
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'max:512000'],
+            'parent_folder_id' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return response()->json(['message' => 'Google Drive is not connected.'], 422);
+        }
+
+        try {
+            $uploaded = $this->drive->uploadFile($conn, $request->file('file'), $validated['parent_folder_id'] ?? null);
+            $this->audit->log('google_drive_file_uploaded', $conn, "Uploaded '{$uploaded['name']}' to Google Drive");
+
+            return response()->json(['data' => $uploaded], 201);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function renameFile(Request $request, string $fileId): JsonResponse
+    {
+        Gate::authorize('create', SocialAccount::class);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return response()->json(['message' => 'Google Drive is not connected.'], 422);
+        }
+
+        try {
+            $updated = $this->drive->renameFile($conn, $fileId, $validated['name']);
+            $this->audit->log('google_drive_file_renamed', $conn, "Renamed Google Drive item {$fileId} to '{$updated['name']}'");
+
+            return response()->json(['data' => $updated]);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function moveFile(Request $request, string $fileId): JsonResponse
+    {
+        Gate::authorize('create', SocialAccount::class);
+
+        $validated = $request->validate([
+            'target_folder_id' => ['required', 'string', 'max:255'],
+        ]);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return response()->json(['message' => 'Google Drive is not connected.'], 422);
+        }
+
+        try {
+            $updated = $this->drive->moveFile($conn, $fileId, $validated['target_folder_id']);
+            $this->audit->log('google_drive_file_moved', $conn, "Moved Google Drive item {$fileId} to {$validated['target_folder_id']}");
+
+            return response()->json(['data' => $updated]);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function deleteFile(Request $request, string $fileId): JsonResponse
+    {
+        Gate::authorize('create', SocialAccount::class);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return response()->json(['message' => 'Google Drive is not connected.'], 422);
+        }
+
+        try {
+            $permanent = $request->boolean('permanent');
+            $result = $this->drive->deleteFile($conn, $fileId, $permanent);
+            $this->audit->log('google_drive_file_deleted', $conn, ($permanent ? 'Permanently deleted' : 'Trashed')." Google Drive item {$fileId}");
+
+            return response()->json(['data' => $result]);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
     public function disconnect(): JsonResponse
     {
         Gate::authorize('create', SocialAccount::class);

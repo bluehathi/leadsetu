@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
+import DriveFilePickerModal from './DriveFilePickerModal';
 
 function formatBytes(bytes) {
     if (!bytes) return '—';
@@ -23,6 +24,13 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
     const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [unlockPassword, setUnlockPassword] = useState('');
     const [unlockError, setUnlockError] = useState('');
+    const [showNewFolder, setShowNewFolder] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [renamingFile, setRenamingFile] = useState(null);
+    const [renameValue, setRenameValue] = useState('');
+    const [movingFile, setMovingFile] = useState(null);
+    const [actionError, setActionError] = useState('');
+    const fileInputRef = useRef(null);
 
     const currentFolder = breadcrumbs[breadcrumbs.length - 1];
 
@@ -116,6 +124,56 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
             qc.invalidateQueries({ queryKey: ['social-drive-status'] });
             qc.removeQueries({ queryKey: ['social-drive-files'] });
         },
+    });
+
+    const createFolderMut = useMutation({
+        mutationFn: () => socialApi.createDriveFolder(newFolderName.trim(), currentFolder.id),
+        onSuccess: () => {
+            setActionError('');
+            setNewFolderName('');
+            setShowNewFolder(false);
+            qc.invalidateQueries({ queryKey: ['social-drive-files'] });
+        },
+        onError: (err) => setActionError(err?.response?.data?.message || 'Failed to create folder.'),
+    });
+
+    const uploadFileMut = useMutation({
+        mutationFn: (file) => socialApi.uploadDriveFile(file, currentFolder.id),
+        onSuccess: () => {
+            setActionError('');
+            qc.invalidateQueries({ queryKey: ['social-drive-files'] });
+        },
+        onError: (err) => setActionError(err?.response?.data?.message || 'Failed to upload file.'),
+    });
+
+    const renameMut = useMutation({
+        mutationFn: () => socialApi.renameDriveFile(renamingFile.id, renameValue.trim()),
+        onSuccess: () => {
+            setActionError('');
+            setRenamingFile(null);
+            setRenameValue('');
+            qc.invalidateQueries({ queryKey: ['social-drive-files'] });
+        },
+        onError: (err) => setActionError(err?.response?.data?.message || 'Failed to rename item.'),
+    });
+
+    const moveMut = useMutation({
+        mutationFn: ({ fileId, targetFolderId }) => socialApi.moveDriveFile(fileId, targetFolderId),
+        onSuccess: () => {
+            setActionError('');
+            setMovingFile(null);
+            qc.invalidateQueries({ queryKey: ['social-drive-files'] });
+        },
+        onError: (err) => setActionError(err?.response?.data?.message || 'Failed to move item.'),
+    });
+
+    const deleteMut = useMutation({
+        mutationFn: (fileId) => socialApi.deleteDriveFile(fileId, false),
+        onSuccess: () => {
+            setActionError('');
+            qc.invalidateQueries({ queryKey: ['social-drive-files'] });
+        },
+        onError: (err) => setActionError(err?.response?.data?.message || 'Failed to trash item.'),
     });
 
     const handleConnect = async () => {
@@ -349,14 +407,89 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                     )}
                 </div>
 
-                <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search files across Drive…"
-                    className="w-64 rounded-lg border px-3 py-1.5 text-xs"
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setActionError('');
+                            setShowNewFolder((v) => !v);
+                        }}
+                        className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                    >
+                        + New Folder
+                    </button>
+                    <button
+                        type="button"
+                        disabled={uploadFileMut.isPending}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                        {uploadFileMut.isPending ? 'Uploading…' : '↑ Upload File'}
+                    </button>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="video/*,image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                uploadFileMut.mutate(file);
+                                e.target.value = '';
+                            }
+                        }}
+                    />
+                    <input
+                        type="search"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search files across Drive…"
+                        className="w-56 rounded-lg border px-3 py-1.5 text-xs"
+                    />
+                </div>
             </div>
+
+            {showNewFolder && (
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        if (newFolderName.trim()) createFolderMut.mutate();
+                    }}
+                    className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3"
+                >
+                    <input
+                        type="text"
+                        autoFocus
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        placeholder={`New folder inside ${currentFolder.name}…`}
+                        className="min-w-0 flex-1 rounded-lg border bg-white px-3 py-1.5 text-xs"
+                    />
+                    <button
+                        type="submit"
+                        disabled={!newFolderName.trim() || createFolderMut.isPending}
+                        className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                        {createFolderMut.isPending ? 'Creating…' : 'Create Folder'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setShowNewFolder(false);
+                            setNewFolderName('');
+                        }}
+                        className="rounded-lg border bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                    >
+                        Cancel
+                    </button>
+                </form>
+            )}
+
+            {actionError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                    {actionError}
+                </div>
+            )}
 
             {filesError && (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
@@ -425,38 +558,69 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                             </div>
 
                             {file.is_folder ? (
-                                !isLocked && (
-                                    <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-                                        <button
-                                            onClick={() => toggleFavMut.mutate({ folderId: file.id, folderName: file.name })}
-                                            className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
-                                                isFav(file.id)
-                                                    ? 'border-amber-300 bg-amber-50 text-amber-800'
-                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            {isFav(file.id) ? '★ Favorited' : '☆ Favorite'}
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                setDefaultMut.mutate(
+                                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
+                                    {!isLocked && (
+                                        <>
+                                            <button
+                                                onClick={() => toggleFavMut.mutate({ folderId: file.id, folderName: file.name })}
+                                                className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                                                    isFav(file.id)
+                                                        ? 'border-amber-300 bg-amber-50 text-amber-800'
+                                                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {isFav(file.id) ? '★ Favorited' : '☆ Favorite'}
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    setDefaultMut.mutate(
+                                                        isDefault(file.id)
+                                                            ? { folderId: null, folderName: null }
+                                                            : { folderId: file.id, folderName: file.name }
+                                                    )
+                                                }
+                                                className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
                                                     isDefault(file.id)
-                                                        ? { folderId: null, folderName: null }
-                                                        : { folderId: file.id, folderName: file.name }
-                                                )
+                                                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                                                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {isDefault(file.id) ? 'Default ✓' : 'Set Default'}
+                                            </button>
+                                        </>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setRenamingFile(file);
+                                            setRenameValue(file.name);
+                                        }}
+                                        className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                                    >
+                                        Rename
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMovingFile(file)}
+                                        className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                                    >
+                                        Move
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={deleteMut.isPending}
+                                        onClick={() => {
+                                            if (window.confirm(`Move folder "${file.name}" to Google Drive Trash?`)) {
+                                                deleteMut.mutate(file.id);
                                             }
-                                            className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
-                                                isDefault(file.id)
-                                                    ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            {isDefault(file.id) ? 'Default ✓' : 'Set Default'}
-                                        </button>
-                                    </div>
-                                )
+                                        }}
+                                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                        Trash
+                                    </button>
+                                </div>
                             ) : (
-                                <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
                                     {file.is_video && (
                                         <button
                                             onClick={() => onImportVideo(file)}
@@ -473,6 +637,35 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                                             Use as Thumbnail
                                         </button>
                                     )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setRenamingFile(file);
+                                            setRenameValue(file.name);
+                                        }}
+                                        className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                                    >
+                                        Rename
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMovingFile(file)}
+                                        className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                                    >
+                                        Move
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={deleteMut.isPending}
+                                        onClick={() => {
+                                            if (window.confirm(`Move "${file.name}" to Google Drive Trash?`)) {
+                                                deleteMut.mutate(file.id);
+                                            }
+                                        }}
+                                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                        Trash
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -530,6 +723,53 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                         </div>
                     </form>
                 </div>
+            )}
+            {renamingFile && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (renameValue.trim()) renameMut.mutate();
+                        }}
+                        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl space-y-4"
+                    >
+                        <h3 className="text-base font-semibold text-gray-900">Rename {renamingFile.is_folder ? 'Folder' : 'File'}</h3>
+                        <input
+                            type="text"
+                            required
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            className="w-full rounded-lg border px-3 py-2 text-sm"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setRenamingFile(null)}
+                                className="rounded-lg border px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!renameValue.trim() || renameMut.isPending}
+                                className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {renameMut.isPending ? 'Saving…' : 'Save Name'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {movingFile && (
+                <DriveFilePickerModal
+                    mode="folder"
+                    onClose={() => setMovingFile(null)}
+                    onSelect={(targetFolder) => {
+                        moveMut.mutate({ fileId: movingFile.id, targetFolderId: targetFolder.id });
+                    }}
+                />
             )}
         </div>
     );

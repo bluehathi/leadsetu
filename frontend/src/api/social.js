@@ -48,6 +48,22 @@ export const socialApi = {
     getDriveStatus: () => api.get('/social/drive/status').then((r) => r.data.data),
     getDriveOAuthUrl: () => api.get('/social/drive/oauth/url').then((r) => r.data.data),
     listDriveFiles: (params) => api.get('/social/drive/files', { params }).then((r) => r.data.data),
+    createDriveFolder: (name, parent_folder_id = null) =>
+        api.post('/social/drive/folders', { name, ...(parent_folder_id ? { parent_folder_id } : {}) }).then((r) => r.data.data),
+    uploadDriveFile: (file, parent_folder_id = null) => {
+        const form = new FormData();
+        form.append('file', file);
+        if (parent_folder_id) form.append('parent_folder_id', parent_folder_id);
+        return api.post('/social/drive/files/upload', form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then((r) => r.data.data);
+    },
+    renameDriveFile: (fileId, name) =>
+        api.patch(`/social/drive/files/${fileId}/rename`, { name }).then((r) => r.data.data),
+    moveDriveFile: (fileId, target_folder_id) =>
+        api.patch(`/social/drive/files/${fileId}/move`, { target_folder_id }).then((r) => r.data.data),
+    deleteDriveFile: (fileId, permanent = false) =>
+        api.delete(`/social/drive/files/${fileId}`, { params: permanent ? { permanent: 1 } : {} }).then((r) => r.data.data),
     toggleDriveFavorite: (folder_id, folder_name) =>
         api.post('/social/drive/favorites', { folder_id, folder_name }).then((r) => r.data.data),
     setDriveDefaultFolder: (folder_id, folder_name) =>

@@ -13,6 +13,9 @@ export default function DriveFilePickerModal({
     const [breadcrumbs, setBreadcrumbs] = useState([{ id: null, name: 'My Drive' }]);
     const [initializedDefault, setInitializedDefault] = useState(false);
     const [search, setSearch] = useState('');
+    const [newFolderName, setNewFolderName] = useState('');
+    const [showNewFolder, setShowNewFolder] = useState(false);
+    const [folderError, setFolderError] = useState('');
 
     const currentFolder = breadcrumbs[breadcrumbs.length - 1];
 
@@ -77,6 +80,21 @@ export default function DriveFilePickerModal({
         },
     });
 
+    const createFolderMut = useMutation({
+        mutationFn: () => socialApi.createDriveFolder(newFolderName.trim(), currentFolder.id),
+        onSuccess: (created) => {
+            setNewFolderName('');
+            setShowNewFolder(false);
+            setFolderError('');
+            qc.invalidateQueries({ queryKey: ['social-drive-files'] });
+            if (mode === 'folder') {
+                onSelect({ id: created.drive_file_id, name: created.name });
+                onClose();
+            }
+        },
+        onError: (err) => setFolderError(err?.response?.data?.message || 'Failed to create folder.'),
+    });
+
     const favorites = status?.favorite_folders ?? [];
     const allItems = filesData?.items ?? [];
     const items = allItems.filter((f) => {
@@ -104,6 +122,18 @@ export default function DriveFilePickerModal({
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
+                        {status?.connected && mode === 'folder' && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setFolderError('');
+                                    setShowNewFolder((v) => !v);
+                                }}
+                                className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                            >
+                                + New Folder
+                            </button>
+                        )}
                         {status?.connected && (
                             <button
                                 type="button"
@@ -230,6 +260,26 @@ export default function DriveFilePickerModal({
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-4">
+                            {showNewFolder && mode === 'folder' && (
+                                <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3">
+                                    <input
+                                        type="text"
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        placeholder={`New folder inside ${currentFolder.name}…`}
+                                        className="min-w-0 flex-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs"
+                                    />
+                                    <button
+                                        type="button"
+                                        disabled={!newFolderName.trim() || createFolderMut.isPending}
+                                        onClick={() => createFolderMut.mutate()}
+                                        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                                    >
+                                        {createFolderMut.isPending ? 'Creating…' : 'Create & Link'}
+                                    </button>
+                                    {folderError && <p className="w-full text-xs text-red-600">{folderError}</p>}
+                                </div>
+                            )}
                             {filesLoading ? (
                                 <div className="py-8 text-center text-sm text-gray-500">Loading files…</div>
                             ) : items.length === 0 ? (

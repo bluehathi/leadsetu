@@ -97,6 +97,11 @@ Route::prefix('v1')->group(function () {
         Route::get('social/drive/status', [V1\GoogleDriveController::class, 'status']);
         Route::get('social/drive/oauth/url', [V1\GoogleDriveController::class, 'oauthUrl']);
         Route::get('social/drive/files', [V1\GoogleDriveController::class, 'files']);
+        Route::post('social/drive/folders', [V1\GoogleDriveController::class, 'createFolder']);
+        Route::post('social/drive/files/upload', [V1\GoogleDriveController::class, 'uploadFile']);
+        Route::patch('social/drive/files/{fileId}/rename', [V1\GoogleDriveController::class, 'renameFile']);
+        Route::patch('social/drive/files/{fileId}/move', [V1\GoogleDriveController::class, 'moveFile']);
+        Route::delete('social/drive/files/{fileId}', [V1\GoogleDriveController::class, 'deleteFile']);
         Route::post('social/drive/favorites', [V1\GoogleDriveController::class, 'toggleFavorite']);
         Route::post('social/drive/default-folder', [V1\GoogleDriveController::class, 'setDefaultFolder']);
         Route::post('social/drive/lock-folder', [V1\GoogleDriveController::class, 'toggleLockFolder']);
