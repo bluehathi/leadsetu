@@ -5,13 +5,19 @@ import { humanize, money, when } from '../lib/format';
 import { STATUSES, label } from '../lib/leads';
 import { formatMoney } from '../lib/money';
 
-const Card = ({ title, value, hint }) => (
-    <div className="rounded border bg-white p-4">
-        <div className="text-xs uppercase text-gray-500">{title}</div>
-        <div className="mt-1 text-2xl font-semibold">{value}</div>
-        {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
-    </div>
-);
+const ACCENTS = ['from-indigo-500 to-violet-500', 'from-sky-500 to-cyan-500', 'from-emerald-500 to-teal-500', 'from-amber-500 to-orange-500', 'from-rose-500 to-pink-500'];
+let cardIndex = 0;
+const Card = ({ title, value, hint }) => {
+    const accent = ACCENTS[cardIndex++ % ACCENTS.length];
+    return (
+        <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent}`} />
+            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{title}</div>
+            <div className="mt-1 text-2xl font-bold">{value}</div>
+            {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
+        </div>
+    );
+};
 
 // Plain CSS bars: created vs won leads per month.
 function MonthlyBars({ months }) {
@@ -35,11 +41,12 @@ export default function Dashboard() {
     const { data, isLoading, isError } = useQuery({ queryKey: ['dashboard'], queryFn: dashboardApi.get });
     if (isLoading) return <p>Loading…</p>;
     if (isError) return <p className="text-sm text-red-600">Could not load the dashboard.</p>;
+    cardIndex = 0;
     const { leads, receivables, contacts, companies, campaigns, recent_activity: activity } = data;
 
     return (
         <div className="space-y-6">
-            <h1 className="text-xl font-semibold">Dashboard</h1>
+            <h1 className="text-2xl font-semibold">Dashboard</h1>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {receivables && <Card title="Outstanding" value={formatMoney(receivables.outstanding_minor, receivables.currency ?? 'INR')} hint={`${receivables.draft_count} draft invoices`} />}
@@ -57,11 +64,11 @@ export default function Dashboard() {
 
             {leads && (
                 <div className="grid gap-4 lg:grid-cols-2">
-                    <section className="rounded border bg-white p-4">
+                    <section className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                         <h2 className="mb-3 font-medium">Leads per month <span className="ml-2 text-xs font-normal text-gray-500"><span className="text-blue-500">■</span> created <span className="text-green-600">■</span> won</span></h2>
                         <MonthlyBars months={leads.per_month} />
                     </section>
-                    <section className="rounded border bg-white p-4">
+                    <section className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                         <h2 className="mb-3 font-medium">Pipeline by status</h2>
                         <ul className="space-y-1 text-sm">
                             {STATUSES.map((s) => (
@@ -74,7 +81,7 @@ export default function Dashboard() {
             )}
 
             {activity && (
-                <section className="rounded border bg-white p-4">
+                <section className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                     <div className="mb-3 flex items-center justify-between">
                         <h2 className="font-medium">Recent activity</h2>
                         <Link to="/activity-logs" className="text-sm text-blue-600 hover:underline">View all</Link>

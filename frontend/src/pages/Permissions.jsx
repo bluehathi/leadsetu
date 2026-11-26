@@ -13,7 +13,7 @@ export default function Permissions() {
             <p className="mb-4 text-sm text-gray-600">Defined by the application. Combine them into roles on the Roles page.</p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {data.data.map((p) => (
-                    <div key={p.id} className="rounded border bg-white px-3 py-2 text-sm">
+                    <div key={p.id} className="rounded-xl border border-gray-200 bg-white shadow-sm px-3 py-2 text-sm">
                         {p.name}
                         {!p.grantable && <span className="ml-2 text-xs text-gray-500">(you don't hold this)</span>}
                     </div>

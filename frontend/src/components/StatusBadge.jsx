@@ -16,5 +16,5 @@ const STYLES = {
 };
 
 export default function StatusBadge({ status }) {
-    return <span className={`rounded px-2 py-0.5 text-xs font-medium capitalize ${STYLES[status] ?? STYLES.draft}`}>{String(status).replace('_', ' ')}</span>;
+    return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STYLES[status] ?? STYLES.draft}`}>{String(status).replace('_', ' ')}</span>;
 }

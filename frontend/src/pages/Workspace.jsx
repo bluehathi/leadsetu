@@ -42,7 +42,7 @@ export default function Workspace() {
 
     return (
         <form onSubmit={submit} className="max-w-lg space-y-4">
-            <h1 className="text-xl font-semibold">Workspace</h1>
+            <h1 className="text-2xl font-semibold">Workspace</h1>
             {error.message && !Object.keys(error.fields).length && <p className="text-sm text-red-600">{error.message}</p>}
             <Field label="Name" error={error.fields.name}>
                 <input className={inputClass} disabled={!editable} value={values.name} onChange={(e) => setValues({ ...values, name: e.target.value })} />

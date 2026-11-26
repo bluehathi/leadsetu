@@ -28,7 +28,7 @@ const useBusiness = () => useQuery({ queryKey: ['business'], queryFn: businessAp
 
 function NeedsBusiness() {
     return (
-        <p className="rounded border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
+        <p className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
             Set up your <Link className="underline" to="/business">business profile</Link> before creating documents.
         </p>
     );
@@ -61,7 +61,7 @@ export function DocumentList({ kind }) {
                 canCreate={can(k.create)} canEdit={false} canDelete={false}
                 onCreate={() => navigate(`${k.path}/new`)}
                 toolbar={
-                    <select className="mb-4 rounded border p-2 text-sm" value={status} onChange={(e) => { setStatus(e.target.value); state.setPage(1); }}>
+                    <select className="mb-4 rounded-lg border p-2 text-sm" value={status} onChange={(e) => { setStatus(e.target.value); state.setPage(1); }}>
                         <option value="">All statuses</option>
                         {k.statuses.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                     </select>
@@ -141,7 +141,7 @@ export function DocumentEditor({ kind }) {
 
     return (
         <form onSubmit={submit} className="max-w-5xl space-y-5">
-            <h1 className="text-xl font-semibold">{id ? `Edit ${k.one.toLowerCase()}` : `New ${k.one.toLowerCase()}`}</h1>
+            <h1 className="text-2xl font-semibold">{id ? `Edit ${k.one.toLowerCase()}` : `New ${k.one.toLowerCase()}`}</h1>
             {error.message && !Object.keys(error.fields).length && <p className="text-sm text-red-600">{error.message}</p>}
             {error.fields.business && <p className="text-sm text-red-600">{error.fields.business}</p>}
             <div className="grid gap-4 sm:grid-cols-3">
@@ -154,7 +154,7 @@ export function DocumentEditor({ kind }) {
                 <Field label={`${k.dateLabel} (optional)`} error={error.fields[k.dateField]}><input className={inputClass} type="date" value={current[k.dateField]} onChange={(e) => update({ [k.dateField]: e.target.value })} /></Field>
             </div>
 
-            <div className="overflow-x-auto rounded border bg-white">
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
                 <table className="w-full text-sm">
                     <thead className="border-b bg-gray-50 text-left"><tr>
                         <th className="px-2 py-2">Item</th><th className="px-2 py-2">Description</th><th className="px-2 py-2">Qty</th>
@@ -255,7 +255,7 @@ export function DocumentDetail({ kind }) {
                 </div>
             </div>
 
-            <div className="rounded border bg-white p-6 print:border-0 print:p-0">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 print:border-0 print:p-0">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div><h1 className="text-2xl font-semibold">{isInvoice ? (seller?.country === 'IN' && d.tax_minor > 0 ? 'Tax Invoice' : 'Invoice') : 'Quote'}</h1>
                         <div className="text-sm">{d.number ?? 'DRAFT'}</div></div>
@@ -292,7 +292,7 @@ export function DocumentDetail({ kind }) {
             {isInvoice && d.payments?.length > 0 && (
                 <section className="no-print">
                     <h2 className="mb-2 font-medium">Payments</h2>
-                    <div className="rounded border bg-white">{d.payments.map((p) => (
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">{d.payments.map((p) => (
                         <div key={p.id} className="flex items-center justify-between border-b px-4 py-2 text-sm last:border-0">
                             <span className={p.voided ? 'text-gray-400 line-through' : ''}>{p.paid_at} · {p.method.replace('_', ' ')} · {money(p.amount_minor)}{p.reference ? ` · ${p.reference}` : ''}</span>
                             {p.voided ? <span className="text-xs text-gray-500">voided: {p.void_reason}</span>

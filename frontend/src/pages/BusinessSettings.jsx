@@ -33,7 +33,7 @@ function TaxRates({ canManage }) {
     return (
         <section className="space-y-3">
             <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Tax rates</h2>{canManage && <Button onClick={() => open(null)}>Add rate</Button>}</div>
-            <div className="rounded border bg-white">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
                 {rates.data?.data?.map((r) => (
                     <div key={r.id} className="flex items-center justify-between border-b px-4 py-2 text-sm last:border-0">
                         <span>{r.name} <span className="text-gray-500">({r.rate}%)</span>{r.is_default && <span className="ml-2 rounded bg-blue-100 px-1.5 text-xs text-blue-700">default</span>}</span>
@@ -86,8 +86,8 @@ export default function BusinessSettings() {
     return (
         <div className="max-w-2xl space-y-10">
             <form onSubmit={submit} className="space-y-4">
-                <h1 className="text-xl font-semibold">Business profile</h1>
-                {!profile.data && <p className="rounded border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">Set up your business to start creating quotes and invoices.</p>}
+                <h1 className="text-2xl font-semibold">Business profile</h1>
+                {!profile.data && <p className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">Set up your business to start creating quotes and invoices.</p>}
                 {saved && <p className="text-sm text-green-700">Saved.</p>}
                 {error.message && !Object.keys(error.fields).length && <p className="text-sm text-red-600">{error.message}</p>}
                 <div className="grid gap-4 sm:grid-cols-2">

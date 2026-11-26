@@ -9,7 +9,7 @@ import { parseApiError } from '../lib/errors';
 import { BodyPreview, CampaignForm } from './Campaigns';
 
 const Stat = ({ label, value }) => (
-    <div className="rounded border bg-white p-3 text-center">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-3 text-center">
         <div className="text-2xl font-semibold">{value ?? 0}</div>
         <div className="text-xs text-gray-500">{label}</div>
     </div>
@@ -66,7 +66,7 @@ export default function CampaignDetail() {
             <div>
                 <Link to="/campaigns" className="text-sm text-blue-600 hover:underline">← Campaigns</Link>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
-                    <h1 className="text-xl font-semibold">{c.name}</h1>
+                    <h1 className="text-2xl font-semibold">{c.name}</h1>
                     <StatusBadge status={c.status} />
                     {c.scheduled_at && c.status === 'scheduled' && <span className="text-sm text-gray-600">for {new Date(c.scheduled_at).toLocaleString()}</span>}
                 </div>
@@ -97,7 +97,7 @@ export default function CampaignDetail() {
 
             <div>
                 <h2 className="mb-2 font-medium">Deliveries</h2>
-                <div className="overflow-x-auto rounded border bg-white">
+                <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
                     <table className="w-full text-left text-sm">
                         <thead className="border-b bg-gray-50"><tr><th className="px-4 py-2">Recipient</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Sent</th><th className="px-4 py-2">Error</th></tr></thead>
                         <tbody>

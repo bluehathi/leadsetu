@@ -48,7 +48,7 @@ export default function SmtpSettings() {
     return (
         <div className="max-w-lg space-y-6">
             <form onSubmit={submit} className="space-y-4">
-                <h1 className="text-xl font-semibold">SMTP settings</h1>
+                <h1 className="text-2xl font-semibold">SMTP settings</h1>
                 {notice && <p className={`text-sm ${notice.ok ? 'text-green-700' : 'text-red-600'}`}>{notice.text}</p>}
                 {error.message && !Object.keys(error.fields).length && <p className="text-sm text-red-600">{error.message}</p>}
                 <Field label="Host" error={error.fields.host}>

@@ -280,14 +280,14 @@ export default function SocialStudio() {
                     <button
                         onClick={() => syncAllMut.mutate()}
                         disabled={syncAllMut.isPending}
-                        className="rounded border bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                        className="rounded-xl border border-gray-200 bg-white shadow-sm px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
                     >
                         {syncAllMut.isPending ? 'Syncing…' : 'Sync All'}
                     </button>
                     <select
                         value={platformFilter}
                         onChange={(e) => setPlatformFilter(e.target.value)}
-                        className="rounded border bg-white px-3 py-1.5 text-sm"
+                        className="rounded-xl border border-gray-200 bg-white shadow-sm px-3 py-1.5 text-sm"
                     >
                         <option value="">All Platforms</option>
                         <option value="youtube">YouTube Only</option>
@@ -296,7 +296,7 @@ export default function SocialStudio() {
                     <select
                         value={selectedAccountId}
                         onChange={(e) => setSelectedAccountId(e.target.value)}
-                        className="rounded border bg-white px-3 py-1.5 text-sm"
+                        className="rounded-xl border border-gray-200 bg-white shadow-sm px-3 py-1.5 text-sm"
                     >
                         <option value="">All Accounts</option>
                         {accounts.map((a) => (
@@ -309,51 +309,56 @@ export default function SocialStudio() {
             </div>
 
             {connectedNotice && (
-                <div className="rounded border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
+                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
                     Successfully connected {connectedNotice} account(s) for auto-sync.
                 </div>
             )}
             {oauthError && (
-                <div className="rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
                     {oauthError}
                 </div>
             )}
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-                <div className="rounded border bg-white p-4">
-                    <div className="text-xs text-gray-500">Connected Accounts</div>
+                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 to-violet-500" />
+                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Connected Accounts</div>
                     <div className="mt-1 text-2xl font-bold">{totals.accounts ?? 0}</div>
                     <div className="mt-1 text-xs text-gray-500">
                         YT: {totals.youtube_accounts ?? 0} · IG: {totals.instagram_accounts ?? 0}
                     </div>
                 </div>
-                <div className="rounded border bg-white p-4">
-                    <div className="text-xs text-gray-500">Total Followers / Subs</div>
+                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 to-rose-500" />
+                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Followers / Subs</div>
                     <div className="mt-1 text-2xl font-bold">{(totals.followers ?? 0).toLocaleString()}</div>
                 </div>
-                <div className="rounded border bg-white p-4">
-                    <div className="text-xs text-gray-500">Total Views</div>
+                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 to-cyan-500" />
+                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Views</div>
                     <div className="mt-1 text-2xl font-bold">{(totals.views ?? 0).toLocaleString()}</div>
                 </div>
-                <div className="rounded border bg-white p-4">
-                    <div className="text-xs text-gray-500">Avg SEO Score</div>
+                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Avg SEO Score</div>
                     <div className="mt-1 text-2xl font-bold">{totals.avg_seo_score ?? 0}/100</div>
                 </div>
-                <div className="rounded border bg-white p-4">
-                    <div className="text-xs text-gray-500">Open Daily Ideas</div>
+                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
+                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Open Daily Ideas</div>
                     <div className="mt-1 text-2xl font-bold">{totals.open_ideas_count ?? 0}</div>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex flex-wrap gap-2 border-b pb-2">
+            <div className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
                 {TABS.map((t) => (
                     <button
                         key={t.id}
                         onClick={() => setTab(t.id)}
-                        className={`rounded px-3 py-1.5 text-sm font-medium ${
-                            tab === t.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+                        className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
+                            tab === t.id ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                     >
                         {t.label}
@@ -370,13 +375,13 @@ export default function SocialStudio() {
                                 e.preventDefault();
                                 createAccountMut.mutate(accountForm);
                             }}
-                            className="space-y-3 rounded border bg-white p-4"
+                            className="space-y-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4"
                         >
                             <h2 className="font-semibold">Connect YT / IG Account</h2>
                             <select
                                 value={accountForm.platform}
                                 onChange={(e) => setAccountForm({ ...accountForm, platform: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             >
                                 <option value="youtube">YouTube</option>
                                 <option value="instagram">Instagram</option>
@@ -386,20 +391,20 @@ export default function SocialStudio() {
                                 placeholder="Account / Channel Name"
                                 value={accountForm.account_name}
                                 onChange={(e) => setAccountForm({ ...accountForm, account_name: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <input
                                 required
                                 placeholder="Handle (e.g. @leadsetu)"
                                 value={accountForm.handle}
                                 onChange={(e) => setAccountForm({ ...accountForm, handle: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <input
                                 placeholder="Niche (e.g. SaaS, Fitness, Tech)"
                                 value={accountForm.niche}
                                 onChange={(e) => setAccountForm({ ...accountForm, niche: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <div className="grid grid-cols-2 gap-2">
                                 <input
@@ -408,7 +413,7 @@ export default function SocialStudio() {
                                     placeholder="Followers / Subs"
                                     value={accountForm.followers_count}
                                     onChange={(e) => setAccountForm({ ...accountForm, followers_count: Number(e.target.value) })}
-                                    className="w-full rounded border px-3 py-2 text-sm"
+                                    className="w-full rounded-lg border px-3 py-2 text-sm"
                                 />
                                 <input
                                     type="number"
@@ -416,7 +421,7 @@ export default function SocialStudio() {
                                     placeholder="Total Views"
                                     value={accountForm.views_count}
                                     onChange={(e) => setAccountForm({ ...accountForm, views_count: Number(e.target.value) })}
-                                    className="w-full rounded border px-3 py-2 text-sm"
+                                    className="w-full rounded-lg border px-3 py-2 text-sm"
                                 />
                             </div>
                             <button
@@ -431,12 +436,12 @@ export default function SocialStudio() {
 
                     <div className="space-y-3 lg:col-span-2">
                         {accounts.length === 0 ? (
-                            <div className="rounded border bg-white p-6 text-sm text-gray-500">
+                            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 text-sm text-gray-500">
                                 No YouTube or Instagram accounts connected yet. Add your first account to start tracking!
                             </div>
                         ) : (
                             accounts.map((acc) => (
-                                <div key={acc.id} className="flex flex-wrap items-center justify-between gap-4 rounded border bg-white p-4">
+                                <div key={acc.id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(acc.platform)}`}>
@@ -466,13 +471,13 @@ export default function SocialStudio() {
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => syncAccountMut.mutate(acc.id)}
-                                                className="rounded border px-3 py-1 text-xs hover:bg-gray-50"
+                                                className="rounded-lg border px-3 py-1 text-xs hover:bg-gray-50"
                                             >
                                                 Sync
                                             </button>
                                             <button
                                                 onClick={() => deleteAccountMut.mutate(acc.id)}
-                                                className="rounded border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
+                                                className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
                                             >
                                                 Remove
                                             </button>
@@ -489,7 +494,7 @@ export default function SocialStudio() {
             {tab === 'content' && (
                 <div className="grid gap-6 lg:grid-cols-3">
                     {can('manage_social_content') && (
-                        <form onSubmit={handleContentSubmit} className="space-y-3 rounded border bg-white p-4">
+                        <form onSubmit={handleContentSubmit} className="space-y-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-semibold">Create & Optimize Content</h2>
                                 <button
@@ -519,7 +524,7 @@ export default function SocialStudio() {
                                         content_type: acc?.platform === 'instagram' ? 'reel' : 'video',
                                     });
                                 }}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             >
                                 <option value="">Select YT / IG Account…</option>
                                 {accounts.map((a) => (
@@ -532,7 +537,7 @@ export default function SocialStudio() {
                                 <select
                                     value={contentForm.content_type}
                                     onChange={(e) => setContentForm({ ...contentForm, content_type: e.target.value })}
-                                    className="rounded border px-3 py-2 text-sm"
+                                    className="rounded-lg border px-3 py-2 text-sm"
                                 >
                                     <option value="video">YouTube Video</option>
                                     <option value="short">YouTube Short</option>
@@ -543,7 +548,7 @@ export default function SocialStudio() {
                                 <select
                                     value={contentForm.status}
                                     onChange={(e) => setContentForm({ ...contentForm, status: e.target.value })}
-                                    className="rounded border px-3 py-2 text-sm"
+                                    className="rounded-lg border px-3 py-2 text-sm"
                                 >
                                     <option value="idea">Idea</option>
                                     <option value="draft">Draft</option>
@@ -555,39 +560,39 @@ export default function SocialStudio() {
                                 placeholder="Target Keyword (e.g. youtube seo)"
                                 value={contentForm.target_keyword}
                                 onChange={(e) => setContentForm({ ...contentForm, target_keyword: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <input
                                 required
                                 placeholder="Title / Headline"
                                 value={contentForm.title}
                                 onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <input
                                 placeholder="Opening Hook (first 3-15 sec)"
                                 value={contentForm.hook}
                                 onChange={(e) => setContentForm({ ...contentForm, hook: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <textarea
                                 rows={3}
                                 placeholder="Description / Caption"
                                 value={contentForm.description}
                                 onChange={(e) => setContentForm({ ...contentForm, description: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <input
                                 placeholder="Tags (comma-separated)"
                                 value={contentForm.tagsText}
                                 onChange={(e) => setContentForm({ ...contentForm, tagsText: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <input
                                 placeholder="Hashtags (space-separated)"
                                 value={contentForm.hashtagsText}
                                 onChange={(e) => setContentForm({ ...contentForm, hashtagsText: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
 
                             {aiSuggestion && (
@@ -619,12 +624,12 @@ export default function SocialStudio() {
 
                     <div className="space-y-3 lg:col-span-2">
                         {contents.length === 0 ? (
-                            <div className="rounded border bg-white p-6 text-sm text-gray-500">
+                            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 text-sm text-gray-500">
                                 No content items yet. Create a video, Short, or Reel to see its vidIQ-style SEO score!
                             </div>
                         ) : (
                             contents.map((item) => (
-                                <div key={item.id} className="rounded border bg-white p-4">
+                                <div key={item.id} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                                     <div className="flex flex-wrap items-start justify-between gap-2">
                                         <div>
                                             <div className="flex items-center gap-2">
@@ -681,19 +686,19 @@ export default function SocialStudio() {
                                 e.preventDefault();
                                 analyzeKwMut.mutate(kwInput);
                             }}
-                            className="flex flex-wrap gap-2 rounded border bg-white p-4"
+                            className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white shadow-sm p-4"
                         >
                             <input
                                 required
                                 placeholder="Enter keyword or topic (e.g. instagram reels hooks)"
                                 value={kwInput.keyword}
                                 onChange={(e) => setKwInput({ ...kwInput, keyword: e.target.value })}
-                                className="min-w-[240px] flex-1 rounded border px-3 py-2 text-sm"
+                                className="min-w-[240px] flex-1 rounded-lg border px-3 py-2 text-sm"
                             />
                             <select
                                 value={kwInput.platform}
                                 onChange={(e) => setKwInput({ ...kwInput, platform: e.target.value })}
-                                className="rounded border px-3 py-2 text-sm"
+                                className="rounded-lg border px-3 py-2 text-sm"
                             >
                                 <option value="youtube">YouTube</option>
                                 <option value="instagram">Instagram</option>
@@ -709,7 +714,7 @@ export default function SocialStudio() {
                         </form>
                     )}
 
-                    <div className="overflow-x-auto rounded border bg-white">
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
                         <table className="w-full text-left text-sm">
                             <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
                                 <tr>
@@ -761,13 +766,13 @@ export default function SocialStudio() {
                                 e.preventDefault();
                                 createCompMut.mutate(compForm);
                             }}
-                            className="space-y-3 rounded border bg-white p-4"
+                            className="space-y-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4"
                         >
                             <h2 className="font-semibold">Track Competitor</h2>
                             <select
                                 value={compForm.platform}
                                 onChange={(e) => setCompForm({ ...compForm, platform: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             >
                                 <option value="youtube">YouTube</option>
                                 <option value="instagram">Instagram</option>
@@ -777,14 +782,14 @@ export default function SocialStudio() {
                                 placeholder="Channel / Profile Name"
                                 value={compForm.channel_name}
                                 onChange={(e) => setCompForm({ ...compForm, channel_name: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <input
                                 required
                                 placeholder="Handle (e.g. @competitor)"
                                 value={compForm.handle}
                                 onChange={(e) => setCompForm({ ...compForm, handle: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <div className="grid grid-cols-2 gap-2">
                                 <input
@@ -793,7 +798,7 @@ export default function SocialStudio() {
                                     placeholder="Followers"
                                     value={compForm.followers_count}
                                     onChange={(e) => setCompForm({ ...compForm, followers_count: Number(e.target.value) })}
-                                    className="w-full rounded border px-3 py-2 text-sm"
+                                    className="w-full rounded-lg border px-3 py-2 text-sm"
                                 />
                                 <input
                                     type="number"
@@ -801,14 +806,14 @@ export default function SocialStudio() {
                                     placeholder="Avg Views"
                                     value={compForm.avg_views}
                                     onChange={(e) => setCompForm({ ...compForm, avg_views: Number(e.target.value) })}
-                                    className="w-full rounded border px-3 py-2 text-sm"
+                                    className="w-full rounded-lg border px-3 py-2 text-sm"
                                 />
                             </div>
                             <input
                                 placeholder="Top Performing Video / Reel Title"
                                 value={compForm.top_video_title}
                                 onChange={(e) => setCompForm({ ...compForm, top_video_title: e.target.value })}
-                                className="w-full rounded border px-3 py-2 text-sm"
+                                className="w-full rounded-lg border px-3 py-2 text-sm"
                             />
                             <button
                                 type="submit"
@@ -822,7 +827,7 @@ export default function SocialStudio() {
 
                     <div className="space-y-3 lg:col-span-2">
                         {competitors.map((c) => (
-                            <div key={c.id} className="flex items-center justify-between rounded border bg-white p-4">
+                            <div key={c.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(c.platform)}`}>
@@ -851,7 +856,7 @@ export default function SocialStudio() {
             {tab === 'ideas' && (
                 <div className="space-y-4">
                     {can('use_growth_tools') && (
-                        <div className="flex flex-wrap items-center justify-between gap-2 rounded border bg-white p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                             <span className="text-sm text-gray-600">
                                 Generate vidIQ-style daily video & Reel ideas tailored to your connected YT & IG accounts.
                             </span>
@@ -874,7 +879,7 @@ export default function SocialStudio() {
 
                     <div className="grid gap-4 md:grid-cols-2">
                         {ideas.map((idea) => (
-                            <div key={idea.id} className="rounded border bg-white p-4">
+                            <div key={idea.id} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                                 <div className="flex items-center justify-between">
                                     <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(idea.platform)}`}>
                                         {idea.platform} · {idea.angle || 'Idea'}
@@ -891,13 +896,13 @@ export default function SocialStudio() {
                                         <>
                                             <button
                                                 onClick={() => updateIdeaMut.mutate({ id: idea.id, status: 'saved' })}
-                                                className="rounded border px-2 py-1 hover:bg-gray-50"
+                                                className="rounded-lg border px-2 py-1 hover:bg-gray-50"
                                             >
                                                 Save
                                             </button>
                                             <button
                                                 onClick={() => updateIdeaMut.mutate({ id: idea.id, status: 'dismissed' })}
-                                                className="rounded border px-2 py-1 text-gray-500 hover:bg-gray-50"
+                                                className="rounded-lg border px-2 py-1 text-gray-500 hover:bg-gray-50"
                                             >
                                                 Dismiss
                                             </button>
