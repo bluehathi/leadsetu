@@ -1,5 +1,51 @@
 @import "tailwindcss";
 
+/* Brand theme: remap the default blue/gray scales so every existing page picks up the new look. */
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+    --color-blue-50: #eef2ff;
+    --color-blue-100: #e0e7ff;
+    --color-blue-200: #c7d2fe;
+    --color-blue-300: #a5b4fc;
+    --color-blue-400: #818cf8;
+    --color-blue-500: #6366f1;
+    --color-blue-600: #4f46e5;
+    --color-blue-700: #4338ca;
+    --color-blue-800: #3730a3;
+
+    --color-gray-50: #f8fafc;
+    --color-gray-100: #f1f5f9;
+    --color-gray-200: #e2e8f0;
+    --color-gray-300: #cbd5e1;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #64748b;
+    --color-gray-600: #475569;
+    --color-gray-700: #334155;
+    --color-gray-800: #1e293b;
+    --color-gray-900: #0f172a;
+}
+
+@layer base {
+    body { font-family: var(--font-sans); background: #f4f6fb; color: #0f172a; -webkit-font-smoothing: antialiased; }
+    /* Default border colour is softer than Tailwind's stock currentColor/gray-200. */
+    *, ::after, ::before { border-color: #e2e8f0; }
+    input:not([type=checkbox]):not([type=radio]), select, textarea {
+        background: #fff;
+        border-radius: 0.5rem;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgb(99 102 241 / .18);
+    }
+    h1 { letter-spacing: -0.01em; }
+    table thead th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+    table tbody tr { transition: background-color .12s; }
+    table tbody tr:hover { background: #f8fafc; }
+}
+
 /* Print only the document: hide navigation and action buttons. */
 @media print {
     aside, header, .no-print { display: none !important; }

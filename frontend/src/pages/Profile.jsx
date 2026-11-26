@@ -38,7 +38,7 @@ export default function Profile() {
     return (
         <div className="max-w-lg space-y-8">
             <form onSubmit={saveProfile} className="space-y-4">
-                <h1 className="text-xl font-semibold">My profile</h1>
+                <h1 className="text-2xl font-semibold">My profile</h1>
                 {notice.profile && <p className="text-sm text-green-700">{notice.profile}</p>}
                 <Field label="Name" error={pErr.fields.name}><input className={inputClass} value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} /></Field>
                 <Field label="Email" error={pErr.fields.email}><input className={inputClass} type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} /></Field>

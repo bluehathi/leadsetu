@@ -76,7 +76,7 @@ export default function Roles() {
                             <input className={inputClass} value={values.name} onChange={(e) => setValues({ ...values, name: e.target.value })} />
                         </Field>
                         <Field group label="Permissions" error={permError}>
-                            <div className="max-h-64 space-y-2 overflow-y-auto rounded border p-2">
+                            <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border p-2">
                                 {!can('view_permissions') && <p className="text-xs text-gray-500">You need the view_permissions permission to edit these.</p>}
                                 {grouped.map(([group, items]) => (
                                     <div key={group}>

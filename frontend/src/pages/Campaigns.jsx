@@ -13,7 +13,7 @@ export const EMPTY = { name: '', subject: '', body: '<p>Hello,</p>', prospect_li
 
 // Body is HTML; the server sanitizes it. The preview runs in a sandboxed iframe (no scripts).
 export const BodyPreview = ({ html }) => (
-    <iframe title="Preview" sandbox="" srcDoc={html} className="h-48 w-full rounded border bg-white" />
+    <iframe title="Preview" sandbox="" srcDoc={html} className="h-48 w-full rounded-xl border border-gray-200 bg-white shadow-sm" />
 );
 
 export function CampaignForm({ campaign, onClose, onSaved }) {
@@ -50,7 +50,7 @@ export function CampaignForm({ campaign, onClose, onSaved }) {
                 <Field label="Name" error={error.fields.name}><input className={inputClass} value={values.name} onChange={(e) => setValues({ ...values, name: e.target.value })} /></Field>
                 <Field label="Subject" error={error.fields.subject}><input className={inputClass} value={values.subject} onChange={(e) => setValues({ ...values, subject: e.target.value })} /></Field>
                 <Field group label="Send to lists" error={listError}>
-                    <div className="max-h-32 overflow-y-auto rounded border p-2">
+                    <div className="max-h-32 overflow-y-auto rounded-lg border p-2">
                         {lists.data?.data?.map((l) => (
                             <label key={l.id} className="flex items-center gap-2 text-sm">
                                 <input type="checkbox" checked={values.prospect_list_ids.includes(l.id)} onChange={() => toggle(l.id)} />
@@ -102,7 +102,7 @@ export default function Campaigns() {
                 canCreate={can('create_campaign')} canDelete={can('delete_campaign')} canEdit={false}
                 onCreate={() => setCreating(true)} onDelete={remove}
                 toolbar={
-                    <select className="mb-4 rounded border p-2 text-sm" value={status} onChange={(e) => { setStatus(e.target.value); state.setPage(1); }}>
+                    <select className="mb-4 rounded-lg border p-2 text-sm" value={status} onChange={(e) => { setStatus(e.target.value); state.setPage(1); }}>
                         <option value="">All statuses</option>
                         {['draft', 'scheduled', 'queued', 'sending', 'sent', 'failed'].map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>

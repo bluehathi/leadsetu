@@ -44,17 +44,17 @@ function Board({ search, mine, canEdit, onEdit }) {
             {STATUSES.map((s, i) => {
                 const col = columns[i].data;
                 return (
-                    <div key={s.value} className="rounded border bg-gray-100 p-2">
+                    <div key={s.value} className="rounded-lg border bg-gray-100 p-2">
                         <div className="mb-2 flex justify-between text-sm font-semibold">
                             {s.label}<span className="text-gray-500">{col?.meta?.total ?? 0}</span>
                         </div>
                         <div className="space-y-2">
                             {col?.data?.map((l) => (
-                                <div key={l.id} className="rounded border bg-white p-2 text-sm shadow-sm">
+                                <div key={l.id} className="rounded-xl border border-gray-200 bg-white shadow-sm p-2 text-sm shadow-sm">
                                     <button className="text-left font-medium text-blue-700 hover:underline" onClick={() => onEdit(l)}>{l.name}</button>
                                     <div className="text-xs text-gray-500">{l.company_name || '—'} · {l.qualification ?? ''}</div>
                                     {canEdit && (
-                                        <select className="mt-1 w-full rounded border p-1 text-xs" value={l.status}
+                                        <select className="mt-1 w-full rounded-lg border p-1 text-xs" value={l.status}
                                             onChange={(e) => move.mutate({ id: l.id, status: e.target.value })}>
                                             {STATUSES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                                         </select>
@@ -118,12 +118,12 @@ export default function Leads() {
 
     const filters = (
         <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-            <select className="rounded border p-2" value={status} onChange={(e) => { setStatus(e.target.value); state.setPage(1); }}>
+            <select className="rounded-lg border p-2" value={status} onChange={(e) => { setStatus(e.target.value); state.setPage(1); }}>
                 <option value="">All statuses</option>
                 {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
             <label className="flex items-center gap-1"><input type="checkbox" checked={mine} onChange={(e) => { setMine(e.target.checked); state.setPage(1); }} /> Created by me</label>
-            <span className="ml-auto flex overflow-hidden rounded border">
+            <span className="ml-auto flex overflow-hidden rounded-lg border">
                 {['list', 'board'].map((v) => (
                     <button key={v} onClick={() => setView(v)} className={`px-3 py-1 capitalize ${view === v ? 'bg-blue-600 text-white' : 'bg-white'}`}>{v}</button>
                 ))}
@@ -148,7 +148,7 @@ export default function Leads() {
             ) : (
                 <div>
                     <div className="mb-4 flex items-center justify-between">
-                        <h1 className="text-xl font-semibold">Leads</h1>
+                        <h1 className="text-2xl font-semibold">Leads</h1>
                         {tableProps.canCreate && <Button onClick={() => open(null)}>New</Button>}
                     </div>
                     <input className={`${inputClass} mb-4 max-w-xs`} placeholder="Search…" value={state.search} onChange={(e) => state.setSearch(e.target.value)} />

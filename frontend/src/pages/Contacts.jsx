@@ -35,7 +35,7 @@ function ImportModal({ onClose, onDone }) {
                 <input ref={input} type="file" accept=".csv,.xls,.xlsx,text/csv" />
                 {error && <p className="text-red-600">{error}</p>}
                 {result && (
-                    <div className="rounded border bg-gray-50 p-3">
+                    <div className="rounded-lg border bg-gray-50 p-3">
                         <p>{result.created} created, {result.skipped} skipped (already exist), {result.errors.length} rejected.</p>
                         {result.errors.length > 0 && (
                             <ul className="mt-2 max-h-32 overflow-y-auto text-xs text-red-600">

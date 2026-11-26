@@ -30,7 +30,7 @@ function Members({ list, canEdit, onClose }) {
     return (
         <Modal title={`Members of ${list.name}`} onClose={onClose}>
             <div className="max-h-[70vh] space-y-4 overflow-y-auto">
-                <div className="rounded border">
+                <div className="rounded-lg border">
                     {members.data?.data?.map((c) => (
                         <div key={c.id} className="flex items-center justify-between border-b px-3 py-2 text-sm last:border-0">
                             <span>{c.name} <span className="text-gray-500">{c.email}</span>{c.unsubscribed && <span className="ml-2 text-xs text-red-600">unsubscribed</span>}</span>
@@ -44,7 +44,7 @@ function Members({ list, canEdit, onClose }) {
                     <div className="space-y-2">
                         <div className="text-sm font-medium">Add contacts</div>
                         <input className={inputClass} placeholder="Search contacts…" value={search} onChange={(e) => setSearch(e.target.value)} />
-                        <div className="max-h-40 overflow-y-auto rounded border">
+                        <div className="max-h-40 overflow-y-auto rounded-lg border">
                             {candidates.data?.data?.map((c) => (
                                 <label key={c.id} className="flex items-center gap-2 px-3 py-1 text-sm">
                                     <input type="checkbox" checked={picked.includes(c.id)} onChange={() => toggle(c.id)} />{c.name} <span className="text-gray-500">{c.email}</span>

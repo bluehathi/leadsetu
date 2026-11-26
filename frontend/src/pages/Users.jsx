@@ -81,7 +81,7 @@ export default function Users() {
                         </Field>
                         {!isSelf && can('view_roles') && (
                             <Field group label="Roles" error={roleError}>
-                                <div className="space-y-1 rounded border p-2">
+                                <div className="space-y-1 rounded-lg border p-2">
                                     {roles.data?.data?.map((r) => (
                                         <label key={r.id} className="flex items-center gap-2 text-sm">
                                             <input type="checkbox" checked={values.roles.includes(r.id)} onChange={() => toggleRole(r.id)} />

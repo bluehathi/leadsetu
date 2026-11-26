@@ -39,7 +39,7 @@ export default function ActivityLogs() {
                 <input className={`${inputClass} w-auto`} type="date" aria-label="To" value={filters.to} onChange={set('to')} />
             </div>
             {logs.isError && <p className="text-sm text-red-600">Could not load the activity log.</p>}
-            <div className="overflow-x-auto rounded border bg-white">
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
                 <table className="w-full text-left text-sm">
                     <thead className="border-b bg-gray-50">
                         <tr><th className="px-4 py-2">When</th><th className="px-4 py-2">User</th><th className="px-4 py-2">Action</th><th className="px-4 py-2">Record</th><th className="px-4 py-2" /></tr>
