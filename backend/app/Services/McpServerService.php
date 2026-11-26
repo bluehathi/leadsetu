@@ -220,7 +220,7 @@ class McpServerService
                 ],
                 [
                     'name' => 'delete_content_plan',
-                    'description' => 'Delete a Content Planner item by ID.',
+                    'description' => 'Delete an unpublished Content Planner entry (idea, draft, or scheduled). Deleting published/live YouTube videos is not allowed via MCP.',
                     'inputSchema' => [
                         'type' => 'object',
                         'properties' => [
@@ -782,7 +782,15 @@ class McpServerService
 
     protected function deleteContentPlan(array $args): array
     {
+        if (! empty($args['delete_from_youtube'])) {
+            throw new InvalidArgumentException('Not allowed: MCP is not allowed to delete YouTube videos.');
+        }
+
         $content = SocialContent::findOrFail((int) ($args['content_id'] ?? 0));
+        if ($content->platform === 'youtube' && (! empty($content->youtube_video_id) || $content->status === 'published')) {
+            throw new InvalidArgumentException('Not allowed: MCP cannot delete published/live YouTube videos. Only unpublished planner entries (idea, draft, scheduled) can be deleted.');
+        }
+
         $title = $content->title;
         $id = $content->id;
         $content->delete();
