@@ -407,7 +407,7 @@ class GoogleDriveController extends Controller
     {
         Gate::authorize('create', SocialContent::class);
 
-        $limit = max(1, min(50, (int) $request->input('limit', 25)));
+        $limit = max(1, min(500, (int) $request->input('limit', 200)));
 
         try {
             $result = $this->drive->syncYouTubeVideosToPlanner($socialAccount, $limit);

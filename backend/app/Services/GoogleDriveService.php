@@ -1278,7 +1278,7 @@ class GoogleDriveService
      * Sync existing live YouTube videos into Content Planner, linking matching unlinked items
      * and importing missing videos with their real youtube_video_id.
      */
-    public function syncYouTubeVideosToPlanner(SocialAccount $account, int $limit = 25): array
+    public function syncYouTubeVideosToPlanner(SocialAccount $account, int $limit = 200): array
     {
         if ($account->platform !== 'youtube') {
             throw new RuntimeException('Selected account must be a connected YouTube channel.');
@@ -1302,33 +1302,55 @@ class GoogleDriveService
             return ['linked' => 0, 'imported' => 0, 'updated' => 0, 'items' => []];
         }
 
-        $limit = max(1, min(50, $limit));
-        $plResp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/playlistItems', [
-            'part' => 'contentDetails',
-            'playlistId' => $uploadsPlaylistId,
-            'maxResults' => $limit,
-        ]);
-        if (! $plResp->successful()) {
-            throw new RuntimeException($plResp->json('error.message') ?: 'Failed to list YouTube uploads.');
+        $limit = max(1, min(500, $limit));
+        $videoIds = [];
+        $pageToken = null;
+
+        while (count($videoIds) < $limit) {
+            $batchSize = min(50, $limit - count($videoIds));
+            $params = [
+                'part' => 'contentDetails',
+                'playlistId' => $uploadsPlaylistId,
+                'maxResults' => $batchSize,
+            ];
+            if ($pageToken) {
+                $params['pageToken'] = $pageToken;
+            }
+
+            $plResp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/playlistItems', $params);
+            if (! $plResp->successful()) {
+                throw new RuntimeException($plResp->json('error.message') ?: 'Failed to list YouTube uploads.');
+            }
+
+            foreach ($plResp->json('items', []) as $item) {
+                if ($vid = $item['contentDetails']['videoId'] ?? null) {
+                    $videoIds[] = $vid;
+                }
+            }
+
+            $pageToken = $plResp->json('nextPageToken');
+            if (! $pageToken) {
+                break;
+            }
         }
 
-        $videoIds = collect($plResp->json('items', []))
-            ->map(fn ($item) => $item['contentDetails']['videoId'] ?? null)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
+        $videoIds = array_values(array_unique(array_slice($videoIds, 0, $limit)));
         if (empty($videoIds)) {
             return ['linked' => 0, 'imported' => 0, 'updated' => 0, 'items' => []];
         }
 
-        $videosResp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/videos', [
-            'part' => 'snippet,statistics,contentDetails',
-            'id' => implode(',', $videoIds),
-        ]);
-        if (! $videosResp->successful()) {
-            throw new RuntimeException($videosResp->json('error.message') ?: 'Failed to fetch YouTube video details.');
+        $allVideos = [];
+        foreach (array_chunk($videoIds, 50) as $chunk) {
+            $videosResp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/videos', [
+                'part' => 'snippet,statistics,contentDetails',
+                'id' => implode(',', $chunk),
+            ]);
+            if (! $videosResp->successful()) {
+                throw new RuntimeException($videosResp->json('error.message') ?: 'Failed to fetch YouTube video details.');
+            }
+            foreach ($videosResp->json('items', []) as $v) {
+                $allVideos[] = $v;
+            }
         }
 
         $growth = app(SocialGrowthService::class);
@@ -1337,7 +1359,7 @@ class GoogleDriveService
         $updated = 0;
         $syncedItems = [];
 
-        foreach ($videosResp->json('items', []) as $video) {
+        foreach ($allVideos as $video) {
             $vid = (string) ($video['id'] ?? '');
             if ($vid === '') {
                 continue;

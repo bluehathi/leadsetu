@@ -191,7 +191,7 @@ export default function ContentPlannerTab({
         mutationFn: async () => {
             const ytAccounts = accounts.filter((a) => a.platform === 'youtube');
             for (const acc of ytAccounts) {
-                await socialApi.syncYouTubeToPlanner(acc.id, 25);
+                await socialApi.syncYouTubeToPlanner(acc.id, 200);
             }
         },
         onSuccess: () => {

@@ -308,7 +308,7 @@ class McpServerService
                         'type' => 'object',
                         'properties' => [
                             'social_account_id' => ['type' => 'integer', 'description' => 'YouTube SocialAccount ID from list_social_accounts'],
-                            'limit' => ['type' => 'integer', 'description' => 'Number of recent videos to sync (1-50, default 25)'],
+                            'limit' => ['type' => 'integer', 'description' => 'Number of recent videos to sync (1-500, default 200)'],
                         ],
                         'required' => ['social_account_id'],
                     ],
@@ -970,7 +970,7 @@ class McpServerService
     protected function syncYouTubeToPlanner(array $args): array
     {
         $account = SocialAccount::findOrFail((int) ($args['social_account_id'] ?? 0));
-        $limit = max(1, min(50, (int) ($args['limit'] ?? 25)));
+        $limit = max(1, min(500, (int) ($args['limit'] ?? 200)));
 
         $result = $this->driveService->syncYouTubeVideosToPlanner($account, $limit);
         $this->audit->log('youtube_videos_synced_to_planner', $account, "MCP synced YouTube videos to Content Planner ({$result['linked']} linked, {$result['imported']} imported)");
