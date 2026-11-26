@@ -72,10 +72,10 @@ class McpOAuthController extends Controller
     public function approve(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'client_id' => ['required', 'string', 'max:120'],
-            'redirect_uri' => ['required', 'url', 'max:500'],
-            'state' => ['nullable', 'string', 'max:500'],
-            'code_challenge' => ['nullable', 'string', 'max:256'],
+            'client_id' => ['required', 'string', 'max:255'],
+            'redirect_uri' => ['required', 'url', 'max:2000'],
+            'state' => ['nullable', 'string', 'max:4096'],
+            'code_challenge' => ['nullable', 'string', 'max:512'],
             'code_challenge_method' => ['nullable', 'string', 'max:20'],
         ]);
 
