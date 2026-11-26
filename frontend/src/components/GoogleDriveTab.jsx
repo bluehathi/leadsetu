@@ -40,6 +40,7 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
     });
 
     const isLocked = Boolean(status?.lock_to_default_folder && status?.default_folder_id);
+    const needsLockSetup = Boolean(status?.connected && !isLocked);
 
     // Open the user's default favorite folder automatically instead of My Drive root.
     useEffect(() => {
@@ -59,11 +60,12 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
     }, [status, initializedDefault]);
 
     const { data: filesData, isLoading: filesLoading, error: filesError } = useQuery({
-        queryKey: ['social-drive-files', currentFolder.id, search],
+        queryKey: ['social-drive-files', currentFolder.id, search, needsLockSetup],
         queryFn: () =>
             socialApi.listDriveFiles({
                 ...(currentFolder.id && !search ? { folder_id: currentFolder.id } : {}),
                 ...(search ? { search } : {}),
+                ...(needsLockSetup ? { setup: 1 } : {}),
             }),
         enabled: Boolean(status?.connected),
     });
@@ -73,10 +75,11 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
             socialApi.listDriveFiles({
                 ...(currentFolder.id && !search ? { folder_id: currentFolder.id } : {}),
                 ...(search ? { search } : {}),
+                ...(needsLockSetup ? { setup: 1 } : {}),
                 refresh: 1,
             }),
         onSuccess: (fresh) => {
-            qc.setQueryData(['social-drive-files', currentFolder.id, search], fresh);
+            qc.setQueryData(['social-drive-files', currentFolder.id, search, needsLockSetup], fresh);
         },
     });
 
@@ -90,8 +93,15 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
     const setDefaultMut = useMutation({
         mutationFn: ({ folderId, folderName }) => socialApi.setDriveDefaultFolder(folderId, folderName),
         onSuccess: (updated) => {
+            setActionError('');
             qc.setQueryData(['social-drive-status'], (prev) => ({ ...(prev || {}), ...updated }));
+            qc.invalidateQueries({ queryKey: ['social-drive-files'] });
+            if (updated.lock_to_default_folder && updated.default_folder_id) {
+                setSearch('');
+                setBreadcrumbs([{ id: updated.default_folder_id, name: updated.default_folder_name || 'Locked Folder' }]);
+            }
         },
+        onError: (err) => setActionError(err?.response?.data?.message || 'Failed to lock folder.'),
     });
 
     const toggleLockMut = useMutation({
@@ -408,46 +418,69 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setActionError('');
-                            setShowNewFolder((v) => !v);
-                        }}
-                        className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
-                    >
-                        + New Folder
-                    </button>
-                    <button
-                        type="button"
-                        disabled={uploadFileMut.isPending}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                    >
-                        {uploadFileMut.isPending ? 'Uploading…' : '↑ Upload File'}
-                    </button>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="video/*,image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                                uploadFileMut.mutate(file);
-                                e.target.value = '';
-                            }
-                        }}
-                    />
-                    <input
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search files across Drive…"
-                        className="w-56 rounded-lg border px-3 py-1.5 text-xs"
-                    />
+                    {!needsLockSetup && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setActionError('');
+                                    setShowNewFolder((v) => !v);
+                                }}
+                                className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                            >
+                                + New Folder
+                            </button>
+                            <button
+                                type="button"
+                                disabled={uploadFileMut.isPending}
+                                onClick={() => fileInputRef.current?.click()}
+                                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {uploadFileMut.isPending ? 'Uploading…' : '↑ Upload File'}
+                            </button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="video/*,image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        uploadFileMut.mutate(file);
+                                        e.target.value = '';
+                                    }
+                                }}
+                            />
+                            <input
+                                type="search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search files across Drive…"
+                                className="w-56 rounded-lg border px-3 py-1.5 text-xs"
+                            />
+                        </>
+                    )}
+                    {needsLockSetup && currentFolder.id && (
+                        <button
+                            type="button"
+                            disabled={setDefaultMut.isPending}
+                            onClick={() => setDefaultMut.mutate({ folderId: currentFolder.id, folderName: currentFolder.name })}
+                            className="rounded-lg bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                        >
+                            🔒 {setDefaultMut.isPending ? 'Locking…' : `Lock "${currentFolder.name}"`}
+                        </button>
+                    )}
                 </div>
             </div>
+
+            {needsLockSetup && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
+                    <div className="font-semibold">🔒 Mandatory Google Drive Lock Required</div>
+                    <p className="mt-1 text-amber-800">
+                        All Google Drive features (browsing media, uploads, folder management, content attachments, MCP tools, and publishing) are disabled until you select and lock a folder below.
+                    </p>
+                </div>
+            )}
 
             {showNewFolder && (
                 <form
@@ -558,6 +591,18 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                             </div>
 
                             {file.is_folder ? (
+                                needsLockSetup ? (
+                                    <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                                        <button
+                                            type="button"
+                                            disabled={setDefaultMut.isPending}
+                                            onClick={() => setDefaultMut.mutate({ folderId: file.id, folderName: file.name })}
+                                            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                                        >
+                                            🔒 Lock This Folder
+                                        </button>
+                                    </div>
+                                ) : (
                                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
                                     {!isLocked && (
                                         <>
@@ -619,6 +664,7 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                                         Trash
                                     </button>
                                 </div>
+                                )
                             ) : (
                                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
                                     {file.is_video && (

@@ -586,6 +586,14 @@ class McpServerService
         if (! $conn) {
             return ['connected' => false, 'items' => []];
         }
+        if (! $conn->lock_to_default_folder || ! $conn->default_folder_id) {
+            return [
+                'connected' => true,
+                'locked_to_default_folder' => false,
+                'error' => 'Google Drive is disabled until a default folder is selected and locked in Growth Studio.',
+                'items' => [],
+            ];
+        }
 
         $folderId = $args['folder_id'] ?? null;
         $search = $args['search'] ?? null;
@@ -909,12 +917,14 @@ class McpServerService
     protected function resolveDriveAttachments(array $args): array
     {
         $extra = [];
+        $hasDriveInput = array_key_exists('drive_folder_id', $args)
+            || ! empty($args['drive_file_id'])
+            || ! empty($args['drive_thumbnail_file_id']);
+
         $allowedParents = null;
-        $conn = GoogleDriveConnection::query()->first();
-        if ($conn && $conn->lock_to_default_folder) {
-            if (! $conn->default_folder_id) {
-                throw new InvalidArgumentException('Drive access is locked, but no default Google Drive folder is configured.');
-            }
+        if ($hasDriveInput) {
+            $conn = $this->requireDriveConnection();
+            $this->driveService->assertDriveLocked($conn);
             $allowedParents = $this->driveService->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
         }
 

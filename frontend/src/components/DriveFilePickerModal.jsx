@@ -170,6 +170,13 @@ export default function DriveFilePickerModal({
                             Connect Google Drive
                         </button>
                     </div>
+                ) : !isLocked ? (
+                    <div className="p-8 text-center space-y-2">
+                        <p className="text-sm font-semibold text-amber-800">🔒 Google Drive Folder Lock Required</p>
+                        <p className="text-xs text-gray-600">
+                            Go to the <strong>Google Drive</strong> tab in Growth Studio and select &amp; lock a folder first. All Drive features are disabled until a folder is locked.
+                        </p>
+                    </div>
                 ) : (
                     <>
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 bg-gray-50 px-5 py-2.5">

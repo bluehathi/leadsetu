@@ -135,14 +135,17 @@ class GoogleDriveService
         GoogleDriveConnection $conn,
         ?string $folderId = null,
         ?string $search = null,
-        bool $forceRefresh = false
+        bool $forceRefresh = false,
+        bool $setupMode = false
     ): array {
+        $isLocked = (bool) ($conn->lock_to_default_folder && $conn->default_folder_id);
+        if (! $setupMode) {
+            $this->assertDriveLocked($conn);
+        }
+
         $parent = $folderId ?: 'root';
 
-        if ($conn->lock_to_default_folder) {
-            if (! $conn->default_folder_id) {
-                throw new RuntimeException('Drive access is locked, but no default Google Drive folder is configured.');
-            }
+        if ($isLocked) {
             if (! $folderId || $folderId === 'root') {
                 $parent = $conn->default_folder_id;
             } elseif (! $this->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $parent)) {
@@ -152,9 +155,12 @@ class GoogleDriveService
 
         if (! $forceRefresh) {
             $query = GoogleDriveFile::query();
+            if ($setupMode && ! $isLocked) {
+                $query->where('is_folder', true);
+            }
             if ($search) {
                 $query->where('name', 'like', "%{$search}%");
-                if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+                if ($isLocked) {
                     $allowedParents = $this->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
                     $query->whereIn('parent_folder_id', $allowedParents);
                 }
@@ -196,7 +202,9 @@ class GoogleDriveService
         } else {
             $clauses[] = "'{$parent}' in parents";
         }
-        $clauses[] = "(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'video/' or mimeType contains 'image/')";
+        $clauses[] = ($setupMode && ! $isLocked)
+            ? "mimeType = 'application/vnd.google-apps.folder'"
+            : "(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'video/' or mimeType contains 'image/')";
 
         $resp = Http::withToken($token)->get('https://www.googleapis.com/drive/v3/files', [
             'q' => implode(' and ', $clauses),
@@ -309,6 +317,7 @@ class GoogleDriveService
         GoogleDriveConnection $driveConn,
         string $privacyStatus = 'private'
     ): SocialContent {
+        $this->assertDriveLocked($driveConn);
         if (! $content->drive_file_id) {
             throw new RuntimeException('No Google Drive video file is attached to this content.');
         }
@@ -444,6 +453,7 @@ class GoogleDriveService
         if (! $conn) {
             throw new RuntimeException('Google Drive is not connected.');
         }
+        $this->assertDriveLocked($conn);
 
         $token = $this->ensureFreshToken($conn);
         $resp = Http::withToken($token)
@@ -465,6 +475,7 @@ class GoogleDriveService
 
     public function publishContentToInstagram(SocialContent $content, GoogleDriveConnection $driveConn): SocialContent
     {
+        $this->assertDriveLocked($driveConn);
         $fileId = $content->drive_file_id ?: $content->drive_thumbnail_file_id;
         if (! $fileId) {
             throw new RuntimeException('Attach a video or image from Google Drive first.');
@@ -572,6 +583,7 @@ class GoogleDriveService
         $isVideo = (bool) $content->drive_file_id && str_starts_with((string) ($content->drive_mime_type ?? 'video/'), 'video/');
 
         if ($fileId) {
+            $this->assertDriveLocked($driveConn);
             $mediaUrl = URL::temporarySignedRoute('social.drive.temp-media', now()->addMinutes(15), [
                 'workspaceId' => $content->workspace_id,
                 'fileId' => $fileId,
@@ -941,14 +953,30 @@ class GoogleDriveService
         ];
     }
 
-    protected function assertFolderAllowed(GoogleDriveConnection $conn, string $folderId): void
+    public function assertDriveLocked(GoogleDriveConnection $conn): void
     {
-        if (! $conn->lock_to_default_folder) {
+        if (! $conn->lock_to_default_folder || ! $conn->default_folder_id) {
+            throw new RuntimeException('Google Drive is disabled until a default folder is selected and locked in Growth Studio.');
+        }
+    }
+
+    public function pruneOutsideLockedFolder(GoogleDriveConnection $conn): void
+    {
+        if (! $conn->default_folder_id) {
             return;
         }
-        if (! $conn->default_folder_id) {
-            throw new RuntimeException('Drive access is locked, but no default Google Drive folder is configured.');
-        }
+
+        $allowedParents = $this->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
+        GoogleDriveFile::withoutGlobalScopes()
+            ->where('workspace_id', $conn->workspace_id)
+            ->where('drive_file_id', '!=', $conn->default_folder_id)
+            ->whereNotIn('parent_folder_id', $allowedParents)
+            ->delete();
+    }
+
+    protected function assertFolderAllowed(GoogleDriveConnection $conn, string $folderId): void
+    {
+        $this->assertDriveLocked($conn);
         if (! $this->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $folderId)) {
             throw new RuntimeException('Access is locked to the default Google Drive folder.');
         }
@@ -956,12 +984,7 @@ class GoogleDriveService
 
     protected function assertFileAllowed(GoogleDriveConnection $conn, string $fileId, string $token): void
     {
-        if (! $conn->lock_to_default_folder) {
-            return;
-        }
-        if (! $conn->default_folder_id) {
-            throw new RuntimeException('Drive access is locked, but no default Google Drive folder is configured.');
-        }
+        $this->assertDriveLocked($conn);
 
         $allowed = $this->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
         $cached = GoogleDriveFile::withoutGlobalScopes()

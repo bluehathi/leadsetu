@@ -64,6 +64,12 @@ class GoogleDriveController extends Controller
             return response()->json(['message' => 'folder_id and folder_name are required.'], 422);
         }
 
+        if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+            if (! $this->drive->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $folderId)) {
+                return response()->json(['message' => 'Access is locked to the default Google Drive folder.'], 403);
+            }
+        }
+
         $favorites = collect($conn->favorite_folders ?? []);
         $exists = $favorites->contains(fn ($f) => ($f['id'] ?? null) === $folderId);
 
@@ -107,9 +113,7 @@ class GoogleDriveController extends Controller
 
         $conn->default_folder_id = $folderId;
         $conn->default_folder_name = $folderName;
-        if (! $folderId) {
-            $conn->lock_to_default_folder = false;
-        }
+        $conn->lock_to_default_folder = (bool) $folderId;
 
         if ($folderId && $folderName) {
             $favorites = collect($conn->favorite_folders ?? []);
@@ -120,6 +124,10 @@ class GoogleDriveController extends Controller
         }
 
         $conn->save();
+
+        if ($conn->lock_to_default_folder) {
+            $this->drive->pruneOutsideLockedFolder($conn);
+        }
 
         return response()->json([
             'data' => [
@@ -154,6 +162,10 @@ class GoogleDriveController extends Controller
 
         $conn->lock_to_default_folder = $locked;
         $conn->save();
+
+        if ($locked) {
+            $this->drive->pruneOutsideLockedFolder($conn);
+        }
 
         return response()->json([
             'data' => [
@@ -190,6 +202,7 @@ class GoogleDriveController extends Controller
                 $request->query('folder_id') ?: null,
                 $request->query('search') ?: null,
                 $request->boolean('refresh'),
+                $request->boolean('setup'),
             );
 
             return response()->json(['data' => $files]);
