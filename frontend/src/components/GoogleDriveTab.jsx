@@ -20,6 +20,9 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
     const [initializedDefault, setInitializedDefault] = useState(false);
     const [search, setSearch] = useState('');
     const [connecting, setConnecting] = useState(false);
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [unlockPassword, setUnlockPassword] = useState('');
+    const [unlockError, setUnlockError] = useState('');
 
     const currentFolder = breadcrumbs[breadcrumbs.length - 1];
 
@@ -84,8 +87,11 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
     });
 
     const toggleLockMut = useMutation({
-        mutationFn: (locked) => socialApi.setDriveFolderLock(locked),
+        mutationFn: ({ locked, password }) => socialApi.setDriveFolderLock(locked, password),
         onSuccess: (updated) => {
+            setUnlockError('');
+            setUnlockPassword('');
+            setShowUnlockModal(false);
             qc.setQueryData(['social-drive-status'], (prev) => ({ ...(prev || {}), ...updated }));
             if (updated.lock_to_default_folder && status?.default_folder_id) {
                 setSearch('');
@@ -96,6 +102,9 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                     { id: status.default_folder_id, name: status.default_folder_name },
                 ]);
             }
+        },
+        onError: (err) => {
+            setUnlockError(err?.response?.data?.message || 'Incorrect portal password.');
         },
     });
 
@@ -186,7 +195,15 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                 <div className="flex flex-wrap items-center gap-2">
                     {status.default_folder_id && (
                         <button
-                            onClick={() => toggleLockMut.mutate(!isLocked)}
+                            onClick={() => {
+                                if (isLocked) {
+                                    setUnlockError('');
+                                    setUnlockPassword('');
+                                    setShowUnlockModal(true);
+                                } else {
+                                    toggleLockMut.mutate({ locked: true });
+                                }
+                            }}
                             disabled={toggleLockMut.isPending}
                             className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
                                 isLocked
@@ -204,20 +221,24 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                     >
                         {refreshMut.isPending ? 'Refreshing…' : 'Refresh from Drive'}
                     </button>
-                    <button
-                        onClick={handleConnect}
-                        disabled={connecting}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
-                    >
-                        Switch Account
-                    </button>
-                    <button
-                        onClick={() => disconnectMut.mutate()}
-                        disabled={disconnectMut.isPending}
-                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                    >
-                        Disconnect
-                    </button>
+                    {!isLocked && (
+                        <>
+                            <button
+                                onClick={handleConnect}
+                                disabled={connecting}
+                                className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                            >
+                                Switch Account
+                            </button>
+                            <button
+                                onClick={() => disconnectMut.mutate()}
+                                disabled={disconnectMut.isPending}
+                                className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                            >
+                                Disconnect
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -294,7 +315,7 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                             </button>
                         </span>
                     ))}
-                    {currentFolder.id && (
+                    {currentFolder.id && !isLocked && (
                         <div className="ml-2 flex items-center gap-1.5">
                             <button
                                 onClick={() =>
@@ -404,34 +425,36 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                             </div>
 
                             {file.is_folder ? (
-                                <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-                                    <button
-                                        onClick={() => toggleFavMut.mutate({ folderId: file.id, folderName: file.name })}
-                                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
-                                            isFav(file.id)
-                                                ? 'border-amber-300 bg-amber-50 text-amber-800'
-                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                                        }`}
-                                    >
-                                        {isFav(file.id) ? '★ Favorited' : '☆ Favorite'}
-                                    </button>
-                                    <button
-                                        onClick={() =>
-                                            setDefaultMut.mutate(
+                                !isLocked && (
+                                    <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                                        <button
+                                            onClick={() => toggleFavMut.mutate({ folderId: file.id, folderName: file.name })}
+                                            className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                                                isFav(file.id)
+                                                    ? 'border-amber-300 bg-amber-50 text-amber-800'
+                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {isFav(file.id) ? '★ Favorited' : '☆ Favorite'}
+                                        </button>
+                                        <button
+                                            onClick={() =>
+                                                setDefaultMut.mutate(
+                                                    isDefault(file.id)
+                                                        ? { folderId: null, folderName: null }
+                                                        : { folderId: file.id, folderName: file.name }
+                                                )
+                                            }
+                                            className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
                                                 isDefault(file.id)
-                                                    ? { folderId: null, folderName: null }
-                                                    : { folderId: file.id, folderName: file.name }
-                                            )
-                                        }
-                                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
-                                            isDefault(file.id)
-                                                ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                                        }`}
-                                    >
-                                        {isDefault(file.id) ? 'Default ✓' : 'Set Default'}
-                                    </button>
-                                </div>
+                                                    ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {isDefault(file.id) ? 'Default ✓' : 'Set Default'}
+                                        </button>
+                                    </div>
+                                )
                             ) : (
                                 <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
                                     {file.is_video && (
@@ -454,6 +477,58 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                             )}
                         </div>
                     ))}
+                </div>
+            )}
+
+            {showUnlockModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            toggleLockMut.mutate({ locked: false, password: unlockPassword });
+                        }}
+                        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl space-y-4"
+                    >
+                        <div>
+                            <h3 className="text-base font-semibold text-gray-900">Unlock Google Drive Folder</h3>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Enter your LeadSetu portal password to unlock access beyond {status.default_folder_name}.
+                            </p>
+                        </div>
+
+                        {unlockError && (
+                            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                {unlockError}
+                            </div>
+                        )}
+
+                        <input
+                            type="password"
+                            required
+                            autoFocus
+                            value={unlockPassword}
+                            onChange={(e) => setUnlockPassword(e.target.value)}
+                            placeholder="Portal password"
+                            className="w-full rounded-lg border px-3 py-2 text-sm"
+                        />
+
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowUnlockModal(false)}
+                                className="rounded-lg border px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={toggleLockMut.isPending}
+                                className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {toggleLockMut.isPending ? 'Verifying…' : 'Unlock'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
         </div>

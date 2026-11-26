@@ -12,6 +12,7 @@ use App\Services\GoogleDriveService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use Throwable;
 
 class GoogleDriveController extends Controller
@@ -97,6 +98,10 @@ class GoogleDriveController extends Controller
             return response()->json(['message' => 'Google Drive is not connected.'], 422);
         }
 
+        if ($conn->lock_to_default_folder) {
+            return response()->json(['message' => 'Unlock the folder with your portal password before changing the default folder.'], 403);
+        }
+
         $folderId = $request->input('folder_id') ?: null;
         $folderName = $request->input('folder_name') ?: null;
 
@@ -138,6 +143,13 @@ class GoogleDriveController extends Controller
         $locked = $request->boolean('locked');
         if ($locked && ! $conn->default_folder_id) {
             return response()->json(['message' => 'Set a default folder before locking access.'], 422);
+        }
+
+        if (! $locked && $conn->lock_to_default_folder) {
+            $password = (string) $request->input('password', '');
+            if ($password === '' || ! Hash::check($password, (string) $request->user()?->password)) {
+                return response()->json(['message' => 'Incorrect portal password.'], 422);
+            }
         }
 
         $conn->lock_to_default_folder = $locked;
@@ -189,6 +201,11 @@ class GoogleDriveController extends Controller
     public function disconnect(): JsonResponse
     {
         Gate::authorize('create', SocialAccount::class);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if ($conn?->lock_to_default_folder) {
+            return response()->json(['message' => 'Unlock the folder with your portal password before disconnecting Google Drive.'], 403);
+        }
 
         GoogleDriveFile::query()->delete();
         GoogleDriveConnection::query()->delete();
