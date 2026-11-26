@@ -7,7 +7,7 @@ import GoogleDriveTab from '../components/GoogleDriveTab';
 import { useMe } from '../hooks/useMe';
 
 const TABS = [
-    { id: 'accounts', label: 'YT & IG Accounts' },
+    { id: 'accounts', label: 'Connected Channels' },
     { id: 'content', label: 'Content Planner' },
     { id: 'drive', label: 'Google Drive' },
     { id: 'keywords', label: 'Keyword Research' },
@@ -374,7 +374,7 @@ export default function SocialStudio() {
                     <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Connected Accounts</div>
                     <div className="mt-1 text-2xl font-bold">{totals.accounts ?? 0}</div>
                     <div className="mt-1 text-xs text-gray-500">
-                        YT: {totals.youtube_accounts ?? 0} · IG: {totals.instagram_accounts ?? 0}
+                        YT: {totals.youtube_accounts ?? 0} · IG: {totals.instagram_accounts ?? 0} · FB: {totals.facebook_accounts ?? 0}
                     </div>
                 </div>
                 <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
@@ -416,78 +416,115 @@ export default function SocialStudio() {
 
             {/* TAB 1: ACCOUNTS */}
             {tab === 'accounts' && (
-                <div className="space-y-3">
-                        {accounts.length === 0 ? (
-                            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 text-sm text-gray-500">
-                                No YouTube or Instagram accounts connected yet. Add your first account to start tracking!
-                            </div>
-                        ) : (
-                            accounts.map((acc) => (
-                                <div key={acc.id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+                <div className="space-y-4">
+                    {accounts.length === 0 ? (
+                        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm space-y-2">
+                            <p className="text-sm font-medium text-gray-700">No channels connected yet</p>
+                            <p className="text-xs text-gray-500">
+                                Use <strong>+ Connect Channel</strong> in the top-right to connect your YouTube, Instagram, or Facebook Pages.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            {accounts.map((acc) => (
+                                <div
+                                    key={acc.id}
+                                    className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+                                >
                                     <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(acc.platform)}`}>
-                                                {acc.platform}
-                                            </span>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                {acc.avatar_url ? (
+                                                    <img
+                                                        src={acc.avatar_url}
+                                                        alt={acc.account_name}
+                                                        className="h-11 w-11 flex-shrink-0 rounded-full border object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold uppercase ${platformBadge(acc.platform)}`}>
+                                                        {acc.platform.slice(0, 2)}
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <Link
+                                                        to={`/social/accounts/${acc.id}/analytics`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="block truncate text-sm font-semibold text-gray-900 hover:text-indigo-600"
+                                                        title="Open channel analytics in a new tab"
+                                                    >
+                                                        {acc.account_name} ↗
+                                                    </Link>
+                                                    <div className="truncate text-xs text-gray-500">{acc.handle}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase ${platformBadge(acc.platform)}`}>
+                                                    {acc.platform}
+                                                </span>
+                                                <span
+                                                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                                                        acc.status === 'connected'
+                                                            ? 'bg-green-50 text-green-700'
+                                                            : 'bg-yellow-50 text-yellow-700'
+                                                    }`}
+                                                >
+                                                    {acc.status}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-gray-50 p-2.5 text-center">
+                                            <div>
+                                                <div className="text-[11px] text-gray-500">Followers</div>
+                                                <div className="text-sm font-bold text-gray-900">{acc.followers_count.toLocaleString()}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-[11px] text-gray-500">Views</div>
+                                                <div className="text-sm font-bold text-gray-900">{acc.views_count.toLocaleString()}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-[11px] text-gray-500">Engagement</div>
+                                                <div className="text-sm font-bold text-gray-900">{acc.engagement_rate}%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                                        <span className="text-[11px] text-gray-400">
+                                            {acc.last_synced_at ? `Synced ${new Date(acc.last_synced_at).toLocaleDateString()}` : 'Not synced yet'}
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
                                             <Link
                                                 to={`/social/accounts/${acc.id}/analytics`}
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                className="font-semibold text-indigo-700 hover:underline"
-                                                title="Open channel analytics in a new tab"
+                                                className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
                                             >
-                                                {acc.account_name} ↗
+                                                Analytics ↗
                                             </Link>
-                                            <span className="text-sm text-gray-500">{acc.handle}</span>
-                                            <span
-                                                className={`rounded px-2 py-0.5 text-xs ${
-                                                    acc.status === 'connected'
-                                                        ? 'bg-green-50 text-green-700'
-                                                        : 'bg-yellow-50 text-yellow-700'
-                                                }`}
-                                            >
-                                                {acc.status}
-                                            </span>
+                                            {can('manage_social_accounts') && (
+                                                <>
+                                                    <button
+                                                        onClick={() => syncAccountMut.mutate(acc.id)}
+                                                        className="rounded-lg border px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                                                    >
+                                                        Sync
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteAccountMut.mutate(acc.id)}
+                                                        className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
-                                        <div className="mt-1 text-xs text-gray-500">
-                                            Niche: {acc.niche || 'General'} · Followers: {acc.followers_count.toLocaleString()} · Views:{' '}
-                                            {acc.views_count.toLocaleString()} · Engagement: {acc.engagement_rate}%
-                                            {acc.last_synced_at
-                                                ? ` · Last synced: ${new Date(acc.last_synced_at).toLocaleString()}`
-                                                : ''}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setAnalyticsAccountId(analyticsAccountId === acc.id ? null : acc.id)}
-                                            className={`rounded-lg border px-3 py-1 text-xs font-medium ${
-                                                analyticsAccountId === acc.id
-                                                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                                                    : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
-                                            }`}
-                                        >
-                                            {analyticsAccountId === acc.id ? 'Hide Analytics' : 'Analytics'}
-                                        </button>
-                                        {can('manage_social_accounts') && (
-                                            <>
-                                                <button
-                                                    onClick={() => syncAccountMut.mutate(acc.id)}
-                                                    className="rounded-lg border px-3 py-1 text-xs hover:bg-gray-50"
-                                                >
-                                                    Sync
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteAccountMut.mutate(acc.id)}
-                                                    className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </>
-                                        )}
                                     </div>
                                 </div>
-                            ))
-                        )}
+                            ))}
+                        </div>
+                    )}
 
                     {analyticsAccountId && (
                         <div className="lg:col-span-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-5">

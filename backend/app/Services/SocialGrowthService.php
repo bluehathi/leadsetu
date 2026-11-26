@@ -32,6 +32,7 @@ class SocialGrowthService
                 'accounts' => $accounts->count(),
                 'youtube_accounts' => $accounts->where('platform', 'youtube')->count(),
                 'instagram_accounts' => $accounts->where('platform', 'instagram')->count(),
+                'facebook_accounts' => $accounts->where('platform', 'facebook')->count(),
                 'followers' => (int) $accounts->sum('followers_count'),
                 'views' => (int) $accounts->sum('views_count'),
                 'avg_engagement' => $accounts->count() > 0
