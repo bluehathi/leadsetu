@@ -8,6 +8,7 @@ use App\Models\SocialContent;
 use App\Models\User;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\URL;
 use RuntimeException;
 
 class GoogleDriveService
@@ -429,5 +430,116 @@ class GoogleDriveService
                 @unlink($tempThumbPath);
             }
         }
+    }
+
+    public function streamFileForSignedProxy(int $workspaceId, string $fileId): array
+    {
+        $conn = GoogleDriveConnection::withoutGlobalScopes()->where('workspace_id', $workspaceId)->first();
+        if (! $conn) {
+            throw new RuntimeException('Google Drive is not connected.');
+        }
+
+        $token = $this->ensureFreshToken($conn);
+        $resp = Http::withToken($token)
+            ->timeout(300)
+            ->get("https://www.googleapis.com/drive/v3/files/{$fileId}", [
+                'alt' => 'media',
+                'supportsAllDrives' => 'true',
+            ]);
+
+        if (! $resp->successful()) {
+            throw new RuntimeException('Failed to stream Google Drive media.');
+        }
+
+        return [
+            'body' => $resp->body(),
+            'content_type' => $resp->header('Content-Type') ?: 'application/octet-stream',
+        ];
+    }
+
+    public function publishContentToInstagram(SocialContent $content, GoogleDriveConnection $driveConn): SocialContent
+    {
+        $fileId = $content->drive_file_id ?: $content->drive_thumbnail_file_id;
+        if (! $fileId) {
+            throw new RuntimeException('Attach a video or image from Google Drive first.');
+        }
+
+        $account = $content->account;
+        if (! $account || $account->platform !== 'instagram' || ! $account->external_id) {
+            throw new RuntimeException('Selected content must belong to a connected Instagram Business account.');
+        }
+        if (! $account->access_token) {
+            throw new RuntimeException('Instagram token is missing. Please reconnect your Instagram account.');
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $mediaUrl = URL::temporarySignedRoute('social.drive.temp-media', now()->addMinutes(15), [
+            'workspaceId' => $content->workspace_id,
+            'fileId' => $fileId,
+        ]);
+
+        $caption = trim((string) ($content->title ? "{$content->title}\n\n" : '').(string) ($content->description ?? ''));
+        if (is_array($content->hashtags) && count($content->hashtags) > 0) {
+            $tagsLine = implode(' ', array_map(fn ($h) => str_starts_with($h, '#') ? $h : "#{$h}", $content->hashtags));
+            $caption = trim($caption."\n\n".$tagsLine);
+        }
+
+        $isVideo = (bool) $content->drive_file_id && str_starts_with((string) ($content->drive_mime_type ?? 'video/'), 'video/');
+        $containerParams = [
+            'caption' => mb_substr($caption, 0, 2200),
+            'access_token' => $account->access_token,
+        ];
+        if ($isVideo) {
+            $containerParams['media_type'] = 'REELS';
+            $containerParams['video_url'] = $mediaUrl;
+        } else {
+            $containerParams['image_url'] = $mediaUrl;
+        }
+
+        $createResp = Http::post("https://graph.facebook.com/{$version}/{$account->external_id}/media", $containerParams);
+        if (! $createResp->successful() || ! ($creationId = $createResp->json('id'))) {
+            $msg = $createResp->json('error.message') ?: 'Failed to create Instagram media container.';
+            throw new RuntimeException($msg);
+        }
+
+        // Poll container status until FINISHED (especially required for Reels/video).
+        for ($i = 0; $i < 15; $i++) {
+            $statusResp = Http::get("https://graph.facebook.com/{$version}/{$creationId}", [
+                'fields' => 'status_code',
+                'access_token' => $account->access_token,
+            ]);
+            $code = $statusResp->json('status_code');
+            if ($code === 'FINISHED') {
+                break;
+            }
+            if ($code === 'ERROR') {
+                throw new RuntimeException('Instagram rejected or failed to process the media file.');
+            }
+            sleep(3);
+        }
+
+        $publishResp = Http::post("https://graph.facebook.com/{$version}/{$account->external_id}/media_publish", [
+            'creation_id' => $creationId,
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $publishResp->successful() || ! ($mediaId = $publishResp->json('id'))) {
+            $msg = $publishResp->json('error.message') ?: 'Failed to publish Instagram post.';
+            throw new RuntimeException($msg);
+        }
+
+        $permalinkResp = Http::get("https://graph.facebook.com/{$version}/{$mediaId}", [
+            'fields' => 'permalink',
+            'access_token' => $account->access_token,
+        ]);
+
+        $content->forceFill([
+            'instagram_media_id' => $mediaId,
+            'published_url' => $permalinkResp->successful() ? ($permalinkResp->json('permalink') ?: null) : null,
+            'status' => 'published',
+            'published_at' => now(),
+        ])->save();
+
+        return $content->fresh()->load('account:id,platform,account_name,handle');
     }
 }

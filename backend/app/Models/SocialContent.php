@@ -32,6 +32,8 @@ class SocialContent extends Model
         'drive_mime_type',
         'drive_thumbnail_file_id',
         'youtube_video_id',
+        'instagram_media_id',
+        'published_url',
         'target_keyword',
         'status',
         'scheduled_at',

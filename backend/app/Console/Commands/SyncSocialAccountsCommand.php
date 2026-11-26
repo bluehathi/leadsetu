@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\GoogleDriveConnection;
 use App\Models\SocialAccount;
+use App\Services\GoogleDriveService;
 use App\Services\SocialOAuthSyncService;
 use Illuminate\Console\Command;
 
@@ -10,9 +12,9 @@ class SyncSocialAccountsCommand extends Command
 {
     protected $signature = 'social:sync {--platform= : Optional platform filter (youtube|instagram)}';
 
-    protected $description = 'Auto-sync all connected YouTube & Instagram accounts across workspaces';
+    protected $description = 'Auto-sync all connected YouTube & Instagram accounts and Drive metadata cache across workspaces';
 
-    public function handle(SocialOAuthSyncService $syncService): int
+    public function handle(SocialOAuthSyncService $syncService, GoogleDriveService $driveService): int
     {
         $query = SocialAccount::withoutGlobalScopes()
             ->where('status', 'connected');
@@ -35,7 +37,20 @@ class SyncSocialAccountsCommand extends Command
             }
         }
 
-        $this->info("Synced {$count} social account(s), {$failed} failed.");
+        $driveCount = 0;
+        if (! $platform) {
+            foreach (GoogleDriveConnection::withoutGlobalScopes()->cursor() as $conn) {
+                try {
+                    $driveService->listFiles($conn, $conn->default_folder_id ?: null, null, true);
+                    $driveCount++;
+                } catch (\Throwable $e) {
+                    report($e);
+                    $this->warn("Drive #{$conn->id} failed: {$e->getMessage()}");
+                }
+            }
+        }
+
+        $this->info("Synced {$count} social account(s), {$driveCount} Drive folder(s), {$failed} failed.");
 
         return self::SUCCESS;
     }

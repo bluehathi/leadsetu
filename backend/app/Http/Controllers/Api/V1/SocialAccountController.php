@@ -98,7 +98,7 @@ class SocialAccountController extends Controller implements HasMiddleware
 
         try {
             return response()->json([
-                'data' => $this->oauthSync->getYouTubeVideoAnalytics($socialAccount, $videoId, $request->boolean('refresh')),
+                'data' => $this->oauthSync->getMediaAnalytics($socialAccount, $videoId, $request->boolean('refresh')),
             ]);
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);

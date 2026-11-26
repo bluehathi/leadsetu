@@ -18,6 +18,9 @@ Route::prefix('v1')->group(function () {
         ->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
     // OAuth callback from Google (YouTube) / Meta (Instagram) — secured via encrypted state payload.
     Route::get('social/oauth/{platform}/callback', [V1\SocialAccountController::class, 'oauthCallback']);
+    Route::get('social/drive/temp-media/{workspaceId}/{fileId}', [V1\GoogleDriveController::class, 'tempMedia'])
+        ->middleware('signed')
+        ->name('social.drive.temp-media');
 
     // Signed-in account endpoints: available even before the email is verified.
     Route::middleware('auth:sanctum')->group(function () {

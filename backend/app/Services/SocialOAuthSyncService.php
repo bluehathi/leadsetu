@@ -54,7 +54,7 @@ class SocialOAuthSyncService
             'client_id' => $clientId,
             'redirect_uri' => $redirect,
             'response_type' => 'code',
-            'scope' => 'instagram_basic,pages_show_list,instagram_manage_insights',
+            'scope' => 'instagram_basic,pages_show_list,instagram_manage_insights,instagram_content_publish',
             'state' => $state,
         ]);
     }
@@ -685,6 +685,162 @@ class SocialOAuthSyncService
         }
 
         return ((int) ($m[1] ?? 0) * 3600) + ((int) ($m[2] ?? 0) * 60) + (int) ($m[3] ?? 0);
+    }
+
+    /**
+     * Get per-video / per-post analytics from DB cache for either YouTube or Instagram.
+     */
+    public function getMediaAnalytics(SocialAccount $account, string $mediaId, bool $forceRefresh = false): array
+    {
+        return $account->platform === 'instagram'
+            ? $this->getInstagramMediaAnalytics($account, $mediaId, $forceRefresh)
+            : $this->getYouTubeVideoAnalytics($account, $mediaId, $forceRefresh);
+    }
+
+    /**
+     * Get per-post / per-reel Instagram Insights from DB cache, or fetch live on first load / refresh.
+     */
+    public function getInstagramMediaAnalytics(SocialAccount $account, string $mediaId, bool $forceRefresh = false): array
+    {
+        $cached = SocialVideoAnalytic::where('social_account_id', $account->id)
+            ->where('external_video_id', $mediaId)
+            ->first();
+
+        if (! $forceRefresh && $cached && is_array($cached->payload)) {
+            return array_merge($cached->payload, [
+                'account' => $account,
+                'source' => 'cache',
+                'synced_at' => $cached->synced_at?->toIso8601String(),
+            ]);
+        }
+
+        if (! $account->access_token) {
+            throw new RuntimeException('Instagram token is missing. Please reconnect your Instagram account.');
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $mediaResp = Http::get("https://graph.facebook.com/{$version}/{$mediaId}", [
+            'fields' => 'id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count',
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $mediaResp->successful()) {
+            throw new RuntimeException('Unable to fetch Instagram post details. Token may need re-authentication.');
+        }
+
+        $post = $mediaResp->json();
+        $caption = (string) ($post['caption'] ?? '');
+        $likes = (int) ($post['like_count'] ?? 0);
+        $commentsCount = (int) ($post['comments_count'] ?? 0);
+        $followers = max(1, (int) $account->followers_count);
+
+        // Fetch Instagram Insights (reach, saved, shares, total_interactions, plays).
+        $insights = ['reach' => 0, 'saved' => 0, 'shares' => 0, 'total_interactions' => $likes + $commentsCount, 'plays' => 0];
+        $metricsList = ($post['media_product_type'] ?? '') === 'REELS' || ($post['media_type'] ?? '') === 'VIDEO'
+            ? 'reach,saved,shares,total_interactions,plays'
+            : 'reach,saved,shares,total_interactions';
+
+        $insightsResp = Http::get("https://graph.facebook.com/{$version}/{$mediaId}/insights", [
+            'metric' => $metricsList,
+            'access_token' => $account->access_token,
+        ]);
+
+        if ($insightsResp->successful()) {
+            foreach ($insightsResp->json('data', []) as $m) {
+                $name = $m['name'] ?? null;
+                $val = $m['values'][0]['value'] ?? 0;
+                if ($name && array_key_exists($name, $insights)) {
+                    $insights[$name] = (int) $val;
+                }
+            }
+        }
+
+        $recentComments = [];
+        $commentsResp = Http::get("https://graph.facebook.com/{$version}/{$mediaId}/comments", [
+            'fields' => 'id,text,username,timestamp,like_count',
+            'limit' => 10,
+            'access_token' => $account->access_token,
+        ]);
+        if ($commentsResp->successful()) {
+            foreach ($commentsResp->json('data', []) as $c) {
+                $recentComments[] = [
+                    'id' => $c['id'] ?? uniqid(),
+                    'author' => '@'.($c['username'] ?? 'user'),
+                    'author_avatar' => null,
+                    'text' => $c['text'] ?? '',
+                    'likes' => (int) ($c['like_count'] ?? 0),
+                    'published_at' => $c['timestamp'] ?? null,
+                ];
+            }
+        }
+
+        $publishedAt = isset($post['timestamp']) ? Carbon::parse($post['timestamp']) : null;
+        $daysSince = $publishedAt ? max(1, (int) $publishedAt->diffInDays(now())) : 1;
+        preg_match_all('/#[\p{L}\p{N}_]+/u', $caption, $hashMatches);
+        $hashtags = $hashMatches[0] ?? [];
+
+        $checks = [
+            ['label' => 'Caption depth (100+ chars)', 'passed' => mb_strlen($caption) >= 100, 'value' => mb_strlen($caption).' chars'],
+            ['label' => 'Hashtags included (3+)', 'passed' => count($hashtags) >= 3, 'value' => count($hashtags).' hashtags'],
+            ['label' => 'Saves recorded', 'passed' => $insights['saved'] > 0, 'value' => $insights['saved'].' saves'],
+            ['label' => 'Shares recorded', 'passed' => $insights['shares'] > 0, 'value' => $insights['shares'].' shares'],
+        ];
+        $seoScore = (int) round((count(array_filter($checks, fn ($c) => $c['passed'])) / count($checks)) * 100);
+
+        $payload = [
+            'video' => [
+                'id' => $post['id'],
+                'title' => mb_strimwidth($caption ?: 'Instagram Post', 0, 80, '…'),
+                'description' => $caption,
+                'thumbnail_url' => $post['thumbnail_url'] ?? ($post['media_url'] ?? null),
+                'published_at' => $post['timestamp'] ?? null,
+                'duration_seconds' => null,
+                'type' => strtolower((string) ($post['media_product_type'] ?? $post['media_type'] ?? 'post')),
+                'tags' => $hashtags,
+                'definition' => 'HD',
+                'has_captions' => false,
+                'privacy_status' => 'public',
+                'url' => $post['permalink'] ?? null,
+            ],
+            'metrics' => [
+                'views' => $insights['plays'] ?: $insights['reach'],
+                'reach' => $insights['reach'],
+                'plays' => $insights['plays'],
+                'saved' => $insights['saved'],
+                'shares' => $insights['shares'],
+                'likes' => $likes,
+                'comments' => $commentsCount,
+                'engagement_rate' => round((($likes + $commentsCount + $insights['saved'] + $insights['shares']) / max(1, $insights['reach'] ?: $followers)) * 100, 2),
+                'like_rate' => round(($likes / max(1, $insights['reach'] ?: $followers)) * 100, 2),
+                'comment_rate' => round(($commentsCount / max(1, $insights['reach'] ?: $followers)) * 100, 2),
+                'days_since_published' => $daysSince,
+                'views_per_day' => round(($insights['plays'] ?: $insights['reach']) / $daysSince, 1),
+            ],
+            'seo' => [
+                'score' => $seoScore,
+                'checks' => $checks,
+            ],
+            'recent_comments' => $recentComments,
+            'deep_analytics' => null,
+        ];
+
+        $now = now();
+        SocialVideoAnalytic::updateOrCreate(
+            [
+                'social_account_id' => $account->id,
+                'external_video_id' => $post['id'],
+            ],
+            [
+                'payload' => $payload,
+                'synced_at' => $now,
+            ]
+        );
+
+        return array_merge($payload, [
+            'account' => $account,
+            'source' => 'live',
+            'synced_at' => $now->toIso8601String(),
+        ]);
     }
 
     /**

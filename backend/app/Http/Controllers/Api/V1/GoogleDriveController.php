@@ -213,6 +213,16 @@ class GoogleDriveController extends Controller
         return response()->json(null, 204);
     }
 
+    public function tempMedia(int $workspaceId, string $fileId)
+    {
+        try {
+            $media = $this->drive->streamFileForSignedProxy($workspaceId, $fileId);
+            return response($media['body'], 200)->header('Content-Type', $media['content_type']);
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        }
+    }
+
     public function publishToYouTube(Request $request, SocialContent $socialContent): JsonResponse
     {
         Gate::authorize('update', $socialContent);
@@ -222,11 +232,15 @@ class GoogleDriveController extends Controller
             return response()->json(['message' => 'Google Drive is not connected.'], 422);
         }
 
-        $privacy = $request->input('privacy_status', 'private');
-
         try {
-            $updated = $this->drive->publishContentToYouTube($socialContent, $conn, $privacy);
-            $this->audit->log('youtube_video_published', $updated, "Published {$updated->title} from Google Drive to YouTube ({$updated->youtube_video_id})");
+            if ($socialContent->platform === 'instagram') {
+                $updated = $this->drive->publishContentToInstagram($socialContent, $conn);
+                $this->audit->log('instagram_media_published', $updated, "Published {$updated->title} from Google Drive to Instagram ({$updated->instagram_media_id})");
+            } else {
+                $privacy = $request->input('privacy_status', 'private');
+                $updated = $this->drive->publishContentToYouTube($socialContent, $conn, $privacy);
+                $this->audit->log('youtube_video_published', $updated, "Published {$updated->title} from Google Drive to YouTube ({$updated->youtube_video_id})");
+            }
 
             return response()->json(['data' => $updated]);
         } catch (Throwable $e) {

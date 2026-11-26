@@ -47,6 +47,7 @@ export default function VideoAnalytics() {
     }
 
     const { account, video, metrics, seo, source, synced_at: syncedAt, deep_analytics: deepAnalytics, recent_comments: comments } = data;
+    const isIg = account.platform === 'instagram';
 
     return (
         <div className="space-y-6">
@@ -61,7 +62,7 @@ export default function VideoAnalytics() {
                     )}
                     <div className="max-w-2xl">
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold uppercase text-red-700">
+                            <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${isIg ? 'bg-pink-100 text-pink-700' : 'bg-red-100 text-red-700'}`}>
                                 {video.type}
                             </span>
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase text-gray-700">
@@ -94,46 +95,53 @@ export default function VideoAnalytics() {
                     >
                         ← Channel Analytics
                     </Link>
-                    <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                        Watch on YouTube ↗
-                    </a>
+                    {video.url && (
+                        <a
+                            href={video.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                            {isIg ? 'View on Instagram ↗' : 'Watch on YouTube ↗'}
+                        </a>
+                    )}
                     <button
                         onClick={() => refreshMut.mutate()}
                         disabled={refreshMut.isPending}
                         className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                     >
-                        {refreshMut.isPending ? 'Refreshing from YT…' : 'Refresh from YT'}
+                        {refreshMut.isPending ? `Refreshing from ${isIg ? 'IG' : 'YT'}…` : `Refresh from ${isIg ? 'IG' : 'YT'}`}
                     </button>
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="text-xs text-gray-500">Views</div>
+                    <div className="text-xs text-gray-500">{isIg ? (metrics.plays > 0 ? 'Plays' : 'Reach') : 'Views'}</div>
                     <div className="mt-1 text-2xl font-bold">{metrics.views.toLocaleString()}</div>
+                    {isIg && metrics.reach > 0 && metrics.plays > 0 && (
+                        <div className="text-xs text-gray-400">Reach: {metrics.reach.toLocaleString()}</div>
+                    )}
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="text-xs text-gray-500">Likes</div>
                     <div className="mt-1 text-2xl font-bold">{metrics.likes.toLocaleString()}</div>
-                    <div className="text-xs text-gray-400">{metrics.like_rate}% of views</div>
+                    <div className="text-xs text-gray-400">{metrics.like_rate}%</div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="text-xs text-gray-500">Comments</div>
                     <div className="mt-1 text-2xl font-bold">{metrics.comments.toLocaleString()}</div>
-                    <div className="text-xs text-gray-400">{metrics.comment_rate}% of views</div>
+                    <div className="text-xs text-gray-400">{metrics.comment_rate}%</div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="text-xs text-gray-500">Engagement Rate</div>
                     <div className="mt-1 text-2xl font-bold">{metrics.engagement_rate}%</div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="text-xs text-gray-500">Views / Day</div>
-                    <div className="mt-1 text-2xl font-bold">{metrics.views_per_day.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">{isIg ? 'Saves / Shares' : 'Views / Day'}</div>
+                    <div className="mt-1 text-2xl font-bold">
+                        {isIg ? `${(metrics.saved || 0).toLocaleString()} / ${(metrics.shares || 0).toLocaleString()}` : metrics.views_per_day.toLocaleString()}
+                    </div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="text-xs text-gray-500">SEO / Metadata Score</div>
