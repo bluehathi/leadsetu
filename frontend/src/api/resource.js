@@ -83,6 +83,9 @@ export const invoicesApi = {
 };
 export const mcpApi = {
     listTokens: () => api.get('/mcp/tokens').then((r) => r.data.data),
-    createToken: (name) => api.post('/mcp/tokens', { name }).then((r) => r.data.data),
+    createToken: (name, allow_content_write = false) =>
+        api.post('/mcp/tokens', { name, allow_content_write }).then((r) => r.data.data),
+    updateToken: (id, allow_content_write) =>
+        api.patch(`/mcp/tokens/${id}`, { allow_content_write }).then((r) => r.data.data),
     deleteToken: (id) => api.delete(`/mcp/tokens/${id}`),
 };

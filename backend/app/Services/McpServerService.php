@@ -20,15 +20,17 @@ class McpServerService
     public function __construct(
         protected SocialOAuthSyncService $socialSync,
         protected GoogleDriveService $driveService,
+        protected SocialGrowthService $growthService,
+        protected ActivityLogService $audit,
     ) {
     }
 
     /**
-     * Read-only MCP tool definitions exposed to authenticated AI agents.
+     * MCP tool definitions exposed to authenticated AI agents based on token scopes.
      */
-    public function tools(): array
+    public function tools(array $scopes = ['readonly']): array
     {
-        return [
+        $tools = [
             [
                 'name' => 'get_workspace_summary',
                 'description' => 'Get read-only summary counts for the LeadSetu workspace (leads, contacts, companies, invoices, social channels, planned content, and cached Drive files).',
@@ -138,11 +140,79 @@ class McpServerService
                 ],
             ],
         ];
+
+        if (in_array('content:write', $scopes, true)) {
+            $tools = array_merge($tools, [
+                [
+                    'name' => 'create_content_plan',
+                    'description' => 'Create a new Content Planner item (idea, draft, or scheduled) with automatic SEO scoring and optional Google Drive video/thumbnail attachment.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'social_account_id' => ['type' => 'integer', 'description' => 'Target SocialAccount ID'],
+                            'title' => ['type' => 'string', 'description' => 'Video or post title'],
+                            'content_type' => ['type' => 'string', 'description' => 'video, short, reel, carousel, or post (default: video)'],
+                            'target_keyword' => ['type' => 'string', 'description' => 'Primary SEO target keyword'],
+                            'hook' => ['type' => 'string', 'description' => 'Opening hook (first 3-15 sec)'],
+                            'description' => ['type' => 'string', 'description' => 'Video description or caption'],
+                            'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of tags'],
+                            'hashtags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of hashtags'],
+                            'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled (default: draft)'],
+                            'scheduled_at' => ['type' => 'string', 'description' => 'Optional ISO 8601 schedule datetime'],
+                            'drive_file_id' => ['type' => 'string', 'description' => 'Optional Google Drive video file ID from list_drive_files'],
+                            'drive_thumbnail_file_id' => ['type' => 'string', 'description' => 'Optional Google Drive thumbnail image file ID'],
+                        ],
+                        'required' => ['social_account_id', 'title'],
+                    ],
+                ],
+                [
+                    'name' => 'update_content_plan',
+                    'description' => 'Update an existing Content Planner item (title, description, tags, status, schedule, or Google Drive attachments) and re-compute SEO score.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'content_id' => ['type' => 'integer', 'description' => 'SocialContent ID from list_content_planner'],
+                            'title' => ['type' => 'string'],
+                            'content_type' => ['type' => 'string'],
+                            'target_keyword' => ['type' => 'string'],
+                            'hook' => ['type' => 'string'],
+                            'description' => ['type' => 'string'],
+                            'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
+                            'hashtags' => ['type' => 'array', 'items' => ['type' => 'string']],
+                            'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled'],
+                            'scheduled_at' => ['type' => 'string'],
+                            'drive_file_id' => ['type' => 'string'],
+                            'drive_thumbnail_file_id' => ['type' => 'string'],
+                        ],
+                        'required' => ['content_id'],
+                    ],
+                ],
+                [
+                    'name' => 'delete_content_plan',
+                    'description' => 'Delete a Content Planner item by ID.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'content_id' => ['type' => 'integer', 'description' => 'SocialContent ID'],
+                        ],
+                        'required' => ['content_id'],
+                    ],
+                ],
+            ]);
+        }
+
+        return $tools;
     }
 
-    public function callTool(string $name, array $args): array
+    public function callTool(string $name, array $args, array $scopes = ['readonly']): array
     {
         $limit = max(1, min(100, (int) ($args['limit'] ?? 25)));
+        $canWriteContent = in_array('content:write', $scopes, true);
+
+        $writeTools = ['create_content_plan', 'update_content_plan', 'delete_content_plan'];
+        if (in_array($name, $writeTools, true) && ! $canWriteContent) {
+            throw new InvalidArgumentException("Tool '{$name}' requires the 'content:write' scope. Enable Content Planner write access for this MCP token in LeadSetu Workspace.");
+        }
 
         $result = match ($name) {
             'get_workspace_summary' => $this->getWorkspaceSummary(),
@@ -155,6 +225,9 @@ class McpServerService
             'get_video_analytics' => $this->getVideoAnalytics($args),
             'list_content_planner' => $this->listContentPlanner($args, $limit),
             'list_drive_files' => $this->listDriveFiles($args),
+            'create_content_plan' => $this->createContentPlan($args),
+            'update_content_plan' => $this->updateContentPlan($args),
+            'delete_content_plan' => $this->deleteContentPlan($args),
             default => throw new InvalidArgumentException("Unknown MCP tool: {$name}"),
         };
 
@@ -338,5 +411,111 @@ class McpServerService
                 'drive_file_id', 'parent_folder_id', 'name', 'mime_type', 'is_folder', 'is_video', 'is_image', 'size', 'web_view_url', 'modified_time', 'synced_at',
             ])->toArray(),
         ];
+    }
+
+    protected function createContentPlan(array $args): array
+    {
+        $account = SocialAccount::findOrFail((int) ($args['social_account_id'] ?? 0));
+        $title = trim((string) ($args['title'] ?? ''));
+        if ($title === '') {
+            throw new InvalidArgumentException('title is required.');
+        }
+
+        $status = in_array($args['status'] ?? 'draft', ['idea', 'draft', 'scheduled'], true)
+            ? $args['status']
+            : 'draft';
+        $contentType = in_array($args['content_type'] ?? 'video', SocialContent::TYPES, true)
+            ? $args['content_type']
+            : 'video';
+
+        $data = [
+            'social_account_id' => $account->id,
+            'platform' => $account->platform,
+            'content_type' => $contentType,
+            'title' => $title,
+            'target_keyword' => $args['target_keyword'] ?? null,
+            'hook' => $args['hook'] ?? null,
+            'description' => $args['description'] ?? null,
+            'tags' => is_array($args['tags'] ?? null) ? array_values($args['tags']) : [],
+            'hashtags' => is_array($args['hashtags'] ?? null) ? array_values($args['hashtags']) : [],
+            'status' => $status,
+            'scheduled_at' => $args['scheduled_at'] ?? null,
+        ];
+
+        $data = array_merge($data, $this->resolveDriveAttachments($args));
+        $scored = $this->growthService->scoreContent($data);
+
+        $content = SocialContent::create(array_merge($data, $scored));
+        $this->audit->log('social_content_created', $content, "MCP created {$content->platform} content: {$content->title}");
+
+        return $content->load('account:id,platform,account_name,handle')->toArray();
+    }
+
+    protected function updateContentPlan(array $args): array
+    {
+        $content = SocialContent::findOrFail((int) ($args['content_id'] ?? 0));
+
+        $updates = [];
+        foreach (['title', 'target_keyword', 'hook', 'description', 'scheduled_at'] as $field) {
+            if (array_key_exists($field, $args)) {
+                $updates[$field] = $args[$field];
+            }
+        }
+        if (isset($args['content_type']) && in_array($args['content_type'], SocialContent::TYPES, true)) {
+            $updates['content_type'] = $args['content_type'];
+        }
+        if (isset($args['status']) && in_array($args['status'], ['idea', 'draft', 'scheduled'], true)) {
+            $updates['status'] = $args['status'];
+        }
+        if (isset($args['tags']) && is_array($args['tags'])) {
+            $updates['tags'] = array_values($args['tags']);
+        }
+        if (isset($args['hashtags']) && is_array($args['hashtags'])) {
+            $updates['hashtags'] = array_values($args['hashtags']);
+        }
+
+        $updates = array_merge($updates, $this->resolveDriveAttachments($args));
+        $merged = array_merge($content->toArray(), $updates);
+        $scored = $this->growthService->scoreContent($merged);
+
+        $content->update(array_merge($updates, $scored));
+        $this->audit->log('social_content_updated', $content, "MCP updated {$content->platform} content: {$content->title}");
+
+        return $content->fresh()->load('account:id,platform,account_name,handle')->toArray();
+    }
+
+    protected function deleteContentPlan(array $args): array
+    {
+        $content = SocialContent::findOrFail((int) ($args['content_id'] ?? 0));
+        $title = $content->title;
+        $id = $content->id;
+        $content->delete();
+        $this->audit->log('social_content_deleted', $content, "MCP deleted social content: {$title}");
+
+        return ['deleted' => true, 'id' => $id, 'title' => $title];
+    }
+
+    protected function resolveDriveAttachments(array $args): array
+    {
+        $extra = [];
+        if (! empty($args['drive_file_id'])) {
+            $file = GoogleDriveFile::where('drive_file_id', $args['drive_file_id'])->first();
+            if (! $file || ! $file->is_video) {
+                throw new InvalidArgumentException('drive_file_id must refer to a cached Google Drive video file.');
+            }
+            $extra['drive_file_id'] = $file->drive_file_id;
+            $extra['drive_file_name'] = $file->name;
+            $extra['drive_file_url'] = $file->web_view_url;
+            $extra['drive_mime_type'] = $file->mime_type;
+        }
+        if (! empty($args['drive_thumbnail_file_id'])) {
+            $thumb = GoogleDriveFile::where('drive_file_id', $args['drive_thumbnail_file_id'])->first();
+            if (! $thumb || ! $thumb->is_image) {
+                throw new InvalidArgumentException('drive_thumbnail_file_id must refer to a cached Google Drive image file.');
+            }
+            $extra['drive_thumbnail_file_id'] = $thumb->drive_file_id;
+        }
+
+        return $extra;
     }
 }

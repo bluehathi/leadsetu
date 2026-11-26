@@ -64,7 +64,8 @@ class McpController extends Controller
         }
 
         try {
-            $result = WorkspaceContext::run($token->workspace_id, function () use ($method, $params) {
+            $scopes = is_array($token->scopes) && count($token->scopes) > 0 ? $token->scopes : ['readonly'];
+            $result = WorkspaceContext::run($token->workspace_id, function () use ($method, $params, $scopes) {
                 return match ($method) {
                     'initialize' => [
                         'protocolVersion' => '2025-03-26',
@@ -72,18 +73,19 @@ class McpController extends Controller
                             'tools' => ['listChanged' => false],
                         ],
                         'serverInfo' => [
-                            'name' => 'LeadSetu Readonly MCP',
+                            'name' => 'LeadSetu MCP',
                             'version' => '1.0.0',
                         ],
                     ],
                     'ping' => (object) [],
                     'tools/list' => [
-                        'tools' => $this->mcp->tools(),
+                        'tools' => $this->mcp->tools($scopes),
                     ],
                     'tools/call' => [
                         'content' => $this->mcp->callTool(
                             (string) ($params['name'] ?? ''),
                             is_array($params['arguments'] ?? null) ? $params['arguments'] : [],
+                            $scopes,
                         ),
                     ],
                     default => throw new \BadMethodCallException("Unsupported MCP method: {$method}"),

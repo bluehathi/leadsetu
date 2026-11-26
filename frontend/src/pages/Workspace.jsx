@@ -14,6 +14,7 @@ export default function Workspace() {
     const [error, setError] = useState({ fields: {} });
     const [saved, setSaved] = useState(false);
     const [tokenName, setTokenName] = useState('');
+    const [allowContentWrite, setAllowContentWrite] = useState(false);
     const [createdToken, setCreatedToken] = useState(null);
 
     useEffect(() => {
@@ -41,12 +42,18 @@ export default function Workspace() {
     };
 
     const createMcpToken = useMutation({
-        mutationFn: mcpApi.createToken,
+        mutationFn: ({ name, allowWrite }) => mcpApi.createToken(name, allowWrite),
         onSuccess: (res) => {
             setTokenName('');
+            setAllowContentWrite(false);
             setCreatedToken(res);
             qc.invalidateQueries({ queryKey: ['mcp-tokens'] });
         },
+    });
+
+    const toggleMcpScope = useMutation({
+        mutationFn: ({ id, allowWrite }) => mcpApi.updateToken(id, allowWrite),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['mcp-tokens'] }),
     });
 
     const deleteMcpToken = useMutation({
@@ -80,9 +87,9 @@ export default function Workspace() {
 
             <div className="max-w-2xl space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900">MCP Server (AI Agent Access · Read-Only)</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">MCP Server (AI Agent Access)</h2>
                     <p className="mt-1 text-xs text-gray-500">
-                        Connect ChatGPT, Claude, or Gemini to read your workspace CRM, analytics, Content Planner, and cached Drive metadata.
+                        Connect ChatGPT, Claude, or Gemini to read your workspace CRM, analytics, and Drive metadata, or optionally manage Content Planner.
                     </p>
                     <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs">
                         <span className="font-medium text-gray-600">Endpoint: </span>
@@ -107,45 +114,77 @@ export default function Workspace() {
                         onSubmit={(e) => {
                             e.preventDefault();
                             if (!tokenName.trim()) return;
-                            createMcpToken.mutate(tokenName.trim());
+                            createMcpToken.mutate({ name: tokenName.trim(), allowWrite: allowContentWrite });
                         }}
-                        className="flex gap-2"
+                        className="space-y-2"
                     >
-                        <input
-                            required
-                            value={tokenName}
-                            onChange={(e) => setTokenName(e.target.value)}
-                            placeholder="Token label (e.g. Claude, ChatGPT, Gemini)"
-                            className="flex-1 rounded-lg border px-3 py-2 text-sm"
-                        />
-                        <Button type="submit" disabled={createMcpToken.isPending}>
-                            {createMcpToken.isPending ? 'Generating…' : 'Generate Token'}
-                        </Button>
+                        <div className="flex gap-2">
+                            <input
+                                required
+                                value={tokenName}
+                                onChange={(e) => setTokenName(e.target.value)}
+                                placeholder="Token label (e.g. Claude, ChatGPT, Gemini)"
+                                className="flex-1 rounded-lg border px-3 py-2 text-sm"
+                            />
+                            <Button type="submit" disabled={createMcpToken.isPending}>
+                                {createMcpToken.isPending ? 'Generating…' : 'Generate Token'}
+                            </Button>
+                        </div>
+                        <label className="flex items-center gap-2 text-xs text-gray-600">
+                            <input
+                                type="checkbox"
+                                checked={allowContentWrite}
+                                onChange={(e) => setAllowContentWrite(e.target.checked)}
+                            />
+                            Allow managing Content Planner (<code>content:write</code>)
+                        </label>
                     </form>
                 )}
 
                 {mcpTokens.length > 0 && (
                     <div className="divide-y divide-gray-100 rounded-lg border border-gray-100">
-                        {mcpTokens.map((t) => (
-                            <div key={t.id} className="flex items-center justify-between px-3 py-2.5 text-sm">
-                                <div>
-                                    <div className="font-medium text-gray-900">{t.name}</div>
-                                    <div className="text-xs text-gray-500">
-                                        <code>{t.token_prefix}…</code>
-                                        {t.last_used_at ? ` · Last used ${new Date(t.last_used_at).toLocaleString()}` : ' · Never used'}
+                        {mcpTokens.map((t) => {
+                            const hasWrite = Array.isArray(t.scopes) && t.scopes.includes('content:write');
+                            return (
+                                <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-gray-900">{t.name}</span>
+                                            <span
+                                                className={`rounded px-2 py-0.5 text-[11px] font-medium ${
+                                                    hasWrite ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-100 text-gray-600'
+                                                }`}
+                                            >
+                                                {hasWrite ? 'Read + Content Planner' : 'Read-Only'}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            <code>{t.token_prefix}…</code>
+                                            {t.last_used_at ? ` · Last used ${new Date(t.last_used_at).toLocaleString()}` : ' · Never used'}
+                                        </div>
                                     </div>
+                                    {editable && (
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleMcpScope.mutate({ id: t.id, allowWrite: !hasWrite })}
+                                                disabled={toggleMcpScope.isPending}
+                                                className="rounded border px-2 py-0.5 text-xs text-indigo-700 hover:bg-indigo-50"
+                                            >
+                                                {hasWrite ? 'Set Read-Only' : 'Enable Content Planner'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => deleteMcpToken.mutate(t.id)}
+                                                className="text-xs text-red-600 hover:underline"
+                                            >
+                                                Revoke
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                                {editable && (
-                                    <button
-                                        type="button"
-                                        onClick={() => deleteMcpToken.mutate(t.id)}
-                                        className="text-xs text-red-600 hover:underline"
-                                    >
-                                        Revoke
-                                    </button>
-                                )}
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

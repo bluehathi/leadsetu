@@ -19,7 +19,7 @@ class McpOAuthController extends Controller
             'resource' => "{$base}/api/mcp",
             'authorization_servers' => [$base],
             'bearer_methods_supported' => ['header'],
-            'scopes_supported' => ['readonly'],
+            'scopes_supported' => ['readonly', 'content:write'],
         ]);
     }
 
@@ -36,7 +36,7 @@ class McpOAuthController extends Controller
             'grant_types_supported' => ['authorization_code'],
             'code_challenge_methods_supported' => ['S256'],
             'token_endpoint_auth_methods_supported' => ['none', 'client_secret_post'],
-            'scopes_supported' => ['readonly'],
+            'scopes_supported' => ['readonly', 'content:write'],
         ]);
     }
 
@@ -77,6 +77,7 @@ class McpOAuthController extends Controller
             'state' => ['nullable', 'string', 'max:4096'],
             'code_challenge' => ['nullable', 'string', 'max:512'],
             'code_challenge_method' => ['nullable', 'string', 'max:20'],
+            'allow_content_write' => ['sometimes', 'boolean'],
         ]);
 
         $client = Cache::get("mcp_oauth_client:{$validated['client_id']}");
@@ -86,6 +87,7 @@ class McpOAuthController extends Controller
 
         $code = 'lsmcp_code_'.Str::random(40);
         $user = $request->user();
+        $scopes = ! empty($validated['allow_content_write']) ? ['readonly', 'content:write'] : ['readonly'];
 
         Cache::put("mcp_oauth_code:{$code}", [
             'user_id' => $user->id,
@@ -95,6 +97,7 @@ class McpOAuthController extends Controller
             'redirect_uri' => $validated['redirect_uri'],
             'code_challenge' => $validated['code_challenge'] ?? null,
             'code_challenge_method' => $validated['code_challenge_method'] ?? 'S256',
+            'scopes' => $scopes,
         ], now()->addMinutes(10));
 
         $sep = str_contains($validated['redirect_uri'], '?') ? '&' : '?';
@@ -133,9 +136,10 @@ class McpOAuthController extends Controller
         }
 
         $plainToken = 'lsmcp_'.Str::random(48);
+        $scopes = is_array($payload['scopes'] ?? null) ? $payload['scopes'] : ['readonly'];
         $token = new McpToken([
             'name' => $payload['client_name'],
-            'scopes' => ['readonly'],
+            'scopes' => $scopes,
         ]);
         $token->forceFill([
             'workspace_id' => $payload['workspace_id'],
@@ -148,7 +152,7 @@ class McpOAuthController extends Controller
         return response()->json([
             'access_token' => $plainToken,
             'token_type' => 'Bearer',
-            'scope' => 'readonly',
+            'scope' => implode(' ', $scopes),
         ]);
     }
 }

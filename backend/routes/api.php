@@ -36,6 +36,7 @@ Route::prefix('v1')->group(function () {
         Route::put('workspace', [V1\WorkspaceController::class, 'update']);
         Route::get('mcp/tokens', [V1\McpTokenController::class, 'index']);
         Route::post('mcp/tokens', [V1\McpTokenController::class, 'store']);
+        Route::patch('mcp/tokens/{mcp_token}', [V1\McpTokenController::class, 'update']);
         Route::delete('mcp/tokens/{mcp_token}', [V1\McpTokenController::class, 'destroy']);
         Route::post('mcp/oauth/approve', [McpOAuthController::class, 'approve']);
         Route::get('settings/smtp', [V1\SmtpSettingsController::class, 'show']);

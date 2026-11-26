@@ -12,6 +12,7 @@ export default function McpAuthorize() {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [allowContentWrite, setAllowContentWrite] = useState(false);
     const [authError, setAuthError] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -45,6 +46,7 @@ export default function McpAuthorize() {
                 state,
                 code_challenge: codeChallenge || null,
                 code_challenge_method: codeChallengeMethod,
+                allow_content_write: allowContentWrite,
             });
             window.location.href = res.data.data.redirect_to;
         } catch (err) {
@@ -110,9 +112,21 @@ export default function McpAuthorize() {
                                 <span className="font-medium">Workspace:</span> {me.workspace?.name || `#${me.workspace_id}`}
                             </div>
                             <div>
-                                <span className="font-medium">Permissions:</span> Read-only (`readonly`)
+                                <span className="font-medium">Permissions:</span> Read-only{allowContentWrite ? ' + Manage Content Planner' : ''}
                             </div>
                         </div>
+
+                        <label className="flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-xs text-gray-700">
+                            <input
+                                type="checkbox"
+                                checked={allowContentWrite}
+                                onChange={(e) => setAllowContentWrite(e.target.checked)}
+                                className="mt-0.5"
+                            />
+                            <span>
+                                <strong>Allow managing Content Planner</strong> (create, edit, schedule, and attach Google Drive videos/thumbnails)
+                            </span>
+                        </label>
 
                         <div className="flex gap-2">
                             <button
