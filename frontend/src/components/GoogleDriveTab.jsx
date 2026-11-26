@@ -28,14 +28,20 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
         queryFn: socialApi.getDriveStatus,
     });
 
+    const isLocked = Boolean(status?.lock_to_default_folder && status?.default_folder_id);
+
     // Open the user's default favorite folder automatically instead of My Drive root.
     useEffect(() => {
         if (!initializedDefault && status?.connected) {
             if (status.default_folder_id && status.default_folder_name) {
-                setBreadcrumbs([
-                    { id: null, name: 'My Drive' },
-                    { id: status.default_folder_id, name: status.default_folder_name },
-                ]);
+                setBreadcrumbs(
+                    status.lock_to_default_folder
+                        ? [{ id: status.default_folder_id, name: status.default_folder_name }]
+                        : [
+                              { id: null, name: 'My Drive' },
+                              { id: status.default_folder_id, name: status.default_folder_name },
+                          ]
+                );
             }
             setInitializedDefault(true);
         }
@@ -74,6 +80,22 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
         mutationFn: ({ folderId, folderName }) => socialApi.setDriveDefaultFolder(folderId, folderName),
         onSuccess: (updated) => {
             qc.setQueryData(['social-drive-status'], (prev) => ({ ...(prev || {}), ...updated }));
+        },
+    });
+
+    const toggleLockMut = useMutation({
+        mutationFn: (locked) => socialApi.setDriveFolderLock(locked),
+        onSuccess: (updated) => {
+            qc.setQueryData(['social-drive-status'], (prev) => ({ ...(prev || {}), ...updated }));
+            if (updated.lock_to_default_folder && status?.default_folder_id) {
+                setSearch('');
+                setBreadcrumbs([{ id: status.default_folder_id, name: status.default_folder_name }]);
+            } else if (!updated.lock_to_default_folder && status?.default_folder_id) {
+                setBreadcrumbs([
+                    { id: null, name: 'My Drive' },
+                    { id: status.default_folder_id, name: status.default_folder_name },
+                ]);
+            }
         },
     });
 
@@ -150,13 +172,31 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
                                 {filesSource === 'live' ? 'Live API' : 'DB Cache'}
                             </span>
                         )}
+                        {isLocked && (
+                            <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                🔒 Locked to {status.default_folder_name}
+                            </span>
+                        )}
                     </div>
                     <p className="mt-0.5 text-xs text-gray-500">
                         Folder & file metadata is cached in DB (files are never copied).
                         {filesSyncedAt ? ` · Synced ${new Date(filesSyncedAt).toLocaleString()}` : ''}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    {status.default_folder_id && (
+                        <button
+                            onClick={() => toggleLockMut.mutate(!isLocked)}
+                            disabled={toggleLockMut.isPending}
+                            className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                                isLocked
+                                    ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            {isLocked ? '🔓 Unlock Folder' : '🔒 Lock to Default Folder'}
+                        </button>
+                    )}
                     <button
                         onClick={() => refreshMut.mutate()}
                         disabled={refreshMut.isPending}
@@ -182,55 +222,57 @@ export default function GoogleDriveTab({ onImportVideo, onAttachThumbnail }) {
             </div>
 
             {/* Favorite Folders Bar */}
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-                <span className="text-xs font-semibold text-gray-500">Favorite Folders:</span>
-                <button
-                    onClick={() => jumpToFavorite(null)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-                        currentFolder.id === null
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                >
-                    My Drive
-                </button>
-                {favorites.map((fav) => (
-                    <div key={fav.id} className="inline-flex items-center overflow-hidden rounded-lg border border-gray-200">
-                        <button
-                            onClick={() => jumpToFavorite(fav)}
-                            className={`px-2.5 py-1 text-xs font-medium ${
-                                currentFolder.id === fav.id
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            {isDefault(fav.id) ? '★ ' : '📁 '}
-                            {fav.name}
-                        </button>
-                        {!isDefault(fav.id) && (
+            {!isLocked && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                    <span className="text-xs font-semibold text-gray-500">Favorite Folders:</span>
+                    <button
+                        onClick={() => jumpToFavorite(null)}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+                            currentFolder.id === null
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                    >
+                        My Drive
+                    </button>
+                    {favorites.map((fav) => (
+                        <div key={fav.id} className="inline-flex items-center overflow-hidden rounded-lg border border-gray-200">
                             <button
-                                onClick={() => setDefaultMut.mutate({ folderId: fav.id, folderName: fav.name })}
-                                title="Make default folder"
-                                className="border-l border-gray-200 bg-gray-50 px-1.5 py-1 text-[11px] text-gray-500 hover:bg-indigo-50 hover:text-indigo-700"
+                                onClick={() => jumpToFavorite(fav)}
+                                className={`px-2.5 py-1 text-xs font-medium ${
+                                    currentFolder.id === fav.id
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
                             >
-                                Default
+                                {isDefault(fav.id) ? '★ ' : '📁 '}
+                                {fav.name}
                             </button>
-                        )}
-                        <button
-                            onClick={() => toggleFavMut.mutate({ folderId: fav.id, folderName: fav.name })}
-                            title="Remove from favorites"
-                            className="border-l border-gray-200 bg-gray-50 px-1.5 py-1 text-[11px] text-gray-400 hover:bg-red-50 hover:text-red-600"
-                        >
-                            ×
-                        </button>
-                    </div>
-                ))}
-                {favorites.length === 0 && (
-                    <span className="text-xs text-gray-400">
-                        Star any folder below to pin it here & set it as your default view.
-                    </span>
-                )}
-            </div>
+                            {!isDefault(fav.id) && (
+                                <button
+                                    onClick={() => setDefaultMut.mutate({ folderId: fav.id, folderName: fav.name })}
+                                    title="Make default folder"
+                                    className="border-l border-gray-200 bg-gray-50 px-1.5 py-1 text-[11px] text-gray-500 hover:bg-indigo-50 hover:text-indigo-700"
+                                >
+                                    Default
+                                </button>
+                            )}
+                            <button
+                                onClick={() => toggleFavMut.mutate({ folderId: fav.id, folderName: fav.name })}
+                                title="Remove from favorites"
+                                className="border-l border-gray-200 bg-gray-50 px-1.5 py-1 text-[11px] text-gray-400 hover:bg-red-50 hover:text-red-600"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                    {favorites.length === 0 && (
+                        <span className="text-xs text-gray-400">
+                            Star any folder below to pin it here & set it as your default view.
+                        </span>
+                    )}
+                </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="flex flex-wrap items-center gap-1 text-sm">

@@ -15,6 +15,7 @@ class GoogleDriveConnection extends Model
         'default_folder_id',
         'default_folder_name',
         'favorite_folders',
+        'lock_to_default_folder',
     ];
 
     protected $hidden = [
@@ -27,6 +28,7 @@ class GoogleDriveConnection extends Model
         'refresh_token' => 'encrypted',
         'token_expires_at' => 'datetime',
         'favorite_folders' => 'array',
+        'lock_to_default_folder' => 'boolean',
     ];
 
     public function user(): BelongsTo

@@ -137,10 +137,22 @@ class GoogleDriveService
     ): array {
         $parent = $folderId ?: 'root';
 
+        if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+            if (! $folderId || $folderId === 'root') {
+                $parent = $conn->default_folder_id;
+            } elseif (! $this->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $parent)) {
+                throw new RuntimeException('Access is locked to the default Google Drive folder.');
+            }
+        }
+
         if (! $forceRefresh) {
             $query = GoogleDriveFile::query();
             if ($search) {
                 $query->where('name', 'like', "%{$search}%");
+                if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+                    $allowedParents = $this->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
+                    $query->whereIn('parent_folder_id', $allowedParents);
+                }
             } else {
                 $query->where('parent_folder_id', $parent);
             }
@@ -173,6 +185,9 @@ class GoogleDriveService
         if ($search) {
             $escaped = str_replace("'", "\\'", $search);
             $clauses[] = "name contains '{$escaped}'";
+            if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+                $clauses[] = "'{$conn->default_folder_id}' in parents";
+            }
         } else {
             $clauses[] = "'{$parent}' in parents";
         }
@@ -254,6 +269,34 @@ class GoogleDriveService
             'source' => 'live',
             'synced_at' => $now->toIso8601String(),
         ];
+    }
+
+    protected function isFolderWithinTree(int $workspaceId, string $rootFolderId, string $targetFolderId): bool
+    {
+        return in_array($targetFolderId, $this->getDescendantFolderIds($workspaceId, $rootFolderId), true);
+    }
+
+    protected function getDescendantFolderIds(int $workspaceId, string $rootFolderId): array
+    {
+        $allFolders = GoogleDriveFile::withoutGlobalScopes()
+            ->where('workspace_id', $workspaceId)
+            ->where('is_folder', true)
+            ->get(['drive_file_id', 'parent_folder_id'])
+            ->groupBy('parent_folder_id');
+
+        $result = [$rootFolderId];
+        $queue = [$rootFolderId];
+        while ($queue) {
+            $current = array_shift($queue);
+            foreach ($allFolders->get($current, []) as $child) {
+                if (! in_array($child->drive_file_id, $result, true)) {
+                    $result[] = $child->drive_file_id;
+                    $queue[] = $child->drive_file_id;
+                }
+            }
+        }
+
+        return $result;
     }
 
     public function publishContentToYouTube(

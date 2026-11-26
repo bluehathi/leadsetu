@@ -85,6 +85,7 @@ Route::prefix('v1')->group(function () {
         Route::get('social/drive/files', [V1\GoogleDriveController::class, 'files']);
         Route::post('social/drive/favorites', [V1\GoogleDriveController::class, 'toggleFavorite']);
         Route::post('social/drive/default-folder', [V1\GoogleDriveController::class, 'setDefaultFolder']);
+        Route::post('social/drive/lock-folder', [V1\GoogleDriveController::class, 'toggleLockFolder']);
         Route::delete('social/drive/disconnect', [V1\GoogleDriveController::class, 'disconnect']);
         Route::get('social/keywords', [V1\SocialGrowthController::class, 'keywords']);
         Route::post('social/keywords/analyze', [V1\SocialGrowthController::class, 'analyzeKeyword']);

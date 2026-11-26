@@ -15,13 +15,19 @@ export default function DriveFilePickerModal({ mode, onSelect, onClose }) {
         queryFn: socialApi.getDriveStatus,
     });
 
+    const isLocked = Boolean(status?.lock_to_default_folder && status?.default_folder_id);
+
     useEffect(() => {
         if (!initializedDefault && status?.connected) {
             if (status.default_folder_id && status.default_folder_name) {
-                setBreadcrumbs([
-                    { id: null, name: 'My Drive' },
-                    { id: status.default_folder_id, name: status.default_folder_name },
-                ]);
+                setBreadcrumbs(
+                    status.lock_to_default_folder
+                        ? [{ id: status.default_folder_id, name: status.default_folder_name }]
+                        : [
+                              { id: null, name: 'My Drive' },
+                              { id: status.default_folder_id, name: status.default_folder_name },
+                          ]
+                );
             }
             setInitializedDefault(true);
         }
@@ -109,41 +115,49 @@ export default function DriveFilePickerModal({ mode, onSelect, onClose }) {
                     <>
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 bg-gray-50 px-5 py-2.5">
                             <div className="flex flex-wrap items-center gap-1.5">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSearch('');
-                                        setBreadcrumbs([{ id: null, name: 'My Drive' }]);
-                                    }}
-                                    className={`rounded px-2 py-0.5 text-xs ${
-                                        currentFolder.id === null
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'bg-white border text-gray-700 hover:bg-gray-100'
-                                    }`}
-                                >
-                                    My Drive
-                                </button>
-                                {favorites.map((fav) => (
-                                    <button
-                                        key={fav.id}
-                                        type="button"
-                                        onClick={() => {
-                                            setSearch('');
-                                            setBreadcrumbs([
-                                                { id: null, name: 'My Drive' },
-                                                { id: fav.id, name: fav.name },
-                                            ]);
-                                        }}
-                                        className={`rounded px-2 py-0.5 text-xs ${
-                                            currentFolder.id === fav.id
-                                                ? 'bg-indigo-600 text-white'
-                                                : 'bg-white border text-gray-700 hover:bg-gray-100'
-                                        }`}
-                                    >
-                                        {status.default_folder_id === fav.id ? '★ ' : '📁 '}
-                                        {fav.name}
-                                    </button>
-                                ))}
+                                {isLocked ? (
+                                    <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                        🔒 Locked to {status.default_folder_name}
+                                    </span>
+                                ) : (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSearch('');
+                                                setBreadcrumbs([{ id: null, name: 'My Drive' }]);
+                                            }}
+                                            className={`rounded px-2 py-0.5 text-xs ${
+                                                currentFolder.id === null
+                                                    ? 'bg-indigo-600 text-white'
+                                                    : 'bg-white border text-gray-700 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            My Drive
+                                        </button>
+                                        {favorites.map((fav) => (
+                                            <button
+                                                key={fav.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setSearch('');
+                                                    setBreadcrumbs([
+                                                        { id: null, name: 'My Drive' },
+                                                        { id: fav.id, name: fav.name },
+                                                    ]);
+                                                }}
+                                                className={`rounded px-2 py-0.5 text-xs ${
+                                                    currentFolder.id === fav.id
+                                                        ? 'bg-indigo-600 text-white'
+                                                        : 'bg-white border text-gray-700 hover:bg-gray-100'
+                                                }`}
+                                            >
+                                                {status.default_folder_id === fav.id ? '★ ' : '📁 '}
+                                                {fav.name}
+                                            </button>
+                                        ))}
+                                    </>
+                                )}
                             </div>
                             <input
                                 type="search"

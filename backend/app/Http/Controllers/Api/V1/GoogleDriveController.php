@@ -35,6 +35,7 @@ class GoogleDriveController extends Controller
                 'default_folder_id' => $conn->default_folder_id,
                 'default_folder_name' => $conn->default_folder_name,
                 'favorite_folders' => $conn->favorite_folders ?? [],
+                'lock_to_default_folder' => (bool) $conn->lock_to_default_folder,
                 'connected_at' => $conn->updated_at?->toIso8601String(),
             ] : [
                 'connected' => false,
@@ -42,6 +43,7 @@ class GoogleDriveController extends Controller
                 'default_folder_id' => null,
                 'default_folder_name' => null,
                 'favorite_folders' => [],
+                'lock_to_default_folder' => false,
             ],
         ]);
     }
@@ -100,6 +102,9 @@ class GoogleDriveController extends Controller
 
         $conn->default_folder_id = $folderId;
         $conn->default_folder_name = $folderName;
+        if (! $folderId) {
+            $conn->lock_to_default_folder = false;
+        }
 
         if ($folderId && $folderName) {
             $favorites = collect($conn->favorite_folders ?? []);
@@ -116,6 +121,31 @@ class GoogleDriveController extends Controller
                 'default_folder_id' => $conn->default_folder_id,
                 'default_folder_name' => $conn->default_folder_name,
                 'favorite_folders' => $conn->favorite_folders ?? [],
+                'lock_to_default_folder' => (bool) $conn->lock_to_default_folder,
+            ],
+        ]);
+    }
+
+    public function toggleLockFolder(Request $request): JsonResponse
+    {
+        Gate::authorize('create', SocialAccount::class);
+
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return response()->json(['message' => 'Google Drive is not connected.'], 422);
+        }
+
+        $locked = $request->boolean('locked');
+        if ($locked && ! $conn->default_folder_id) {
+            return response()->json(['message' => 'Set a default folder before locking access.'], 422);
+        }
+
+        $conn->lock_to_default_folder = $locked;
+        $conn->save();
+
+        return response()->json([
+            'data' => [
+                'lock_to_default_folder' => (bool) $conn->lock_to_default_folder,
             ],
         ]);
     }
