@@ -190,6 +190,7 @@ export default function ContentPlannerTab({
                             onClick={() =>
                                 optimizeMut.mutate({
                                     platform: contentForm.platform,
+                                    topic: contentForm.title || contentForm.target_keyword || 'Creator Growth',
                                     title: contentForm.title || 'Untitled Video',
                                     target_keyword: contentForm.target_keyword || contentForm.title,
                                     description: contentForm.description,
