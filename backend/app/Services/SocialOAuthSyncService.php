@@ -54,7 +54,8 @@ class SocialOAuthSyncService
             'client_id' => $clientId,
             'redirect_uri' => $redirect,
             'response_type' => 'code',
-            'scope' => 'instagram_basic,pages_show_list,instagram_manage_insights,instagram_content_publish',
+            'scope' => 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_content_publish',
+            'auth_type' => 'rerequest',
             'state' => $state,
         ]);
     }
@@ -171,17 +172,22 @@ class SocialOAuthSyncService
         $expiresAt = $expiresIn ? now()->addSeconds((int) $expiresIn) : now()->addDays(60);
 
         $pagesResp = Http::get("https://graph.facebook.com/{$version}/me/accounts", [
-            'fields' => 'instagram_business_account{id,username,name,profile_picture_url,followers_count,media_count}',
+            'fields' => 'id,name,instagram_business_account{id,username,name,profile_picture_url,followers_count,media_count},connected_instagram_account{id,username,name,profile_picture_url,followers_count,media_count}',
             'access_token' => $accessToken,
         ]);
 
         if (! $pagesResp->successful()) {
-            throw new RuntimeException('Failed to fetch linked Instagram Business accounts.');
+            throw new RuntimeException('Failed to fetch linked Instagram Business accounts: '.($pagesResp->json('error.message') ?: $pagesResp->status()));
+        }
+
+        $pages = $pagesResp->json('data', []);
+        if (count($pages) === 0) {
+            throw new RuntimeException('Facebook returned 0 Pages. During Facebook Login, make sure you select the Facebook Page linked to your Instagram Business/Creator account.');
         }
 
         $connected = [];
-        foreach ($pagesResp->json('data', []) as $page) {
-            $ig = $page['instagram_business_account'] ?? null;
+        foreach ($pages as $page) {
+            $ig = $page['instagram_business_account'] ?? ($page['connected_instagram_account'] ?? null);
             if (! $ig) {
                 continue;
             }
@@ -202,6 +208,10 @@ class SocialOAuthSyncService
             ]);
 
             $connected[] = $this->syncInstagram($account);
+        }
+
+        if (count($connected) === 0) {
+            throw new RuntimeException('Found '.count($pages).' Facebook Page(s), but none have an Instagram Business/Creator account linked.');
         }
 
         return $connected;
