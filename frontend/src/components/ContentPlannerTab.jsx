@@ -39,6 +39,12 @@ export default function ContentPlannerTab({
     const [aiSuggestion, setAiSuggestion] = useState(null);
     const [publishPrivacy, setPublishPrivacy] = useState({});
     const [drivePickerMode, setDrivePickerMode] = useState(null);
+    const [extraAccountIds, setExtraAccountIds] = useState([]);
+    const [shareItem, setShareItem] = useState(null);
+    const [shareTargets, setShareTargets] = useState([]);
+    const [sharePublishNow, setSharePublishNow] = useState(false);
+    const [shareYtPrivacy, setShareYtPrivacy] = useState('private');
+    const [shareResult, setShareResult] = useState(null);
     const [errorMsg, setErrorMsg] = useState('');
 
     // Auto-select first available channel if none is selected yet.
@@ -51,14 +57,32 @@ export default function ContentPlannerTab({
             .filter(Boolean);
 
     const createMut = useMutation({
-        mutationFn: socialApi.createContent,
+        mutationFn: async ({ payload, alsoShareIds }) => {
+            const created = await socialApi.createContent(payload);
+            if (alsoShareIds.length > 0) {
+                await socialApi.shareContent(created.id, { target_account_ids: alsoShareIds });
+            }
+            return created;
+        },
         onSuccess: () => {
             setErrorMsg('');
             setAiSuggestion(null);
+            setExtraAccountIds([]);
             setContentForm({ ...emptyContent, social_account_id: effectiveAccountId });
             onSaved();
         },
         onError: (err) => setErrorMsg(err?.response?.data?.message || 'Failed to save content.'),
+    });
+
+    const shareMut = useMutation({
+        mutationFn: ({ id, payload }) => socialApi.shareContent(id, payload),
+        onSuccess: (res) => {
+            setShareResult(res);
+            onSaved();
+        },
+        onError: (err) => {
+            setShareResult({ created: [], errors: [err?.response?.data?.message || 'Failed to share content.'] });
+        },
     });
 
     const updateMut = useMutation({
@@ -149,7 +173,8 @@ export default function ContentPlannerTab({
         if (editingId) {
             updateMut.mutate({ id: editingId, payload });
         } else {
-            createMut.mutate(payload);
+            const alsoShareIds = extraAccountIds.filter((aid) => String(aid) !== String(effectiveAccountId));
+            createMut.mutate({ payload, alsoShareIds });
         }
     };
 
@@ -224,11 +249,12 @@ export default function ContentPlannerTab({
                             value={effectiveAccountId}
                             onChange={(e) => {
                                 const acc = accounts.find((a) => String(a.id) === e.target.value);
+                                setExtraAccountIds((prev) => prev.filter((id) => String(id) !== e.target.value));
                                 setContentForm({
                                     ...contentForm,
                                     social_account_id: e.target.value,
                                     platform: acc?.platform || contentForm.platform,
-                                    content_type: acc?.platform === 'instagram' ? 'reel' : 'video',
+                                    content_type: acc?.platform === 'instagram' ? 'reel' : acc?.platform === 'facebook' ? 'post' : 'video',
                                 });
                             }}
                             className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -240,6 +266,35 @@ export default function ContentPlannerTab({
                                 </option>
                             ))}
                         </select>
+                        {!editingId && accounts.length > 1 && (
+                            <div className="mt-2 space-y-1 rounded-lg border border-gray-100 bg-gray-50 p-2.5">
+                                <div className="text-[11px] font-medium text-gray-600">Also share to other channels:</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {accounts
+                                        .filter((a) => String(a.id) !== String(effectiveAccountId))
+                                        .map((a) => {
+                                            const checked = extraAccountIds.includes(a.id);
+                                            return (
+                                                <label key={a.id} className="inline-flex cursor-pointer items-center gap-1.5 rounded border bg-white px-2 py-1 text-xs">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(e) =>
+                                                            setExtraAccountIds((prev) =>
+                                                                e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id)
+                                                            )
+                                                        }
+                                                    />
+                                                    <span className={`rounded px-1 text-[10px] font-semibold uppercase ${platformBadge(a.platform)}`}>
+                                                        {a.platform.slice(0, 2)}
+                                                    </span>
+                                                    <span className="max-w-[130px] truncate">{a.account_name}</span>
+                                                </label>
+                                            );
+                                        })}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -661,6 +716,19 @@ export default function ContentPlannerTab({
                                         )}
                                         {canManage && (
                                             <>
+                                                {accounts.length > 1 && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setShareItem(item);
+                                                            setShareTargets([]);
+                                                            setSharePublishNow(false);
+                                                            setShareResult(null);
+                                                        }}
+                                                        className="rounded-lg border border-indigo-200 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                                                    >
+                                                        ↗ Share
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => startEdit(item)}
                                                     className="rounded-lg border px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
@@ -722,6 +790,126 @@ export default function ContentPlannerTab({
                         }
                     }}
                 />
+            )}
+
+            {shareItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl space-y-4">
+                        <div className="flex items-start justify-between gap-2">
+                            <div>
+                                <h3 className="text-base font-semibold text-gray-900">Share to Other Platforms</h3>
+                                <p className="mt-0.5 text-xs text-gray-500 line-clamp-1">{shareItem.title}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShareItem(null)}
+                                className="rounded-lg border px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-50"
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                        <div className="max-h-56 space-y-1.5 overflow-y-auto">
+                            {accounts
+                                .filter((a) => a.id !== shareItem.social_account_id)
+                                .map((acc) => {
+                                    const checked = shareTargets.includes(acc.id);
+                                    return (
+                                        <label
+                                            key={acc.id}
+                                            className={`flex cursor-pointer items-center justify-between rounded-xl border p-2.5 text-xs ${
+                                                checked ? 'border-indigo-400 bg-indigo-50/50' : 'border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={(e) =>
+                                                        setShareTargets((prev) =>
+                                                            e.target.checked ? [...prev, acc.id] : prev.filter((id) => id !== acc.id)
+                                                        )
+                                                    }
+                                                />
+                                                <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${platformBadge(acc.platform)}`}>
+                                                    {acc.platform}
+                                                </span>
+                                                <span className="truncate font-medium text-gray-900">{acc.account_name}</span>
+                                            </div>
+                                            <span className="text-gray-400">{acc.handle}</span>
+                                        </label>
+                                    );
+                                })}
+                        </div>
+
+                        <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs">
+                            <label className="flex items-center gap-2 font-medium text-gray-700">
+                                <input
+                                    type="checkbox"
+                                    checked={sharePublishNow}
+                                    onChange={(e) => setSharePublishNow(e.target.checked)}
+                                />
+                                Publish immediately to selected channels
+                            </label>
+                            {sharePublishNow && shareTargets.some((id) => accounts.find((a) => a.id === id)?.platform === 'youtube') && (
+                                <div className="flex items-center gap-2 pl-5">
+                                    <span className="text-gray-600">YouTube privacy:</span>
+                                    <select
+                                        value={shareYtPrivacy}
+                                        onChange={(e) => setShareYtPrivacy(e.target.value)}
+                                        className="rounded border bg-white px-2 py-0.5 text-xs"
+                                    >
+                                        <option value="private">Private</option>
+                                        <option value="unlisted">Unlisted</option>
+                                        <option value="public">Public</option>
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+
+                        {shareResult && (
+                            <div className="space-y-1 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs">
+                                {shareResult.created?.length > 0 && (
+                                    <div className="font-medium text-green-700">
+                                        ✓ Shared to {shareResult.created.length} channel(s).
+                                    </div>
+                                )}
+                                {shareResult.errors?.map((err, i) => (
+                                    <div key={i} className="text-red-600">
+                                        ✕ {err}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShareItem(null)}
+                                className="rounded-lg border px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={shareTargets.length === 0 || shareMut.isPending}
+                                onClick={() =>
+                                    shareMut.mutate({
+                                        id: shareItem.id,
+                                        payload: {
+                                            target_account_ids: shareTargets,
+                                            publish_now: sharePublishNow,
+                                            youtube_privacy: shareYtPrivacy,
+                                        },
+                                    })
+                                }
+                                className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {shareMut.isPending ? 'Sharing…' : `Share (${shareTargets.length})`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -21,6 +21,7 @@ export const socialApi = {
     createContent: (payload) => api.post('/social/contents', payload).then((r) => r.data.data),
     updateContent: (id, payload) => api.put(`/social/contents/${id}`, payload).then((r) => r.data.data),
     deleteContent: (id) => api.delete(`/social/contents/${id}`),
+    shareContent: (id, payload) => api.post(`/social/contents/${id}/share`, payload).then((r) => r.data.data),
     optimizeContent: (payload) => api.post('/social/contents/optimize', payload).then((r) => r.data.data),
 
     listKeywords: (params) => api.get('/social/keywords', { params }).then((r) => r.data.data),

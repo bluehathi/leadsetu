@@ -7,13 +7,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Social\OptimizeContentRequest;
 use App\Http\Requests\Social\StoreSocialContentRequest;
 use App\Http\Requests\Social\UpdateSocialContentRequest;
+use App\Models\GoogleDriveConnection;
+use App\Models\SocialAccount;
 use App\Models\SocialContent;
 use App\Services\ActivityLogService;
+use App\Services\GoogleDriveService;
 use App\Services\SocialGrowthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
+use Throwable;
 
 class SocialContentController extends Controller implements HasMiddleware
 {
@@ -21,6 +26,7 @@ class SocialContentController extends Controller implements HasMiddleware
 
     public function __construct(
         protected SocialGrowthService $growth,
+        protected GoogleDriveService $drive,
         protected ActivityLogService $audit,
     ) {
     }
@@ -98,5 +104,103 @@ class SocialContentController extends Controller implements HasMiddleware
         $this->audit->log('social_content_deleted', $socialContent, "Deleted social content: {$title}");
 
         return response()->json(null, 204);
+    }
+
+    public function share(Request $request, SocialContent $socialContent): JsonResponse
+    {
+        Gate::authorize('create', SocialContent::class);
+
+        $workspaceId = $request->user()?->workspace_id;
+        $validated = $request->validate([
+            'target_account_ids' => ['required', 'array', 'min:1'],
+            'target_account_ids.*' => [
+                'integer',
+                Rule::exists('social_accounts', 'id')->where('workspace_id', $workspaceId),
+            ],
+            'publish_now' => ['sometimes', 'boolean'],
+            'youtube_privacy' => ['sometimes', Rule::in(['private', 'unlisted', 'public'])],
+        ]);
+
+        $publishNow = (bool) ($validated['publish_now'] ?? false);
+        $ytPrivacy = $validated['youtube_privacy'] ?? 'private';
+        $driveConn = GoogleDriveConnection::query()->first();
+
+        $created = [];
+        $errors = [];
+
+        foreach (array_unique($validated['target_account_ids']) as $accountId) {
+            $target = SocialAccount::find($accountId);
+            if (! $target) {
+                continue;
+            }
+
+            $contentType = $this->mapContentTypeForPlatform($socialContent->content_type, $target->platform);
+            $data = [
+                'social_account_id' => $target->id,
+                'platform' => $target->platform,
+                'content_type' => $contentType,
+                'title' => $socialContent->title,
+                'description' => $socialContent->description,
+                'hook' => $socialContent->hook,
+                'script' => $socialContent->script,
+                'tags' => $socialContent->tags ?? [],
+                'hashtags' => $socialContent->hashtags ?? [],
+                'thumbnail_url' => $socialContent->thumbnail_url,
+                'drive_file_id' => $socialContent->drive_file_id,
+                'drive_file_name' => $socialContent->drive_file_name,
+                'drive_file_url' => $socialContent->drive_file_url,
+                'drive_mime_type' => $socialContent->drive_mime_type,
+                'drive_thumbnail_file_id' => $socialContent->drive_thumbnail_file_id,
+                'target_keyword' => $socialContent->target_keyword,
+                'status' => $socialContent->status === 'published' ? 'draft' : $socialContent->status,
+                'scheduled_at' => $socialContent->scheduled_at,
+            ];
+
+            $scored = $this->growth->scoreContent($data);
+            $clone = SocialContent::create(array_merge($data, $scored));
+
+            if ($publishNow) {
+                try {
+                    if ($target->platform === 'youtube') {
+                        if (! $driveConn) {
+                            throw new \RuntimeException('Google Drive is not connected.');
+                        }
+                        $clone = $this->drive->publishContentToYouTube($clone, $driveConn, $ytPrivacy);
+                    } elseif ($target->platform === 'instagram') {
+                        if (! $driveConn) {
+                            throw new \RuntimeException('Google Drive is not connected.');
+                        }
+                        $clone = $this->drive->publishContentToInstagram($clone, $driveConn);
+                    } elseif ($target->platform === 'facebook') {
+                        $clone = $this->drive->publishContentToFacebook($clone, $driveConn ?? new GoogleDriveConnection());
+                    }
+                } catch (Throwable $e) {
+                    $errors[] = "{$target->account_name} ({$target->platform}): {$e->getMessage()}";
+                }
+            }
+
+            $created[] = $clone->load('account:id,platform,account_name,handle');
+        }
+
+        $this->audit->log('social_content_shared', $socialContent, "Shared '{$socialContent->title}' to ".count($created).' channel(s)');
+
+        return response()->json([
+            'data' => [
+                'created' => $created,
+                'errors' => $errors,
+            ],
+        ], 201);
+    }
+
+    protected function mapContentTypeForPlatform(string $type, string $platform): string
+    {
+        if ($platform === 'youtube') {
+            return in_array($type, ['reel', 'short'], true) ? 'short' : 'video';
+        }
+        if ($platform === 'instagram') {
+            return in_array($type, ['short', 'video', 'reel'], true) ? 'reel' : (in_array($type, ['carousel', 'post'], true) ? $type : 'post');
+        }
+
+        return in_array($type, ['reel', 'post', 'video'], true) ? $type : 'post';
     }
 }
