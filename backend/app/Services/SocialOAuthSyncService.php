@@ -281,6 +281,61 @@ class SocialOAuthSyncService
     }
 
     /**
+     * Collect Facebook Pages from both /me/accounts and Meta Business Portfolios (/me/businesses).
+     */
+    protected function fetchAllFacebookPages(string $version, string $userToken, string $fields): array
+    {
+        $pagesById = [];
+
+        $accountsResp = Http::get("https://graph.facebook.com/{$version}/me/accounts", [
+            'fields' => $fields,
+            'limit' => 100,
+            'access_token' => $userToken,
+        ]);
+
+        if (! $accountsResp->successful()) {
+            throw new RuntimeException('Failed to fetch Facebook Pages: '.($accountsResp->json('error.message') ?: $accountsResp->status()));
+        }
+
+        foreach ($accountsResp->json('data', []) as $page) {
+            if (! empty($page['id'])) {
+                $pagesById[$page['id']] = $page;
+            }
+        }
+
+        // Also query Business Portfolio owned/client pages when business_management is granted.
+        $bizResp = Http::get("https://graph.facebook.com/{$version}/me/businesses", [
+            'fields' => 'id,name',
+            'limit' => 50,
+            'access_token' => $userToken,
+        ]);
+
+        if ($bizResp->successful()) {
+            foreach ($bizResp->json('data', []) as $biz) {
+                if (empty($biz['id'])) {
+                    continue;
+                }
+                foreach (['owned_pages', 'client_pages'] as $edge) {
+                    $edgeResp = Http::get("https://graph.facebook.com/{$version}/{$biz['id']}/{$edge}", [
+                        'fields' => $fields,
+                        'limit' => 100,
+                        'access_token' => $userToken,
+                    ]);
+                    if ($edgeResp->successful()) {
+                        foreach ($edgeResp->json('data', []) as $page) {
+                            if (! empty($page['id']) && ! isset($pagesById[$page['id']])) {
+                                $pagesById[$page['id']] = $page;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_values($pagesById);
+    }
+
+    /**
      * Create or update a connected social account with explicit tenant/user ownership
      * (OAuth callbacks have no authenticated session for BelongsToWorkspace).
      */
