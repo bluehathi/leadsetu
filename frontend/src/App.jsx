@@ -21,6 +21,7 @@ import ResetPassword from './pages/ResetPassword';
 import ProspectLists from './pages/ProspectLists';
 import Roles from './pages/Roles';
 import SmtpSettings from './pages/SmtpSettings';
+import BrandAnalytics from './pages/BrandAnalytics';
 import ChannelAnalytics from './pages/ChannelAnalytics';
 import SocialStudio from './pages/SocialStudio';
 import VideoAnalytics from './pages/VideoAnalytics';
@@ -64,6 +65,7 @@ export default function App() {
                 <Route path="/campaigns" element={<Campaigns />} />
                 <Route path="/campaigns/:id" element={<CampaignDetail />} />
                 <Route path="/social" element={<SocialStudio />} />
+                <Route path="/social/brands/:id/analytics" element={<BrandAnalytics />} />
                 <Route path="/social/accounts/:id/analytics" element={<ChannelAnalytics />} />
                 <Route path="/social/accounts/:id/videos/:videoId/analytics" element={<VideoAnalytics />} />
                 <Route path="/business" element={<BusinessSettings />} />

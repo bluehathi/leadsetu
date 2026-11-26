@@ -34,6 +34,7 @@ class SocialContent extends Model
         'youtube_video_id',
         'instagram_media_id',
         'published_url',
+        'publish_error',
         'target_keyword',
         'status',
         'scheduled_at',

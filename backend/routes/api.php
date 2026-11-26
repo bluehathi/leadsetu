@@ -81,6 +81,7 @@ Route::prefix('v1')->group(function () {
 
         // Social Growth Studio (multi-account YouTube & Instagram management + vidIQ-style tools)
         Route::get('social/overview', [V1\SocialAccountController::class, 'overview']);
+        Route::get('social/brands/{social_brand}/analytics', [V1\SocialBrandController::class, 'analytics']);
         Route::apiResource('social/brands', V1\SocialBrandController::class)->parameters(['brands' => 'social_brand']);
         Route::get('social/oauth/{platform}/url', [V1\SocialAccountController::class, 'oauthUrl']);
         Route::post('social/accounts/sync-all', [V1\SocialAccountController::class, 'syncAll']);

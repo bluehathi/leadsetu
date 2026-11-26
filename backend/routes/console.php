@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('social:sync')->cron('*/20 * * * *');
+Schedule::command('social:publish-scheduled')->everyMinute()->withoutOverlapping();

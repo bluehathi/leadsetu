@@ -685,6 +685,11 @@ export default function ContentPlannerTab({
                                                 </a>
                                             </div>
                                         )}
+                                        {item.publish_error && (
+                                            <div className="mt-1 rounded bg-red-50 px-2 py-1 text-xs text-red-700">
+                                                ⚠ Auto-publish failed: {item.publish_error}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">

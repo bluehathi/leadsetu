@@ -4,6 +4,8 @@ export const socialApi = {
     overview: (platform) => api.get('/social/overview', { params: platform ? { platform } : {} }).then((r) => r.data.data),
 
     listBrands: () => api.get('/social/brands').then((r) => r.data.data),
+    getBrandAnalytics: (id, refresh = false) =>
+        api.get(`/social/brands/${id}/analytics`, { params: refresh ? { refresh: 1 } : {} }).then((r) => r.data.data),
     createBrand: (payload) => api.post('/social/brands', payload).then((r) => r.data.data),
     updateBrand: (id, payload) => api.put(`/social/brands/${id}`, payload).then((r) => r.data.data),
     deleteBrand: (id) => api.delete(`/social/brands/${id}`),

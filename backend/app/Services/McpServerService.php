@@ -94,6 +94,17 @@ class McpServerService
                 ],
             ],
             [
+                'name' => 'get_brand_analytics',
+                'description' => 'Get combined DB-cached analytics for a Social Brand across its YouTube, Instagram, and Facebook channels.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'brand_id' => ['type' => 'integer', 'description' => 'SocialBrand ID from list_social_brands'],
+                    ],
+                    'required' => ['brand_id'],
+                ],
+            ],
+            [
                 'name' => 'list_social_accounts',
                 'description' => 'List connected YouTube and Instagram accounts with summary metrics (read-only).',
                 'inputSchema' => [
@@ -230,6 +241,7 @@ class McpServerService
             'list_companies' => $this->listCompanies($args, $limit),
             'list_invoices' => $this->listInvoices($args, $limit),
             'list_social_brands' => $this->listSocialBrands(),
+            'get_brand_analytics' => $this->getBrandAnalytics($args),
             'list_social_accounts' => $this->listSocialAccounts($args),
             'get_channel_analytics' => $this->getChannelAnalytics($args),
             'get_video_analytics' => $this->getVideoAnalytics($args),
@@ -325,6 +337,46 @@ class McpServerService
             ->orderBy('name')
             ->get()
             ->toArray();
+    }
+
+    protected function getBrandAnalytics(array $args): array
+    {
+        $brand = SocialBrand::findOrFail((int) ($args['brand_id'] ?? 0));
+        $accounts = $brand->accounts()->get();
+
+        $channels = [];
+        $totalFollowers = 0;
+        $totalViews = 0;
+        foreach ($accounts as $acc) {
+            $cache = is_array($acc->analytics_cache) ? $acc->analytics_cache : [];
+            $summary = $cache['summary'] ?? [];
+            $followers = (int) ($summary['followers_count'] ?? $acc->followers_count);
+            $views = (int) ($summary['views_count'] ?? $acc->views_count);
+            $totalFollowers += $followers;
+            $totalViews += $views;
+
+            $channels[] = [
+                'account_id' => $acc->id,
+                'platform' => $acc->platform,
+                'account_name' => $acc->account_name,
+                'handle' => $acc->handle,
+                'followers_count' => $followers,
+                'views_count' => $views,
+                'engagement_rate' => $summary['engagement_rate'] ?? $acc->engagement_rate,
+                'synced_at' => $acc->analytics_synced_at?->toIso8601String(),
+                'top_items' => $cache['top_items'] ?? [],
+            ];
+        }
+
+        return [
+            'brand' => ['id' => $brand->id, 'name' => $brand->name, 'niche' => $brand->niche],
+            'totals' => [
+                'channels_count' => count($channels),
+                'followers_count' => $totalFollowers,
+                'views_count' => $totalViews,
+            ],
+            'channels' => $channels,
+        ];
     }
 
     protected function listSocialAccounts(array $args): array

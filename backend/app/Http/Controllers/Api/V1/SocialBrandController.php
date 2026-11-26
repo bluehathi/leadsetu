@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\SocialBrand;
 use App\Services\ActivityLogService;
+use App\Services\SocialOAuthSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -14,6 +15,7 @@ use Illuminate\Validation\Rule;
 class SocialBrandController extends Controller
 {
     public function __construct(
+        protected SocialOAuthSyncService $oauthSync,
         protected ActivityLogService $audit,
     ) {
     }
@@ -116,5 +118,67 @@ class SocialBrandController extends Controller
         $this->audit->log('social_brand_deleted', $socialBrand, "Deleted social brand {$name}");
 
         return response()->json(null, 204);
+    }
+
+    public function analytics(Request $request, SocialBrand $socialBrand): JsonResponse
+    {
+        Gate::authorize('viewAny', SocialAccount::class);
+
+        $forceRefresh = $request->boolean('refresh');
+        $accounts = $socialBrand->accounts()->get();
+
+        $channels = [];
+        $allItems = [];
+        $totalFollowers = 0;
+        $totalViews = 0;
+        $totalPosts = 0;
+        $engSum = 0;
+
+        foreach ($accounts as $acc) {
+            $data = $this->oauthSync->getChannelAnalytics($acc, $forceRefresh);
+            $summary = $data['summary'] ?? [];
+            $followers = (int) ($summary['followers_count'] ?? $acc->followers_count);
+            $views = (int) ($summary['views_count'] ?? $acc->views_count);
+            $posts = (int) ($summary['posts_count'] ?? $acc->posts_count);
+            $eng = (float) ($summary['engagement_rate'] ?? $acc->engagement_rate);
+
+            $totalFollowers += $followers;
+            $totalViews += $views;
+            $totalPosts += $posts;
+            $engSum += $eng;
+
+            $channels[] = [
+                'account' => $acc,
+                'summary' => $summary,
+                'source' => $data['source'] ?? 'cache',
+                'synced_at' => $data['synced_at'] ?? null,
+                'deep_analytics' => $data['deep_analytics'] ?? null,
+            ];
+
+            foreach (($data['recent_items'] ?? []) as $item) {
+                $item['account_id'] = $acc->id;
+                $item['account_name'] = $acc->account_name;
+                $item['platform'] = $acc->platform;
+                $allItems[] = $item;
+            }
+        }
+
+        usort($allItems, fn ($a, $b) => ($b['views'] + $b['likes']) <=> ($a['views'] + $a['likes']));
+
+        return response()->json([
+            'data' => [
+                'brand' => $socialBrand,
+                'totals' => [
+                    'channels_count' => count($channels),
+                    'followers_count' => $totalFollowers,
+                    'views_count' => $totalViews,
+                    'posts_count' => $totalPosts,
+                    'avg_engagement_rate' => count($channels) > 0 ? round($engSum / count($channels), 2) : 0,
+                ],
+                'channels' => $channels,
+                'top_items' => array_slice($allItems, 0, 12),
+                'source' => $forceRefresh ? 'live' : 'cache',
+            ],
+        ]);
     }
 }

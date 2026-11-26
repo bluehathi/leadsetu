@@ -521,6 +521,14 @@ export default function SocialStudio() {
                                                 </button>
                                                 {can('manage_social_accounts') && (
                                                     <div className="flex items-center gap-1.5 text-xs">
+                                                        <Link
+                                                            to={`/social/brands/${b.id}/analytics`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="font-medium text-indigo-700 hover:underline"
+                                                        >
+                                                            Analytics ↗
+                                                        </Link>
                                                         <button
                                                             onClick={() => {
                                                                 setEditingBrand(b);
