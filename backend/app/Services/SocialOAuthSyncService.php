@@ -51,8 +51,8 @@ class SocialOAuthSyncService
         }
 
         $scopes = $platform === 'facebook'
-            ? 'pages_show_list,pages_read_engagement,pages_manage_posts'
-            : 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_content_publish';
+            ? 'pages_show_list,pages_read_engagement,pages_manage_posts,business_management'
+            : 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_content_publish,business_management';
 
         return "https://www.facebook.com/{$version}/dialog/oauth?".http_build_query([
             'client_id' => $clientId,
@@ -178,16 +178,12 @@ class SocialOAuthSyncService
         $expiresIn = $longResp->successful() ? $longResp->json('expires_in') : $tokenResp->json('expires_in');
         $expiresAt = $expiresIn ? now()->addSeconds((int) $expiresIn) : now()->addDays(60);
 
-        $pagesResp = Http::get("https://graph.facebook.com/{$version}/me/accounts", [
-            'fields' => 'id,name,instagram_business_account{id,username,name,profile_picture_url,followers_count,media_count},connected_instagram_account{id,username,name,profile_picture_url,followers_count,media_count}',
-            'access_token' => $accessToken,
-        ]);
+        $pages = $this->fetchAllFacebookPages(
+            $version,
+            $accessToken,
+            'id,name,instagram_business_account{id,username,name,profile_picture_url,followers_count,media_count},connected_instagram_account{id,username,name,profile_picture_url,followers_count,media_count}'
+        );
 
-        if (! $pagesResp->successful()) {
-            throw new RuntimeException('Failed to fetch linked Instagram Business accounts: '.($pagesResp->json('error.message') ?: $pagesResp->status()));
-        }
-
-        $pages = $pagesResp->json('data', []);
         if (count($pages) === 0) {
             throw new RuntimeException('Facebook returned 0 Pages. During Facebook Login, make sure you select the Facebook Page linked to your Instagram Business/Creator account.');
         }
@@ -252,16 +248,12 @@ class SocialOAuthSyncService
         $expiresIn = $longResp->successful() ? $longResp->json('expires_in') : $tokenResp->json('expires_in');
         $expiresAt = $expiresIn ? now()->addSeconds((int) $expiresIn) : now()->addDays(60);
 
-        $pagesResp = Http::get("https://graph.facebook.com/{$version}/me/accounts", [
-            'fields' => 'id,name,username,fan_count,followers_count,picture{url},access_token',
-            'access_token' => $userToken,
-        ]);
+        $pages = $this->fetchAllFacebookPages(
+            $version,
+            $userToken,
+            'id,name,username,fan_count,followers_count,picture{url},access_token'
+        );
 
-        if (! $pagesResp->successful()) {
-            throw new RuntimeException('Failed to fetch Facebook Pages: '.($pagesResp->json('error.message') ?: $pagesResp->status()));
-        }
-
-        $pages = $pagesResp->json('data', []);
         if (count($pages) === 0) {
             throw new RuntimeException('Facebook returned 0 Pages. Make sure you select at least one Facebook Page during login.');
         }
