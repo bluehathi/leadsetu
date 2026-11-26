@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
+import DriveFilePickerModal from './DriveFilePickerModal';
 
 const STAGES = [
     { id: 'all', label: 'All' },
@@ -33,6 +34,7 @@ export default function ContentPlannerTab({
     const [editingId, setEditingId] = useState(null);
     const [aiSuggestion, setAiSuggestion] = useState(null);
     const [publishPrivacy, setPublishPrivacy] = useState({});
+    const [drivePickerMode, setDrivePickerMode] = useState(null);
     const [errorMsg, setErrorMsg] = useState('');
 
     // Auto-select first available channel if none is selected yet.
@@ -390,45 +392,67 @@ export default function ContentPlannerTab({
                         </div>
                     )}
 
-                    {contentForm.drive_file_name && (
-                        <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
-                            <span className="truncate">🎬 Drive Video: {contentForm.drive_file_name}</span>
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setContentForm((p) => ({
-                                        ...p,
-                                        drive_file_id: null,
-                                        drive_file_name: null,
-                                        drive_file_url: null,
-                                        drive_mime_type: null,
-                                    }))
-                                }
-                                className="ml-2 text-indigo-700 hover:underline"
-                            >
-                                Clear
-                            </button>
+                    <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs font-medium text-gray-700">Google Drive Attachments</span>
+                            <div className="flex flex-wrap gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setDrivePickerMode('video')}
+                                    className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                                >
+                                    🎬 {contentForm.drive_file_id ? 'Change Video' : 'Select Video'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setDrivePickerMode('image')}
+                                    className="rounded-lg border border-green-200 bg-white px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                                >
+                                    🖼️ {contentForm.drive_thumbnail_file_id ? 'Change Thumbnail' : 'Select Thumbnail'}
+                                </button>
+                            </div>
                         </div>
-                    )}
 
-                    {contentForm.drive_thumbnail_name && (
-                        <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-900">
-                            <span className="truncate">🖼️ Drive Thumbnail: {contentForm.drive_thumbnail_name}</span>
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setContentForm((p) => ({
-                                        ...p,
-                                        drive_thumbnail_file_id: null,
-                                        drive_thumbnail_name: null,
-                                    }))
-                                }
-                                className="ml-2 text-green-700 hover:underline"
-                            >
-                                Clear
-                            </button>
-                        </div>
-                    )}
+                        {contentForm.drive_file_name && (
+                            <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-900">
+                                <span className="truncate">🎬 Video: {contentForm.drive_file_name}</span>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setContentForm((p) => ({
+                                            ...p,
+                                            drive_file_id: null,
+                                            drive_file_name: null,
+                                            drive_file_url: null,
+                                            drive_mime_type: null,
+                                        }))
+                                    }
+                                    className="ml-2 text-indigo-700 hover:underline"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        )}
+
+                        {contentForm.drive_thumbnail_name && (
+                            <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs text-green-900">
+                                <span className="truncate">🖼️ Thumbnail: {contentForm.drive_thumbnail_name}</span>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setContentForm((p) => ({
+                                            ...p,
+                                            drive_thumbnail_file_id: null,
+                                            drive_thumbnail_name: null,
+                                        }))
+                                    }
+                                    className="ml-2 text-green-700 hover:underline"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
                     <div className="flex gap-2 pt-1">
                         <button
@@ -620,6 +644,32 @@ export default function ContentPlannerTab({
                     </div>
                 )}
             </div>
+
+            {drivePickerMode && (
+                <DriveFilePickerModal
+                    mode={drivePickerMode}
+                    onClose={() => setDrivePickerMode(null)}
+                    onSelect={(file) => {
+                        if (drivePickerMode === 'video') {
+                            const cleanTitle = file.name.replace(/\.[^.]+$/, '');
+                            setContentForm((p) => ({
+                                ...p,
+                                title: p.title || cleanTitle,
+                                drive_file_id: file.id,
+                                drive_file_name: file.name,
+                                drive_file_url: file.web_view_url,
+                                drive_mime_type: file.mime_type,
+                            }));
+                        } else {
+                            setContentForm((p) => ({
+                                ...p,
+                                drive_thumbnail_file_id: file.id,
+                                drive_thumbnail_name: file.name,
+                            }));
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }
