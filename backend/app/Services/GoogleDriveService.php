@@ -669,6 +669,13 @@ class GoogleDriveService
                 throw new RuntimeException('YouTube token expired. Please reconnect your channel.');
             }
 
+            if (! $commentId) {
+                $existingOwner = $this->fetchYouTubeOwnerComment($ytToken, $content->youtube_video_id, $account->external_id);
+                if ($existingOwner && $existingOwner['id'] !== '') {
+                    $commentId = $existingOwner['id'];
+                }
+            }
+
             if ($commentId) {
                 $resp = Http::withToken($ytToken)->put('https://www.googleapis.com/youtube/v3/comments?part=snippet', [
                     'id' => $commentId,
