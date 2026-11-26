@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
+import ContentPlannerTab from '../components/ContentPlannerTab';
 import GoogleDriveTab from '../components/GoogleDriveTab';
 import { useMe } from '../hooks/useMe';
 
 const TABS = [
     { id: 'accounts', label: 'YT & IG Accounts' },
-    { id: 'content', label: 'Content & SEO Scorer' },
+    { id: 'content', label: 'Content Planner' },
     { id: 'drive', label: 'Google Drive' },
     { id: 'keywords', label: 'Keyword Research' },
     { id: 'competitors', label: 'Competitors' },
