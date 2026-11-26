@@ -78,7 +78,12 @@ Route::prefix('v1')->group(function () {
         Route::get('social/accounts/{social_account}/videos/{videoId}/analytics', [V1\SocialAccountController::class, 'videoAnalytics']);
         Route::apiResource('social/accounts', V1\SocialAccountController::class)->parameters(['accounts' => 'social_account']);
         Route::post('social/contents/optimize', [V1\SocialContentController::class, 'optimize']);
+        Route::post('social/contents/{social_content}/publish-from-drive', [V1\GoogleDriveController::class, 'publishToYouTube']);
         Route::apiResource('social/contents', V1\SocialContentController::class)->parameters(['contents' => 'social_content']);
+        Route::get('social/drive/status', [V1\GoogleDriveController::class, 'status']);
+        Route::get('social/drive/oauth/url', [V1\GoogleDriveController::class, 'oauthUrl']);
+        Route::get('social/drive/files', [V1\GoogleDriveController::class, 'files']);
+        Route::delete('social/drive/disconnect', [V1\GoogleDriveController::class, 'disconnect']);
         Route::get('social/keywords', [V1\SocialGrowthController::class, 'keywords']);
         Route::post('social/keywords/analyze', [V1\SocialGrowthController::class, 'analyzeKeyword']);
         Route::delete('social/keywords/{social_keyword}', [V1\SocialGrowthController::class, 'destroyKeyword']);

@@ -36,7 +36,7 @@ class SocialOAuthSyncService
                 'client_id' => $clientId,
                 'redirect_uri' => $redirect,
                 'response_type' => 'code',
-                'scope' => 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly',
+                'scope' => 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/youtube.upload',
                 'access_type' => 'offline',
                 'prompt' => 'consent',
                 'state' => $state,
@@ -255,6 +255,11 @@ class SocialOAuthSyncService
         }
 
         return $synced->fresh();
+    }
+
+    public function getFreshYouTubeToken(SocialAccount $account): ?string
+    {
+        return $this->ensureFreshYouTubeToken($account);
     }
 
     protected function ensureFreshYouTubeToken(SocialAccount $account): ?string

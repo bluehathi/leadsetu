@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
+import GoogleDriveTab from '../components/GoogleDriveTab';
 import { useMe } from '../hooks/useMe';
 
 const TABS = [
     { id: 'accounts', label: 'YT & IG Accounts' },
     { id: 'content', label: 'Content & SEO Scorer' },
+    { id: 'drive', label: 'Google Drive' },
     { id: 'keywords', label: 'Keyword Research' },
     { id: 'competitors', label: 'Competitors' },
     { id: 'ideas', label: 'Daily Ideas' },
@@ -49,7 +51,9 @@ export default function SocialStudio() {
     const { can } = useMe();
     const qc = useQueryClient();
     const [searchParams] = useSearchParams();
-    const [tab, setTab] = useState('accounts');
+    const [tab, setTab] = useState(searchParams.get('tab') || 'accounts');
+    const [publishPrivacy, setPublishPrivacy] = useState({});
+    const [publishError, setPublishError] = useState('');
     const [platformFilter, setPlatformFilter] = useState('');
     const [selectedAccountId, setSelectedAccountId] = useState('');
     const [oauthError, setOauthError] = useState(searchParams.get('oauth_error') || '');
@@ -187,6 +191,17 @@ export default function SocialStudio() {
         onSuccess: invalidateAll,
     });
 
+    const publishFromDriveMut = useMutation({
+        mutationFn: ({ id, privacy }) => socialApi.publishFromDrive(id, privacy),
+        onSuccess: () => {
+            setPublishError('');
+            invalidateAll();
+        },
+        onError: (err) => {
+            setPublishError(err?.response?.data?.message || 'Failed to publish video to YouTube.');
+        },
+    });
+
     const analyzeKwMut = useMutation({
         mutationFn: socialApi.analyzeKeyword,
         onSuccess: () => {
@@ -260,6 +275,15 @@ export default function SocialStudio() {
             tags: splitList(contentForm.tagsText),
             hashtags: splitList(contentForm.hashtagsText),
             status: contentForm.status,
+            ...(contentForm.drive_file_id
+                ? {
+                      drive_file_id: contentForm.drive_file_id,
+                      drive_file_name: contentForm.drive_file_name,
+                      drive_file_url: contentForm.drive_file_url,
+                      drive_mime_type: contentForm.drive_mime_type,
+                  }
+                : {}),
+            ...(contentForm.drive_thumbnail_file_id ? { drive_thumbnail_file_id: contentForm.drive_thumbnail_file_id } : {}),
         });
     };
 
@@ -808,6 +832,44 @@ export default function SocialStudio() {
                                 </div>
                             )}
 
+                            {contentForm.drive_file_name && (
+                                <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+                                    <span className="truncate">🎬 Drive Video: {contentForm.drive_file_name}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setContentForm((p) => ({
+                                                ...p,
+                                                drive_file_id: null,
+                                                drive_file_name: null,
+                                                drive_file_url: null,
+                                                drive_mime_type: null,
+                                            }))
+                                        }
+                                        className="ml-2 text-indigo-700 hover:underline"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            )}
+                            {contentForm.drive_thumbnail_name && (
+                                <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-900">
+                                    <span className="truncate">🖼️ Drive Thumbnail: {contentForm.drive_thumbnail_name}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setContentForm((p) => ({
+                                                ...p,
+                                                drive_thumbnail_file_id: null,
+                                                drive_thumbnail_name: null,
+                                            }))
+                                        }
+                                        className="ml-2 text-green-700 hover:underline"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            )}
                             <button
                                 type="submit"
                                 disabled={createContentMut.isPending}
@@ -819,6 +881,11 @@ export default function SocialStudio() {
                     )}
 
                     <div className="space-y-3 lg:col-span-2">
+                        {publishError && (
+                            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+                                {publishError}
+                            </div>
+                        )}
                         {contents.length === 0 ? (
                             <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 text-sm text-gray-500">
                                 No content items yet. Create a video, Short, or Reel to see its vidIQ-style SEO score!
@@ -837,11 +904,59 @@ export default function SocialStudio() {
                                             </div>
                                             <h3 className="mt-1 font-semibold">{item.title}</h3>
                                             {item.hook && <p className="mt-1 text-xs text-gray-600">Hook: {item.hook}</p>}
+                                            {item.drive_file_name && (
+                                                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-indigo-700">
+                                                    <span>🎬 Drive: {item.drive_file_name}</span>
+                                                    {item.drive_file_url && (
+                                                        <a href={item.drive_file_url} target="_blank" rel="noreferrer" className="hover:underline">
+                                                            Open ↗
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {item.youtube_video_id && (
+                                                <div className="mt-1 text-xs text-green-700">
+                                                    ✅ Published on YouTube:{' '}
+                                                    <a
+                                                        href={`https://www.youtube.com/watch?v=${item.youtube_video_id}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="font-medium underline"
+                                                    >
+                                                        Watch ↗
+                                                    </a>
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${scoreBadge(item.seo_score)}`}>
                                                 SEO {item.seo_score}/100
                                             </span>
+                                            {can('manage_social_content') && item.drive_file_id && item.platform === 'youtube' && !item.youtube_video_id && (
+                                                <div className="flex items-center gap-1">
+                                                    <select
+                                                        value={publishPrivacy[item.id] || 'private'}
+                                                        onChange={(e) => setPublishPrivacy((p) => ({ ...p, [item.id]: e.target.value }))}
+                                                        className="rounded border px-1.5 py-1 text-xs"
+                                                    >
+                                                        <option value="private">Private</option>
+                                                        <option value="unlisted">Unlisted</option>
+                                                        <option value="public">Public</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={() =>
+                                                            publishFromDriveMut.mutate({
+                                                                id: item.id,
+                                                                privacy: publishPrivacy[item.id] || 'private',
+                                                            })
+                                                        }
+                                                        disabled={publishFromDriveMut.isPending}
+                                                        className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                                    >
+                                                        {publishFromDriveMut.isPending ? 'Uploading…' : 'Publish to YT'}
+                                                    </button>
+                                                </div>
+                                            )}
                                             {can('manage_social_content') && (
                                                 <button
                                                     onClick={() => deleteContentMut.mutate(item.id)}
@@ -871,6 +986,35 @@ export default function SocialStudio() {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* TAB 2B: GOOGLE DRIVE */}
+            {tab === 'drive' && (
+                <GoogleDriveTab
+                    onImportVideo={(file) => {
+                        const cleanTitle = file.name.replace(/\.[^.]+$/, '');
+                        const ytAccount = accounts.find((a) => a.platform === 'youtube');
+                        setContentForm((p) => ({
+                            ...p,
+                            social_account_id: p.social_account_id || (ytAccount ? String(ytAccount.id) : ''),
+                            platform: 'youtube',
+                            title: p.title || cleanTitle,
+                            drive_file_id: file.id,
+                            drive_file_name: file.name,
+                            drive_file_url: file.web_view_url,
+                            drive_mime_type: file.mime_type,
+                        }));
+                        setTab('content');
+                    }}
+                    onAttachThumbnail={(file) => {
+                        setContentForm((p) => ({
+                            ...p,
+                            drive_thumbnail_file_id: file.id,
+                            drive_thumbnail_name: file.name,
+                        }));
+                        setTab('content');
+                    }}
+                />
             )}
 
             {/* TAB 3: KEYWORD RESEARCH */}

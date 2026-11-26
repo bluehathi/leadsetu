@@ -35,4 +35,11 @@ export const socialApi = {
     generateIdeas: (payload) => api.post('/social/ideas/generate', payload).then((r) => r.data.data),
     updateIdeaStatus: (id, status) => api.patch(`/social/ideas/${id}/status`, { status }).then((r) => r.data.data),
     convertIdea: (id, social_account_id) => api.post(`/social/ideas/${id}/convert`, { social_account_id }).then((r) => r.data.data),
+
+    getDriveStatus: () => api.get('/social/drive/status').then((r) => r.data.data),
+    getDriveOAuthUrl: () => api.get('/social/drive/oauth/url').then((r) => r.data.data),
+    listDriveFiles: (params) => api.get('/social/drive/files', { params }).then((r) => r.data.data),
+    disconnectDrive: () => api.delete('/social/drive/disconnect'),
+    publishFromDrive: (contentId, privacy_status = 'private') =>
+        api.post(`/social/contents/${contentId}/publish-from-drive`, { privacy_status }).then((r) => r.data.data),
 };

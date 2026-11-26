@@ -8,6 +8,7 @@ use App\Http\Requests\Social\StoreSocialAccountRequest;
 use App\Http\Requests\Social\UpdateSocialAccountRequest;
 use App\Models\SocialAccount;
 use App\Services\ActivityLogService;
+use App\Services\GoogleDriveService;
 use App\Services\SocialGrowthService;
 use App\Services\SocialOAuthSyncService;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,7 @@ class SocialAccountController extends Controller implements HasMiddleware
     public function __construct(
         protected SocialGrowthService $growth,
         protected SocialOAuthSyncService $oauthSync,
+        protected GoogleDriveService $drive,
         protected ActivityLogService $audit,
     ) {
     }
@@ -154,11 +156,15 @@ class SocialAccountController extends Controller implements HasMiddleware
         }
 
         try {
-            $accounts = $this->oauthSync->handleCallback(
-                $platform,
-                (string) $request->query('code'),
-                (string) $request->query('state'),
-            );
+            $state = (string) $request->query('state');
+            $code = (string) $request->query('code');
+
+            if ($platform === 'youtube' && $this->drive->isDriveState($state)) {
+                $this->drive->handleCallback($code, $state);
+                return redirect()->away("{$frontendUrl}/social?tab=drive&drive_connected=1");
+            }
+
+            $accounts = $this->oauthSync->handleCallback($platform, $code, $state);
 
             return redirect()->away("{$frontendUrl}/social?connected={$platform}&count=".count($accounts));
         } catch (Throwable $e) {
