@@ -36,6 +36,8 @@ export default function ContentPlannerTab({
     onSaved,
 }) {
     const [stageFilter, setStageFilter] = useState('all');
+    const [platformFilter, setPlatformFilter] = useState('all');
+    const [failedOnly, setFailedOnly] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const [search, setSearch] = useState('');
     const [editingId, setEditingId] = useState(null);
@@ -150,16 +152,20 @@ export default function ContentPlannerTab({
         return counts;
     }, [contents]);
 
+    const failedCount = useMemo(() => contents.filter((c) => Boolean(c.publish_error)).length, [contents]);
+
     const filteredContents = useMemo(() => {
         const q = search.trim().toLowerCase();
         return contents.filter((item) => {
             if (stageFilter !== 'all' && item.status !== stageFilter) return false;
+            if (platformFilter !== 'all' && item.platform !== platformFilter) return false;
+            if (failedOnly && !item.publish_error) return false;
             if (q && !item.title.toLowerCase().includes(q) && !(item.target_keyword || '').toLowerCase().includes(q)) {
                 return false;
             }
             return true;
         });
-    }, [contents, stageFilter, search]);
+    }, [contents, stageFilter, platformFilter, failedOnly, search]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -651,45 +657,83 @@ export default function ContentPlannerTab({
             )}
 
             <div className={`space-y-4 ${canManage ? 'lg:col-span-7' : 'lg:col-span-12'}`}>
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                    <div className="flex flex-wrap gap-1">
-                        {STAGES.map((s) => (
-                            <button
-                                key={s.id}
-                                onClick={() => setStageFilter(s.id)}
-                                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                                    stageFilter === s.id
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            >
-                                {s.label} ({stageCounts[s.id] ?? 0})
-                            </button>
-                        ))}
+                <div className="space-y-2.5 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap gap-1">
+                            {STAGES.map((s) => (
+                                <button
+                                    key={s.id}
+                                    onClick={() => setStageFilter(s.id)}
+                                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                                        stageFilter === s.id
+                                            ? 'bg-indigo-600 text-white shadow-sm'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {s.label} ({stageCounts[s.id] ?? 0})
+                                </button>
+                            ))}
+                            {failedCount > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setFailedOnly((v) => !v)}
+                                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                                        failedOnly
+                                            ? 'bg-red-600 text-white shadow-sm'
+                                            : 'bg-red-50 text-red-700 hover:bg-red-100'
+                                    }`}
+                                >
+                                    ⚠ Failed ({failedCount})
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs">
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('list')}
+                                    className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
+                                >
+                                    List
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('calendar')}
+                                    className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
+                                >
+                                    Calendar
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs">
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('list')}
-                                className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
-                            >
-                                List
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('calendar')}
-                                className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
-                            >
-                                Calendar
-                            </button>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2.5">
+                        <div className="flex flex-wrap gap-1 text-[11px]">
+                            {[
+                                { id: 'all', label: 'All Platforms' },
+                                { id: 'youtube', label: 'YouTube' },
+                                { id: 'instagram', label: 'Instagram' },
+                                { id: 'facebook', label: 'Facebook' },
+                            ].map((p) => (
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => setPlatformFilter(p.id)}
+                                    className={`rounded-md px-2 py-1 font-medium transition ${
+                                        platformFilter === p.id
+                                            ? 'bg-gray-900 text-white'
+                                            : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    {p.label}
+                                </button>
+                            ))}
                         </div>
                         <input
                             type="search"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search planner…"
-                            className="rounded-lg border px-3 py-1.5 text-xs"
+                            placeholder="Search title or keyword…"
+                            className="w-56 rounded-lg border border-gray-200 px-3 py-1 text-xs focus:border-indigo-500 focus:outline-none"
                         />
                     </div>
                 </div>

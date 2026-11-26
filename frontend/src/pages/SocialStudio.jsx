@@ -7,12 +7,12 @@ import GoogleDriveTab from '../components/GoogleDriveTab';
 import { useMe } from '../hooks/useMe';
 
 const TABS = [
-    { id: 'accounts', label: 'Connected Channels' },
-    { id: 'content', label: 'Content Planner' },
-    { id: 'drive', label: 'Google Drive' },
-    { id: 'keywords', label: 'Keyword Research' },
-    { id: 'competitors', label: 'Competitors' },
-    { id: 'ideas', label: 'Daily Ideas' },
+    { id: 'accounts', label: 'Channels & Brands', icon: '📡' },
+    { id: 'content', label: 'Content Planner', icon: '🗓️' },
+    { id: 'drive', label: 'Google Drive', icon: '📁' },
+    { id: 'keywords', label: 'Keywords', icon: '🔍' },
+    { id: 'competitors', label: 'Competitors', icon: '📊' },
+    { id: 'ideas', label: 'Daily Ideas', icon: '💡' },
 ];
 
 const scoreBadge = (score) => {
@@ -57,8 +57,14 @@ const EMPTY_CONTENT = {
 export default function SocialStudio() {
     const { can } = useMe();
     const qc = useQueryClient();
-    const [searchParams] = useSearchParams();
-    const [tab, setTab] = useState(searchParams.get('tab') || 'accounts');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [tab, setTabState] = useState(searchParams.get('tab') || 'accounts');
+    const setTab = (nextTab) => {
+        setTabState(nextTab);
+        const next = new URLSearchParams(searchParams);
+        next.set('tab', nextTab);
+        setSearchParams(next, { replace: true });
+    };
     const [connectMenuOpen, setConnectMenuOpen] = useState(false);
     const [brandFilter, setBrandFilter] = useState('');
     const [brandModalOpen, setBrandModalOpen] = useState(false);
@@ -430,50 +436,82 @@ export default function SocialStudio() {
             )}
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 to-violet-500" />
-                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Connected Accounts</div>
-                    <div className="mt-1 text-2xl font-bold">{totals.accounts ?? 0}</div>
-                    <div className="mt-1 text-xs text-gray-500">
-                        YT: {totals.youtube_accounts ?? 0} · IG: {totals.instagram_accounts ?? 0} · FB: {totals.facebook_accounts ?? 0}
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Channels</div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{totals.accounts ?? 0}</div>
+                    <div className="mt-0.5 text-[11px] text-gray-500">
+                        YT {totals.youtube_accounts ?? 0} · IG {totals.instagram_accounts ?? 0} · FB {totals.facebook_accounts ?? 0}
                     </div>
                 </div>
-                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 to-rose-500" />
-                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Followers / Subs</div>
-                    <div className="mt-1 text-2xl font-bold">{(totals.followers ?? 0).toLocaleString()}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Audience</div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{(totals.followers ?? 0).toLocaleString()}</div>
+                    <div className="mt-0.5 text-[11px] text-gray-500">Followers & subscribers</div>
                 </div>
-                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 to-cyan-500" />
-                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Views</div>
-                    <div className="mt-1 text-2xl font-bold">{(totals.views ?? 0).toLocaleString()}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Total Views</div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{(totals.views ?? 0).toLocaleString()}</div>
+                    <div className="mt-0.5 text-[11px] text-gray-500">Across synced channels</div>
                 </div>
-                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
-                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Avg SEO Score</div>
-                    <div className="mt-1 text-2xl font-bold">{totals.avg_seo_score ?? 0}/100</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Avg SEO Score</div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+                        {totals.avg_seo_score ?? 0}<span className="text-sm font-medium text-gray-400">/100</span>
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-gray-500">Content optimization</div>
                 </div>
-                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:shadow-md">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
-                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Open Daily Ideas</div>
-                    <div className="mt-1 text-2xl font-bold">{totals.open_ideas_count ?? 0}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Daily Ideas</div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{totals.open_ideas_count ?? 0}</div>
+                    <div className="mt-0.5 text-[11px] text-gray-500">Ready to convert</div>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
-                {TABS.map((t) => (
-                    <button
-                        key={t.id}
-                        onClick={() => setTab(t.id)}
-                        className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
-                            tab === t.id ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                    >
-                        {t.label}
-                    </button>
-                ))}
+            <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
+                {TABS.map((t) => {
+                    const count =
+                        t.id === 'accounts'
+                            ? accounts.length
+                            : t.id === 'content'
+                            ? contents.length
+                            : t.id === 'keywords'
+                            ? keywords.length
+                            : t.id === 'competitors'
+                            ? competitors.length
+                            : t.id === 'ideas'
+                            ? ideas.length
+                            : null;
+                    return (
+                        <button
+                            key={t.id}
+                            onClick={() => setTab(t.id)}
+                            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition ${
+                                tab === t.id
+                                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-sm'
+                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                            }`}
+                        >
+                            <span>{t.icon}</span>
+                            <span>{t.label}</span>
+                            {count !== null && (
+                                <span
+                                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                                        tab === t.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                                    }`}
+                                >
+                                    {count}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* TAB 1: ACCOUNTS */}
@@ -930,19 +968,19 @@ export default function SocialStudio() {
                                 e.preventDefault();
                                 analyzeKwMut.mutate(kwInput);
                             }}
-                            className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white shadow-sm p-4"
+                            className="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
                         >
                             <input
                                 required
                                 placeholder="Enter keyword or topic (e.g. instagram reels hooks)"
                                 value={kwInput.keyword}
                                 onChange={(e) => setKwInput({ ...kwInput, keyword: e.target.value })}
-                                className="min-w-[240px] flex-1 rounded-lg border px-3 py-2 text-sm"
+                                className="min-w-[240px] flex-1 rounded-xl border border-gray-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                             />
                             <select
                                 value={kwInput.platform}
                                 onChange={(e) => setKwInput({ ...kwInput, platform: e.target.value })}
-                                className="rounded-lg border px-3 py-2 text-sm"
+                                className="rounded-xl border border-gray-200 px-3 py-2 text-sm"
                             >
                                 <option value="youtube">YouTube</option>
                                 <option value="instagram">Instagram</option>
@@ -951,53 +989,72 @@ export default function SocialStudio() {
                             <button
                                 type="submit"
                                 disabled={analyzeKwMut.isPending}
-                                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                                className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                             >
-                                {analyzeKwMut.isPending ? 'Analyzing…' : 'Analyze Keyword'}
+                                {analyzeKwMut.isPending ? 'Analyzing…' : '🔍 Analyze Keyword'}
                             </button>
                         </form>
                     )}
 
-                    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-                        <table className="w-full text-left text-sm">
-                            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
-                                <tr>
-                                    <th className="px-4 py-3">Keyword</th>
-                                    <th className="px-4 py-3">Platform</th>
-                                    <th className="px-4 py-3">Volume</th>
-                                    <th className="px-4 py-3">Competition</th>
-                                    <th className="px-4 py-3">Overall Score</th>
-                                    <th className="px-4 py-3">Trend</th>
-                                    <th className="px-4 py-3">Related Tags</th>
-                                    <th className="px-4 py-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {keywords.map((kw) => (
-                                    <tr key={kw.id}>
-                                        <td className="px-4 py-3 font-medium">{kw.keyword}</td>
-                                        <td className="px-4 py-3 uppercase text-xs">{kw.platform}</td>
-                                        <td className="px-4 py-3">{kw.search_volume.toLocaleString()}</td>
-                                        <td className="px-4 py-3">{kw.competition_score}/100</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded px-2 py-0.5 text-xs font-bold ${scoreBadge(kw.overall_score)}`}>
-                                                {kw.overall_score}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 capitalize">{kw.trend}</td>
-                                        <td className="px-4 py-3 text-xs text-gray-500">{(kw.related_tags || []).join(', ')}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            {can('use_growth_tools') && (
-                                                <button onClick={() => deleteKwMut.mutate(kw.id)} className="text-xs text-red-600 hover:underline">
-                                                    Delete
-                                                </button>
-                                            )}
-                                        </td>
+                    {keywords.length === 0 ? (
+                        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                            <p className="text-sm font-medium text-gray-700">No keywords researched yet</p>
+                            <p className="mt-1 text-xs text-gray-500">Enter a topic above to analyze search volume, competition, and related tags.</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+                            <table className="w-full text-left text-sm">
+                                <thead className="border-b bg-gray-50 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                    <tr>
+                                        <th className="px-4 py-3">Keyword</th>
+                                        <th className="px-4 py-3">Platform</th>
+                                        <th className="px-4 py-3">Volume</th>
+                                        <th className="px-4 py-3">Competition</th>
+                                        <th className="px-4 py-3">Score</th>
+                                        <th className="px-4 py-3">Trend</th>
+                                        <th className="px-4 py-3">Related Tags</th>
+                                        <th className="px-4 py-3"></th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {keywords.map((kw) => (
+                                        <tr key={kw.id} className="hover:bg-gray-50/70">
+                                            <td className="px-4 py-3 font-semibold text-gray-900">{kw.keyword}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${platformBadge(kw.platform)}`}>
+                                                    {kw.platform}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 tabular-nums text-gray-700">{kw.search_volume.toLocaleString()}</td>
+                                            <td className="px-4 py-3 tabular-nums text-gray-700">{kw.competition_score}/100</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${scoreBadge(kw.overall_score)}`}>
+                                                    {kw.overall_score}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 capitalize text-xs font-medium text-gray-600">{kw.trend}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(kw.related_tags || []).slice(0, 5).map((tag) => (
+                                                        <span key={tag} className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                {can('use_growth_tools') && (
+                                                    <button onClick={() => deleteKwMut.mutate(kw.id)} className="text-xs font-medium text-red-600 hover:underline">
+                                                        Delete
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -1010,13 +1067,16 @@ export default function SocialStudio() {
                                 e.preventDefault();
                                 createCompMut.mutate(compForm);
                             }}
-                            className="space-y-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4"
+                            className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
                         >
-                            <h2 className="font-semibold">Track Competitor</h2>
+                            <div>
+                                <h2 className="text-sm font-semibold text-gray-900">Track Competitor</h2>
+                                <p className="text-xs text-gray-500">Benchmark followers, average views, and top-performing titles.</p>
+                            </div>
                             <select
                                 value={compForm.platform}
                                 onChange={(e) => setCompForm({ ...compForm, platform: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
+                                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
                             >
                                 <option value="youtube">YouTube</option>
                                 <option value="instagram">Instagram</option>
@@ -1026,72 +1086,90 @@ export default function SocialStudio() {
                                 placeholder="Channel / Profile Name"
                                 value={compForm.channel_name}
                                 onChange={(e) => setCompForm({ ...compForm, channel_name: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
+                                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
                             />
                             <input
                                 required
                                 placeholder="Handle (e.g. @competitor)"
                                 value={compForm.handle}
                                 onChange={(e) => setCompForm({ ...compForm, handle: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
+                                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
                             />
                             <div className="grid grid-cols-2 gap-2">
-                                <input
-                                    type="number"
-                                    min="0"
-                                    placeholder="Followers"
-                                    value={compForm.followers_count}
-                                    onChange={(e) => setCompForm({ ...compForm, followers_count: Number(e.target.value) })}
-                                    className="w-full rounded-lg border px-3 py-2 text-sm"
-                                />
-                                <input
-                                    type="number"
-                                    min="0"
-                                    placeholder="Avg Views"
-                                    value={compForm.avg_views}
-                                    onChange={(e) => setCompForm({ ...compForm, avg_views: Number(e.target.value) })}
-                                    className="w-full rounded-lg border px-3 py-2 text-sm"
-                                />
+                                <div>
+                                    <label className="mb-1 block text-[11px] font-medium text-gray-500">Followers</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={compForm.followers_count}
+                                        onChange={(e) => setCompForm({ ...compForm, followers_count: Number(e.target.value) })}
+                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-[11px] font-medium text-gray-500">Avg Views</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={compForm.avg_views}
+                                        onChange={(e) => setCompForm({ ...compForm, avg_views: Number(e.target.value) })}
+                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    />
+                                </div>
                             </div>
                             <input
                                 placeholder="Top Performing Video / Reel Title"
                                 value={compForm.top_video_title}
                                 onChange={(e) => setCompForm({ ...compForm, top_video_title: e.target.value })}
-                                className="w-full rounded-lg border px-3 py-2 text-sm"
+                                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
                             />
                             <button
                                 type="submit"
                                 disabled={createCompMut.isPending}
-                                className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                                className="w-full rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                             >
-                                Add Competitor
+                                {createCompMut.isPending ? 'Adding…' : '+ Add Competitor'}
                             </button>
                         </form>
                     )}
 
                     <div className="space-y-3 lg:col-span-2">
-                        {competitors.map((c) => (
-                            <div key={c.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white shadow-sm p-4">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(c.platform)}`}>
-                                            {c.platform}
-                                        </span>
-                                        <span className="font-semibold">{c.channel_name}</span>
-                                        <span className="text-sm text-gray-500">{c.handle}</span>
-                                    </div>
-                                    <div className="mt-1 text-xs text-gray-500">
-                                        Followers: {c.followers_count.toLocaleString()} · Avg Views: {c.avg_views.toLocaleString()}
-                                        {c.top_video_title ? ` · Top: "${c.top_video_title}"` : ''}
-                                    </div>
-                                </div>
-                                {can('use_growth_tools') && (
-                                    <button onClick={() => deleteCompMut.mutate(c.id)} className="text-xs text-red-600 hover:underline">
-                                        Remove
-                                    </button>
-                                )}
+                        {competitors.length === 0 ? (
+                            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                                <p className="text-sm font-medium text-gray-700">No competitors tracked yet</p>
+                                <p className="mt-1 text-xs text-gray-500">Add a YouTube or Instagram competitor to benchmark against your channels.</p>
                             </div>
-                        ))}
+                        ) : (
+                            competitors.map((c) => (
+                                <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${platformBadge(c.platform)}`}>
+                                                {c.platform}
+                                            </span>
+                                            <span className="font-semibold text-gray-900">{c.channel_name}</span>
+                                            <span className="text-xs text-gray-500">{c.handle}</span>
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                            <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-medium text-gray-700 tabular-nums">
+                                                Followers: {c.followers_count.toLocaleString()}
+                                            </span>
+                                            <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-medium text-gray-700 tabular-nums">
+                                                Avg Views: {c.avg_views.toLocaleString()}
+                                            </span>
+                                        </div>
+                                        {c.top_video_title && (
+                                            <div className="mt-1.5 text-xs text-gray-500">Top: “{c.top_video_title}”</div>
+                                        )}
+                                    </div>
+                                    {can('use_growth_tools') && (
+                                        <button onClick={() => deleteCompMut.mutate(c.id)} className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50">
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
@@ -1100,42 +1178,51 @@ export default function SocialStudio() {
             {tab === 'ideas' && (
                 <div className="space-y-4">
                     {can('use_growth_tools') && (
-                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
-                            <span className="text-sm text-gray-600">
-                                Generate vidIQ-style daily video & Reel ideas tailored to your connected YT & IG accounts.
-                            </span>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() =>
-                                        generateIdeasMut.mutate({
-                                            social_account_id: selectedAccountId ? Number(selectedAccountId) : null,
-                                            platform: platformFilter || 'youtube',
-                                        })
-                                    }
-                                    disabled={generateIdeasMut.isPending}
-                                    className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                                >
-                                    {generateIdeasMut.isPending ? 'Generating…' : 'Generate Daily Ideas'}
-                                </button>
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <div>
+                                <div className="text-sm font-semibold text-gray-900">AI Daily Content Ideas</div>
+                                <div className="text-xs text-gray-500">
+                                    Generate daily video &amp; Reel ideas tailored to your connected channels, then convert directly to Content Planner.
+                                </div>
                             </div>
+                            <button
+                                onClick={() =>
+                                    generateIdeasMut.mutate({
+                                        social_account_id: selectedAccountId ? Number(selectedAccountId) : null,
+                                        platform: platformFilter || 'youtube',
+                                    })
+                                }
+                                disabled={generateIdeasMut.isPending}
+                                className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {generateIdeasMut.isPending ? 'Generating…' : '✨ Generate Daily Ideas'}
+                            </button>
                         </div>
                     )}
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {ideas.map((idea) => (
-                            <div key={idea.id} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
-                                <div className="flex items-center justify-between">
-                                    <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(idea.platform)}`}>
-                                        {idea.platform} · {idea.angle || 'Idea'}
-                                    </span>
-                                    <span className={`rounded px-2 py-0.5 text-xs font-bold ${scoreBadge(idea.predicted_score)}`}>
-                                        Score {idea.predicted_score}
-                                    </span>
-                                </div>
-                                <h3 className="mt-2 font-semibold">{idea.title}</h3>
-                                {idea.hook && <p className="mt-1 text-xs text-gray-600">{idea.hook}</p>}
-                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                                    <span className="rounded bg-gray-100 px-2 py-0.5 capitalize">{idea.status}</span>
+                    {ideas.length === 0 ? (
+                        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                            <p className="text-sm font-medium text-gray-700">No daily ideas generated yet</p>
+                            <p className="mt-1 text-xs text-gray-500">Click Generate Daily Ideas above to get tailored video &amp; Reel topics.</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {ideas.map((idea) => (
+                                <div key={idea.id} className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200">
+                                    <div>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${platformBadge(idea.platform)}`}>
+                                                {idea.platform} · {idea.angle || 'Idea'}
+                                            </span>
+                                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${scoreBadge(idea.predicted_score)}`}>
+                                                Score {idea.predicted_score}
+                                            </span>
+                                        </div>
+                                        <h3 className="mt-2.5 font-semibold text-gray-900">{idea.title}</h3>
+                                        {idea.hook && <p className="mt-1 text-xs text-gray-600">{idea.hook}</p>}
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3 text-xs">
+                                        <span className="rounded-full bg-gray-100 px-2.5 py-0.5 font-medium capitalize text-gray-700">{idea.status}</span>
                                     {can('use_growth_tools') && idea.status !== 'converted' && (
                                         <>
                                             <button
@@ -1158,7 +1245,7 @@ export default function SocialStudio() {
                                                             accountId: Number(selectedAccountId || accounts[0].id),
                                                         })
                                                     }
-                                                    className="rounded bg-green-600 px-2.5 py-1 text-white hover:bg-green-700"
+                                                    className="rounded-lg bg-emerald-600 px-2.5 py-1 font-medium text-white hover:bg-emerald-700"
                                                 >
                                                     Convert to Draft
                                                 </button>
@@ -1169,6 +1256,7 @@ export default function SocialStudio() {
                             </div>
                         ))}
                     </div>
+                    )}
                 </div>
             )}
 
