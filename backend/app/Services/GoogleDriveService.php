@@ -1363,13 +1363,21 @@ class GoogleDriveService
                 ->first();
 
             if ($existingByVid) {
-                $existingByVid->forceFill([
+                $fill = [
                     'published_url' => $existingByVid->published_url ?: $publishedUrl,
                     'thumbnail_url' => $existingByVid->thumbnail_url ?: $thumbUrl,
                     'views_count' => $views,
                     'likes_count' => $likes,
                     'comments_count' => $comments,
-                ])->save();
+                ];
+                if (($comments > 0) && (! $existingByVid->first_comment_id || ! $existingByVid->first_comment)) {
+                    if ($ownerComment = $this->fetchYouTubeOwnerComment($ytToken, $vid, $account->external_id)) {
+                        $fill['first_comment_id'] = $existingByVid->first_comment_id ?: $ownerComment['id'];
+                        $fill['first_comment'] = $existingByVid->first_comment ?: $ownerComment['text'];
+                        $fill['first_comment_error'] = null;
+                    }
+                }
+                $existingByVid->forceFill($fill)->save();
                 $updated++;
                 $syncedItems[] = $existingByVid;
                 continue;
@@ -1382,7 +1390,7 @@ class GoogleDriveService
                 ->first();
 
             if ($unlinkedMatch) {
-                $unlinkedMatch->forceFill([
+                $fill = [
                     'youtube_video_id' => $vid,
                     'published_url' => $publishedUrl,
                     'thumbnail_url' => $unlinkedMatch->thumbnail_url ?: $thumbUrl,
@@ -1392,23 +1400,34 @@ class GoogleDriveService
                     'likes_count' => $likes,
                     'comments_count' => $comments,
                     'publish_error' => null,
-                ])->save();
+                ];
+                if (($comments > 0) && (! $unlinkedMatch->first_comment_id || ! $unlinkedMatch->first_comment)) {
+                    if ($ownerComment = $this->fetchYouTubeOwnerComment($ytToken, $vid, $account->external_id)) {
+                        $fill['first_comment_id'] = $unlinkedMatch->first_comment_id ?: $ownerComment['id'];
+                        $fill['first_comment'] = $unlinkedMatch->first_comment ?: $ownerComment['text'];
+                        $fill['first_comment_error'] = null;
+                    }
+                }
+                $unlinkedMatch->forceFill($fill)->save();
                 $linked++;
                 $syncedItems[] = $unlinkedMatch;
                 continue;
             }
 
+            $ownerComment = $comments > 0 ? $this->fetchYouTubeOwnerComment($ytToken, $vid, $account->external_id) : null;
             $data = [
                 'social_account_id' => $account->id,
                 'platform' => 'youtube',
                 'content_type' => $isShort ? 'short' : 'video',
                 'title' => $title,
                 'description' => $description,
+                'first_comment' => $ownerComment['text'] ?? null,
                 'tags' => $tags,
                 'hashtags' => [],
                 'thumbnail_url' => $thumbUrl,
                 'youtube_video_id' => $vid,
                 'published_url' => $publishedUrl,
+                'first_comment_id' => $ownerComment['id'] ?? null,
                 'status' => 'published',
                 'published_at' => $publishedAt,
                 'views_count' => $views,
@@ -1427,5 +1446,39 @@ class GoogleDriveService
             'updated' => $updated,
             'total_processed' => count($syncedItems),
         ];
+    }
+
+    protected function fetchYouTubeOwnerComment(string $ytToken, string $videoId, ?string $channelId): ?array
+    {
+        if (! $channelId) {
+            return null;
+        }
+
+        $resp = Http::withToken($ytToken)->get('https://www.googleapis.com/youtube/v3/commentThreads', [
+            'part' => 'snippet',
+            'videoId' => $videoId,
+            'maxResults' => 20,
+            'order' => 'relevance',
+        ]);
+
+        if (! $resp->successful()) {
+            return null;
+        }
+
+        foreach ($resp->json('items', []) as $thread) {
+            $top = $thread['snippet']['topLevelComment'] ?? null;
+            if (! $top) {
+                continue;
+            }
+            $authorChannelId = $top['snippet']['authorChannelId']['value'] ?? null;
+            if ($authorChannelId === $channelId) {
+                return [
+                    'id' => (string) ($top['id'] ?? ''),
+                    'text' => (string) ($top['snippet']['textOriginal'] ?? $top['snippet']['textDisplay'] ?? ''),
+                ];
+            }
+        }
+
+        return null;
     }
 }
