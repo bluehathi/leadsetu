@@ -768,10 +768,18 @@ class SocialOAuthSyncService
 
         $version = config('services.instagram.graph_version', 'v21.0');
         $mediaResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/media", [
-            'fields' => 'id,caption,media_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count',
+            'fields' => 'id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count,insights.metric(views,reach)',
             'limit' => 25,
             'access_token' => $account->access_token,
         ]);
+
+        if (! $mediaResp->successful()) {
+            $mediaResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/media", [
+                'fields' => 'id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count',
+                'limit' => 25,
+                'access_token' => $account->access_token,
+            ]);
+        }
 
         if (! $mediaResp->successful()) {
             $base['warning'] = 'Unable to fetch recent Instagram media. Token may need re-authentication.';
@@ -784,27 +792,41 @@ class SocialOAuthSyncService
             $likes = (int) ($post['like_count'] ?? 0);
             $comments = (int) ($post['comments_count'] ?? 0);
             $followers = max(1, (int) $account->followers_count);
+
+            $insightMap = [];
+            foreach ($post['insights']['data'] ?? [] as $m) {
+                if (! empty($m['name'])) {
+                    $insightMap[$m['name']] = (int) ($m['values'][0]['value'] ?? 0);
+                }
+            }
+            $views = $insightMap['views'] ?? ($insightMap['plays'] ?? ($insightMap['reach'] ?? 0));
+
             $items[] = [
                 'id' => $post['id'],
                 'title' => mb_strimwidth((string) ($post['caption'] ?? 'Instagram Post'), 0, 80, '…'),
                 'thumbnail_url' => $post['thumbnail_url'] ?? ($post['media_url'] ?? null),
                 'published_at' => $post['timestamp'] ?? null,
                 'duration_seconds' => null,
-                'type' => strtolower((string) ($post['media_type'] ?? 'post')),
-                'views' => 0,
+                'type' => strtolower((string) ($post['media_product_type'] ?? ($post['media_type'] ?? 'post'))),
+                'views' => $views,
                 'likes' => $likes,
                 'comments' => $comments,
-                'engagement_rate' => round((($likes + $comments) / $followers) * 100, 2),
+                'engagement_rate' => round((($likes + $comments) / max(1, $views ?: $followers)) * 100, 2),
                 'url' => $post['permalink'] ?? null,
             ];
         }
 
-        $base['summary']['recent_videos_count'] = count($items);
+        $totalViews = array_sum(array_column($items, 'views'));
+        $count = count($items);
+        $base['summary']['views_count'] = $totalViews;
+        $base['summary']['recent_videos_count'] = $count;
+        $base['summary']['recent_total_views'] = $totalViews;
         $base['summary']['recent_total_likes'] = array_sum(array_column($items, 'likes'));
         $base['summary']['recent_total_comments'] = array_sum(array_column($items, 'comments'));
-        $sortedByEngagement = $items;
-        usort($sortedByEngagement, fn ($a, $b) => ($b['likes'] + $b['comments']) <=> ($a['likes'] + $a['comments']));
-        $base['top_items'] = array_slice($sortedByEngagement, 0, 5);
+        $base['summary']['avg_views_per_video'] = $count > 0 ? (int) round($totalViews / $count) : 0;
+        $sortedByViews = $items;
+        usort($sortedByViews, fn ($a, $b) => ($b['views'] ?: ($b['likes'] + $b['comments'])) <=> ($a['views'] ?: ($a['likes'] + $a['comments'])));
+        $base['top_items'] = array_slice($sortedByViews, 0, 5);
         $base['recent_items'] = $items;
 
         return $base;
@@ -853,10 +875,32 @@ class SocialOAuthSyncService
         $followers = (int) ($pageData['followers_count'] ?? ($pageData['fan_count'] ?? $account->followers_count));
 
         $postsResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/posts", [
-            'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares',
+            'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares,insights.metric(post_media_view)',
             'limit' => 25,
             'access_token' => $account->access_token,
         ]);
+
+        if (! $postsResp->successful()) {
+            $postsResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/posts", [
+                'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares',
+                'limit' => 25,
+                'access_token' => $account->access_token,
+            ]);
+        }
+
+        $videoViewsByUrl = [];
+        $videosResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/videos", [
+            'fields' => 'id,views,permalink_url',
+            'limit' => 25,
+            'access_token' => $account->access_token,
+        ]);
+        if ($videosResp->successful()) {
+            foreach ($videosResp->json('data', []) as $v) {
+                if (! empty($v['permalink_url'])) {
+                    $videoViewsByUrl[$v['permalink_url']] = (int) ($v['views'] ?? 0);
+                }
+            }
+        }
 
         $base['source'] = 'live';
         $base['channel_meta'] = [
@@ -869,6 +913,10 @@ class SocialOAuthSyncService
             $likes = (int) ($post['likes']['summary']['total_count'] ?? 0);
             $comments = (int) ($post['comments']['summary']['total_count'] ?? 0);
             $shares = (int) ($post['shares']['count'] ?? 0);
+            $views = (int) ($post['insights']['data'][0]['values'][0]['value'] ?? 0);
+            if ($views === 0 && ! empty($post['permalink_url']) && isset($videoViewsByUrl[$post['permalink_url']])) {
+                $views = $videoViewsByUrl[$post['permalink_url']];
+            }
             $title = mb_strimwidth((string) ($post['message'] ?? ($post['story'] ?? 'Facebook Post')), 0, 80, '…');
             $items[] = [
                 'id' => $post['id'],
@@ -877,25 +925,30 @@ class SocialOAuthSyncService
                 'published_at' => $post['created_time'] ?? null,
                 'duration_seconds' => null,
                 'type' => 'post',
-                'views' => 0,
+                'views' => $views,
                 'likes' => $likes,
                 'comments' => $comments,
-                'engagement_rate' => round((($likes + $comments + $shares) / max(1, $followers)) * 100, 2),
+                'engagement_rate' => round((($likes + $comments + $shares) / max(1, $views ?: $followers)) * 100, 2),
                 'url' => $post['permalink_url'] ?? null,
             ];
         }
 
-        $base['summary']['posts_count'] = max($account->posts_count, count($items));
-        $base['summary']['recent_videos_count'] = count($items);
+        $totalViews = array_sum(array_column($items, 'views'));
+        $count = count($items);
+        $base['summary']['posts_count'] = max($account->posts_count, $count);
+        $base['summary']['views_count'] = $totalViews;
+        $base['summary']['recent_videos_count'] = $count;
+        $base['summary']['recent_total_views'] = $totalViews;
         $base['summary']['recent_total_likes'] = array_sum(array_column($items, 'likes'));
         $base['summary']['recent_total_comments'] = array_sum(array_column($items, 'comments'));
-        if (count($items) > 0 && $followers > 0) {
-            $avgEng = array_sum(array_column($items, 'engagement_rate')) / count($items);
+        $base['summary']['avg_views_per_video'] = $count > 0 ? (int) round($totalViews / $count) : 0;
+        if ($count > 0 && $followers > 0) {
+            $avgEng = array_sum(array_column($items, 'engagement_rate')) / $count;
             $base['summary']['engagement_rate'] = round($avgEng, 2);
         }
 
         $sorted = $items;
-        usort($sorted, fn ($a, $b) => ($b['likes'] + $b['comments']) <=> ($a['likes'] + $a['comments']));
+        usort($sorted, fn ($a, $b) => ($b['views'] ?: ($b['likes'] + $b['comments'])) <=> ($a['views'] ?: ($a['likes'] + $a['comments'])));
         $base['top_items'] = array_slice($sorted, 0, 5);
         $base['recent_items'] = $items;
 
@@ -918,9 +971,16 @@ class SocialOAuthSyncService
 
         $version = config('services.instagram.graph_version', 'v21.0');
         $postResp = Http::get("https://graph.facebook.com/{$version}/{$postId}", [
-            'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares',
+            'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares,insights.metric(post_media_view)',
             'access_token' => $account->access_token,
         ]);
+
+        if (! $postResp->successful()) {
+            $postResp = Http::get("https://graph.facebook.com/{$version}/{$postId}", [
+                'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares',
+                'access_token' => $account->access_token,
+            ]);
+        }
 
         if (! $postResp->successful()) {
             throw new RuntimeException('Unable to fetch Facebook post details.');
@@ -931,6 +991,7 @@ class SocialOAuthSyncService
         $likes = (int) ($post['likes']['summary']['total_count'] ?? 0);
         $commentsCount = (int) ($post['comments']['summary']['total_count'] ?? 0);
         $shares = (int) ($post['shares']['count'] ?? 0);
+        $views = (int) ($post['insights']['data'][0]['values'][0]['value'] ?? 0);
         $followers = max(1, (int) $account->followers_count);
 
         $recentComments = [];
@@ -981,15 +1042,15 @@ class SocialOAuthSyncService
                 'url' => $post['permalink_url'] ?? null,
             ],
             'metrics' => [
-                'views' => $likes + $commentsCount + $shares,
+                'views' => $views ?: ($likes + $commentsCount + $shares),
                 'shares' => $shares,
                 'likes' => $likes,
                 'comments' => $commentsCount,
-                'engagement_rate' => round((($likes + $commentsCount + $shares) / $followers) * 100, 2),
-                'like_rate' => round(($likes / $followers) * 100, 2),
-                'comment_rate' => round(($commentsCount / $followers) * 100, 2),
+                'engagement_rate' => round((($likes + $commentsCount + $shares) / max(1, $views ?: $followers)) * 100, 2),
+                'like_rate' => round(($likes / max(1, $views ?: $followers)) * 100, 2),
+                'comment_rate' => round(($commentsCount / max(1, $views ?: $followers)) * 100, 2),
                 'days_since_published' => $daysSince,
-                'views_per_day' => round(($likes + $commentsCount + $shares) / $daysSince, 1),
+                'views_per_day' => round(($views ?: ($likes + $commentsCount + $shares)) / $daysSince, 1),
             ],
             'seo' => [
                 'score' => $seoScore,
@@ -1109,11 +1170,9 @@ class SocialOAuthSyncService
         $commentsCount = (int) ($post['comments_count'] ?? 0);
         $followers = max(1, (int) $account->followers_count);
 
-        // Fetch Instagram Insights (reach, saved, shares, total_interactions, plays).
-        $insights = ['reach' => 0, 'saved' => 0, 'shares' => 0, 'total_interactions' => $likes + $commentsCount, 'plays' => 0];
-        $metricsList = ($post['media_product_type'] ?? '') === 'REELS' || ($post['media_type'] ?? '') === 'VIDEO'
-            ? 'reach,saved,shares,total_interactions,plays'
-            : 'reach,saved,shares,total_interactions';
+        // Fetch Instagram Insights (views, reach, saved, shares, total_interactions).
+        $insights = ['views' => 0, 'reach' => 0, 'saved' => 0, 'shares' => 0, 'total_interactions' => $likes + $commentsCount, 'plays' => 0];
+        $metricsList = 'views,reach,saved,shares,total_interactions';
 
         $insightsResp = Http::get("https://graph.facebook.com/{$version}/{$mediaId}/insights", [
             'metric' => $metricsList,
@@ -1178,9 +1237,9 @@ class SocialOAuthSyncService
                 'url' => $post['permalink'] ?? null,
             ],
             'metrics' => [
-                'views' => $insights['plays'] ?: $insights['reach'],
+                'views' => $insights['views'] ?: ($insights['plays'] ?: $insights['reach']),
                 'reach' => $insights['reach'],
-                'plays' => $insights['plays'],
+                'plays' => $insights['views'] ?: $insights['plays'],
                 'saved' => $insights['saved'],
                 'shares' => $insights['shares'],
                 'likes' => $likes,
