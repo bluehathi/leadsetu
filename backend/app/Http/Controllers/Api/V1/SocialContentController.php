@@ -148,6 +148,8 @@ class SocialContentController extends Controller implements HasMiddleware
                 'tags' => $socialContent->tags ?? [],
                 'hashtags' => $socialContent->hashtags ?? [],
                 'thumbnail_url' => $socialContent->thumbnail_url,
+                'drive_folder_id' => $socialContent->drive_folder_id,
+                'drive_folder_name' => $socialContent->drive_folder_name,
                 'drive_file_id' => $socialContent->drive_file_id,
                 'drive_file_name' => $socialContent->drive_file_name,
                 'drive_file_url' => $socialContent->drive_file_url,

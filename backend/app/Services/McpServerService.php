@@ -182,6 +182,7 @@ class McpServerService
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of hashtags'],
                             'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled (default: draft)'],
                             'scheduled_at' => ['type' => 'string', 'description' => 'Optional ISO 8601 schedule datetime'],
+                            'drive_folder_id' => ['type' => 'string', 'description' => 'Optional Google Drive folder ID to link with this content'],
                             'drive_file_id' => ['type' => 'string', 'description' => 'Optional Google Drive video file ID from list_drive_files'],
                             'drive_thumbnail_file_id' => ['type' => 'string', 'description' => 'Optional Google Drive thumbnail image file ID'],
                         ],
@@ -206,6 +207,7 @@ class McpServerService
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled'],
                             'scheduled_at' => ['type' => 'string'],
+                            'drive_folder_id' => ['type' => 'string', 'description' => 'Optional Google Drive folder ID to link with this content (pass empty string to clear)'],
                             'drive_file_id' => ['type' => 'string'],
                             'drive_thumbnail_file_id' => ['type' => 'string'],
                         ],
@@ -775,6 +777,8 @@ class McpServerService
                 'tags' => $source->tags ?? [],
                 'hashtags' => $source->hashtags ?? [],
                 'thumbnail_url' => $source->thumbnail_url,
+                'drive_folder_id' => $source->drive_folder_id,
+                'drive_folder_name' => $source->drive_folder_name,
                 'drive_file_id' => $source->drive_file_id,
                 'drive_file_name' => $source->drive_file_name,
                 'drive_file_url' => $source->drive_file_url,
@@ -912,6 +916,21 @@ class McpServerService
                 throw new InvalidArgumentException('Drive access is locked, but no default Google Drive folder is configured.');
             }
             $allowedParents = $this->driveService->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
+        }
+
+        if (array_key_exists('drive_folder_id', $args)) {
+            $folderId = trim((string) ($args['drive_folder_id'] ?? ''));
+            if ($folderId === '') {
+                $extra['drive_folder_id'] = null;
+                $extra['drive_folder_name'] = null;
+            } else {
+                if ($conn && $conn->lock_to_default_folder && ! $this->driveService->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $folderId)) {
+                    throw new InvalidArgumentException('Access is locked to the default Google Drive folder.');
+                }
+                $folder = GoogleDriveFile::where('drive_file_id', $folderId)->where('is_folder', true)->first();
+                $extra['drive_folder_id'] = $folderId;
+                $extra['drive_folder_name'] = $folder?->name ?? ($conn?->default_folder_id === $folderId ? $conn?->default_folder_name : null);
+            }
         }
 
         if (! empty($args['drive_file_id'])) {

@@ -28,6 +28,8 @@ class SocialContent extends Model
         'tags',
         'hashtags',
         'thumbnail_url',
+        'drive_folder_id',
+        'drive_folder_name',
         'drive_file_id',
         'drive_file_name',
         'drive_file_url',

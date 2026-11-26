@@ -182,6 +182,8 @@ export default function ContentPlannerTab({
             hashtags: splitList(contentForm.hashtagsText),
             status: contentForm.status,
             scheduled_at: contentForm.scheduled_at || null,
+            drive_folder_id: contentForm.drive_folder_id || null,
+            drive_folder_name: contentForm.drive_folder_name || null,
             ...(contentForm.drive_file_id
                 ? {
                       drive_file_id: contentForm.drive_file_id,
@@ -218,6 +220,8 @@ export default function ContentPlannerTab({
             hashtagsText: Array.isArray(item.hashtags) ? item.hashtags.join(' ') : '',
             status: item.status || 'draft',
             scheduled_at: item.scheduled_at ? item.scheduled_at.slice(0, 16) : '',
+            drive_folder_id: item.drive_folder_id || null,
+            drive_folder_name: item.drive_folder_name || null,
             drive_file_id: item.drive_file_id || null,
             drive_file_name: item.drive_file_name || null,
             drive_file_url: item.drive_file_url || null,
@@ -522,6 +526,13 @@ export default function ContentPlannerTab({
                             <div className="flex flex-wrap gap-1.5">
                                 <button
                                     type="button"
+                                    onClick={() => setDrivePickerMode('folder')}
+                                    className="rounded-lg border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                                >
+                                    📁 {contentForm.drive_folder_id ? 'Change Folder' : 'Link Folder'}
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => setDrivePickerMode('video')}
                                     className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
                                 >
@@ -536,6 +547,37 @@ export default function ContentPlannerTab({
                                 </button>
                             </div>
                         </div>
+
+                        {contentForm.drive_folder_id && (
+                            <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
+                                <span className="truncate">
+                                    📁 Linked Folder: {contentForm.drive_folder_name || contentForm.drive_folder_id}
+                                </span>
+                                <div className="ml-2 flex items-center gap-2 flex-shrink-0">
+                                    <a
+                                        href={`https://drive.google.com/drive/folders/${contentForm.drive_folder_id}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-amber-800 underline"
+                                    >
+                                        Open ↗
+                                    </a>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setContentForm((p) => ({
+                                                ...p,
+                                                drive_folder_id: null,
+                                                drive_folder_name: null,
+                                            }))
+                                        }
+                                        className="text-amber-700 hover:underline"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {contentForm.drive_file_name && (
                             <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-900">
@@ -717,6 +759,19 @@ export default function ContentPlannerTab({
                                                         Open ↗
                                                     </a>
                                                 )}
+                                            </div>
+                                        )}
+                                        {item.drive_folder_id && (
+                                            <div className="mt-1 text-xs text-amber-700">
+                                                📁 Drive Folder:{' '}
+                                                <a
+                                                    href={`https://drive.google.com/drive/folders/${item.drive_folder_id}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="font-medium underline"
+                                                >
+                                                    {item.drive_folder_name || item.drive_folder_id} ↗
+                                                </a>
                                             </div>
                                         )}
                                         {item.youtube_video_id && (
@@ -910,9 +965,17 @@ export default function ContentPlannerTab({
             {drivePickerMode && (
                 <DriveFilePickerModal
                     mode={drivePickerMode}
+                    initialFolderId={drivePickerMode !== 'folder' ? contentForm.drive_folder_id : null}
+                    initialFolderName={drivePickerMode !== 'folder' ? contentForm.drive_folder_name : null}
                     onClose={() => setDrivePickerMode(null)}
                     onSelect={(file) => {
-                        if (drivePickerMode === 'video') {
+                        if (drivePickerMode === 'folder') {
+                            setContentForm((p) => ({
+                                ...p,
+                                drive_folder_id: file.id,
+                                drive_folder_name: file.name,
+                            }));
+                        } else if (drivePickerMode === 'video') {
                             const cleanTitle = file.name.replace(/\.[^.]+$/, '');
                             setContentForm((p) => ({
                                 ...p,

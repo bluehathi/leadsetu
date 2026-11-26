@@ -36,6 +36,8 @@ class UpdateSocialContentRequest extends FormRequest
             'hashtags' => ['nullable', 'array', 'max:30'],
             'hashtags.*' => ['string', 'max:60'],
             'thumbnail_url' => ['nullable', 'url', 'max:500'],
+            'drive_folder_id' => ['nullable', 'string', 'max:255'],
+            'drive_folder_name' => ['nullable', 'string', 'max:255'],
             'drive_file_id' => ['nullable', 'string', 'max:255'],
             'drive_file_name' => ['nullable', 'string', 'max:255'],
             'drive_file_url' => ['nullable', 'url', 'max:500'],
