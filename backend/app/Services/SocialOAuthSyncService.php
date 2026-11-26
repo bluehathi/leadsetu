@@ -1040,7 +1040,7 @@ class SocialOAuthSyncService
             $data = $resp->json();
             $followers = (int) ($data['followers_count'] ?? ($data['fan_count'] ?? $account->followers_count));
 
-            $engagement = $account->engagement_rate;
+            $engagement = (float) ($account->engagement_rate ?? 0);
             $postsResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/posts", [
                 'fields' => 'likes.summary(true),comments.summary(true),shares',
                 'limit' => 10,
@@ -1437,7 +1437,7 @@ class SocialOAuthSyncService
             $followers = (int) ($data['followers_count'] ?? $account->followers_count);
 
             // Compute engagement rate from recent media
-            $engagement = $account->engagement_rate;
+            $engagement = (float) ($account->engagement_rate ?? 0);
             $mediaResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/media", [
                 'fields' => 'like_count,comments_count',
                 'limit' => 10,
