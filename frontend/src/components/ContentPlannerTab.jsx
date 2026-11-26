@@ -26,6 +26,7 @@ const platformBadge = (platform) =>
 
 export default function ContentPlannerTab({
     accounts,
+    brands = [],
     contents,
     contentForm,
     setContentForm,
@@ -267,8 +268,27 @@ export default function ContentPlannerTab({
                             ))}
                         </select>
                         {!editingId && accounts.length > 1 && (
-                            <div className="mt-2 space-y-1 rounded-lg border border-gray-100 bg-gray-50 p-2.5">
+                            <div className="mt-2 space-y-1.5 rounded-lg border border-gray-100 bg-gray-50 p-2.5">
                                 <div className="text-[11px] font-medium text-gray-600">Also share to other channels:</div>
+                                {brands.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {brands.map((b) => (
+                                            <button
+                                                key={b.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    const ids = (b.accounts || [])
+                                                        .map((a) => a.id)
+                                                        .filter((id) => String(id) !== String(effectiveAccountId));
+                                                    setExtraAccountIds((prev) => Array.from(new Set([...prev, ...ids])));
+                                                }}
+                                                className="rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100"
+                                            >
+                                                + Brand: {b.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                                 <div className="flex flex-wrap gap-2">
                                     {accounts
                                         .filter((a) => String(a.id) !== String(effectiveAccountId))
@@ -808,6 +828,27 @@ export default function ContentPlannerTab({
                                 Close
                             </button>
                         </div>
+
+                        {brands.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="text-[11px] text-gray-500">Quick select brand:</span>
+                                {brands.map((b) => (
+                                    <button
+                                        key={b.id}
+                                        type="button"
+                                        onClick={() => {
+                                            const ids = (b.accounts || [])
+                                                .map((a) => a.id)
+                                                .filter((id) => id !== shareItem.social_account_id);
+                                            setShareTargets((prev) => Array.from(new Set([...prev, ...ids])));
+                                        }}
+                                        className="rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100"
+                                    >
+                                        + {b.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
 
                         <div className="max-h-56 space-y-1.5 overflow-y-auto">
                             {accounts

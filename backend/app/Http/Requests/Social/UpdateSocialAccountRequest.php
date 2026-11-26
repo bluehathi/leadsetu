@@ -15,7 +15,14 @@ class UpdateSocialAccountRequest extends FormRequest
 
     public function rules(): array
     {
+        $workspaceId = $this->user()?->workspace_id;
+
         return [
+            'social_brand_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('social_brands', 'id')->where('workspace_id', $workspaceId),
+            ],
             'platform' => ['sometimes', Rule::in(SocialAccount::PLATFORMS)],
             'account_name' => ['sometimes', 'string', 'max:255'],
             'handle' => ['sometimes', 'string', 'max:120'],

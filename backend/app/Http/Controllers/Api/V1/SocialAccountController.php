@@ -46,10 +46,13 @@ class SocialAccountController extends Controller implements HasMiddleware
 
     public function index(Request $request): JsonResponse
     {
-        $query = SocialAccount::query()->withCount('contents');
+        $query = SocialAccount::query()->with('brand:id,name,niche')->withCount('contents');
 
         if ($platform = $request->query('platform')) {
             $query->where('platform', $platform);
+        }
+        if ($brandId = $request->query('social_brand_id')) {
+            $query->where('social_brand_id', $brandId);
         }
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {

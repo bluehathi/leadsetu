@@ -9,6 +9,7 @@ use App\Models\GoogleDriveFile;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\SocialAccount;
+use App\Models\SocialBrand;
 use App\Models\SocialContent;
 use App\Models\SocialVideoAnalytic;
 use App\Models\Workspace;
@@ -82,6 +83,14 @@ class McpServerService
                         'status' => ['type' => 'string', 'description' => 'Filter by invoice status'],
                         'limit' => ['type' => 'integer', 'description' => 'Max rows to return (1-100, default 25)'],
                     ],
+                ],
+            ],
+            [
+                'name' => 'list_social_brands',
+                'description' => 'List Social Brands that group YouTube, Instagram, and Facebook channels together (e.g. Krishna Motivation).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => (object) [],
                 ],
             ],
             [
@@ -220,6 +229,7 @@ class McpServerService
             'list_contacts' => $this->listContacts($args, $limit),
             'list_companies' => $this->listCompanies($args, $limit),
             'list_invoices' => $this->listInvoices($args, $limit),
+            'list_social_brands' => $this->listSocialBrands(),
             'list_social_accounts' => $this->listSocialAccounts($args),
             'get_channel_analytics' => $this->getChannelAnalytics($args),
             'get_video_analytics' => $this->getVideoAnalytics($args),
@@ -306,6 +316,15 @@ class McpServerService
         }
 
         return $q->latest()->limit($limit)->get()->toArray();
+    }
+
+    protected function listSocialBrands(): array
+    {
+        return SocialBrand::query()
+            ->with('accounts:id,social_brand_id,platform,account_name,handle,followers_count,views_count,engagement_rate,status')
+            ->orderBy('name')
+            ->get()
+            ->toArray();
     }
 
     protected function listSocialAccounts(array $args): array

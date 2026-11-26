@@ -58,6 +58,10 @@ export default function SocialStudio() {
     const [searchParams] = useSearchParams();
     const [tab, setTab] = useState(searchParams.get('tab') || 'accounts');
     const [connectMenuOpen, setConnectMenuOpen] = useState(false);
+    const [brandFilter, setBrandFilter] = useState('');
+    const [brandModalOpen, setBrandModalOpen] = useState(false);
+    const [editingBrand, setEditingBrand] = useState(null);
+    const [brandForm, setBrandForm] = useState({ name: '', niche: '', account_ids: [] });
     const [publishPrivacy, setPublishPrivacy] = useState({});
     const [publishError, setPublishError] = useState('');
     const [platformFilter, setPlatformFilter] = useState('');
@@ -82,6 +86,7 @@ export default function SocialStudio() {
 
     const invalidateAll = () => {
         qc.invalidateQueries({ queryKey: ['social-overview'] });
+        qc.invalidateQueries({ queryKey: ['social-brands'] });
         qc.invalidateQueries({ queryKey: ['social-accounts'] });
         qc.invalidateQueries({ queryKey: ['social-contents'] });
         qc.invalidateQueries({ queryKey: ['social-keywords'] });
@@ -94,9 +99,41 @@ export default function SocialStudio() {
         queryFn: () => socialApi.overview(platformFilter || undefined),
     });
 
+    const { data: brands = [] } = useQuery({
+        queryKey: ['social-brands'],
+        queryFn: socialApi.listBrands,
+    });
+
     const { data: accounts = [] } = useQuery({
-        queryKey: ['social-accounts', platformFilter],
-        queryFn: () => socialApi.listAccounts(platformFilter ? { platform: platformFilter } : {}),
+        queryKey: ['social-accounts', platformFilter, brandFilter],
+        queryFn: () =>
+            socialApi.listAccounts({
+                ...(platformFilter ? { platform: platformFilter } : {}),
+                ...(brandFilter ? { social_brand_id: brandFilter } : {}),
+            }),
+    });
+
+    const saveBrandMut = useMutation({
+        mutationFn: ({ id, payload }) => (id ? socialApi.updateBrand(id, payload) : socialApi.createBrand(payload)),
+        onSuccess: () => {
+            setBrandModalOpen(false);
+            setEditingBrand(null);
+            setBrandForm({ name: '', niche: '', account_ids: [] });
+            invalidateAll();
+        },
+    });
+
+    const deleteBrandMut = useMutation({
+        mutationFn: socialApi.deleteBrand,
+        onSuccess: () => {
+            setBrandFilter('');
+            invalidateAll();
+        },
+    });
+
+    const assignAccountBrandMut = useMutation({
+        mutationFn: ({ id, social_brand_id }) => socialApi.updateAccount(id, { social_brand_id: social_brand_id || null }),
+        onSuccess: invalidateAll,
     });
 
     const [analyticsAccountId, setAnalyticsAccountId] = useState(null);
@@ -439,7 +476,101 @@ export default function SocialStudio() {
 
             {/* TAB 1: ACCOUNTS */}
             {tab === 'accounts' && (
-                <div className="space-y-4">
+                <div className="space-y-5">
+                    {/* Social Brands Section */}
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <h2 className="text-sm font-semibold text-gray-900">Social Brands (Group YT + IG + FB)</h2>
+                                <p className="text-xs text-gray-500">Group multiple platform channels under one brand (e.g. Krishna Motivation).</p>
+                            </div>
+                            {can('manage_social_accounts') && (
+                                <button
+                                    onClick={() => {
+                                        setEditingBrand(null);
+                                        setBrandForm({ name: '', niche: '', account_ids: [] });
+                                        setBrandModalOpen(true);
+                                    }}
+                                    className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                                >
+                                    + New Brand
+                                </button>
+                            )}
+                        </div>
+
+                        {brands.length > 0 && (
+                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                {brands.map((b) => {
+                                    const active = String(brandFilter) === String(b.id);
+                                    return (
+                                        <div
+                                            key={b.id}
+                                            className={`rounded-xl border p-3 transition ${
+                                                active ? 'border-indigo-500 bg-indigo-50/40' : 'border-gray-200 hover:border-indigo-200'
+                                            }`}
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <button
+                                                    onClick={() => setBrandFilter(active ? '' : String(b.id))}
+                                                    className="text-left"
+                                                >
+                                                    <div className="font-semibold text-sm text-gray-900">{b.name}</div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {b.niche || 'General'} · {b.channels_count} channel(s) · {(b.total_followers || 0).toLocaleString()} followers
+                                                    </div>
+                                                </button>
+                                                {can('manage_social_accounts') && (
+                                                    <div className="flex items-center gap-1.5 text-xs">
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingBrand(b);
+                                                                setBrandForm({
+                                                                    name: b.name,
+                                                                    niche: b.niche || '',
+                                                                    account_ids: (b.accounts || []).map((a) => a.id),
+                                                                });
+                                                                setBrandModalOpen(true);
+                                                            }}
+                                                            className="text-indigo-600 hover:underline"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteBrandMut.mutate(b.id)}
+                                                            className="text-red-500 hover:underline"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {(b.accounts || []).length > 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {b.accounts.map((a) => (
+                                                        <span
+                                                            key={a.id}
+                                                            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${platformBadge(a.platform)}`}
+                                                        >
+                                                            {a.platform.slice(0, 2)}: {a.account_name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {brandFilter && (
+                        <div className="flex items-center justify-between rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+                            <span>Filtering channels by selected brand.</span>
+                            <button onClick={() => setBrandFilter('')} className="font-medium underline">
+                                Show All Channels
+                            </button>
+                        </div>
+                    )}
                     {accounts.length === 0 ? (
                         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm space-y-2">
                             <p className="text-sm font-medium text-gray-700">No channels connected yet</p>
@@ -511,6 +642,28 @@ export default function SocialStudio() {
                                                 <div className="text-sm font-bold text-gray-900">{acc.engagement_rate}%</div>
                                             </div>
                                         </div>
+                                        {can('manage_social_accounts') && brands.length > 0 && (
+                                            <div className="mt-2.5 flex items-center justify-between gap-2 text-xs">
+                                                <span className="text-gray-500">Brand:</span>
+                                                <select
+                                                    value={acc.social_brand_id || ''}
+                                                    onChange={(e) =>
+                                                        assignAccountBrandMut.mutate({
+                                                            id: acc.id,
+                                                            social_brand_id: e.target.value ? Number(e.target.value) : null,
+                                                        })
+                                                    }
+                                                    className="flex-1 rounded-lg border bg-white px-2 py-1 text-xs"
+                                                >
+                                                    <option value="">No Brand</option>
+                                                    {brands.map((b) => (
+                                                        <option key={b.id} value={b.id}>
+                                                            {b.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
@@ -719,6 +872,7 @@ export default function SocialStudio() {
             {tab === 'content' && (
                 <ContentPlannerTab
                     accounts={accounts}
+                    brands={brands}
                     contents={contents}
                     contentForm={contentForm}
                     setContentForm={setContentForm}
@@ -1005,6 +1159,100 @@ export default function SocialStudio() {
                             </div>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {brandModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            saveBrandMut.mutate({ id: editingBrand?.id, payload: brandForm });
+                        }}
+                        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl space-y-4"
+                    >
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-base font-semibold text-gray-900">
+                                {editingBrand ? `Edit Brand: ${editingBrand.name}` : 'Create Social Brand'}
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setBrandModalOpen(false)}
+                                className="rounded border px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-50"
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Brand Name</label>
+                                <input
+                                    required
+                                    value={brandForm.name}
+                                    onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
+                                    placeholder="e.g. Krishna Motivation"
+                                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Niche (Optional)</label>
+                                <input
+                                    value={brandForm.niche}
+                                    onChange={(e) => setBrandForm({ ...brandForm, niche: e.target.value })}
+                                    placeholder="e.g. Motivation, Spirituality"
+                                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">
+                                    Link Channels (YouTube, Instagram, Facebook)
+                                </label>
+                                <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-lg border p-2">
+                                    {accounts.map((a) => {
+                                        const checked = brandForm.account_ids.includes(a.id);
+                                        return (
+                                            <label key={a.id} className="flex cursor-pointer items-center gap-2 rounded p-1.5 text-xs hover:bg-gray-50">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={(e) =>
+                                                        setBrandForm((prev) => ({
+                                                            ...prev,
+                                                            account_ids: e.target.checked
+                                                                ? [...prev.account_ids, a.id]
+                                                                : prev.account_ids.filter((id) => id !== a.id),
+                                                        }))
+                                                    }
+                                                />
+                                                <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${platformBadge(a.platform)}`}>
+                                                    {a.platform}
+                                                </span>
+                                                <span className="truncate font-medium text-gray-900">{a.account_name}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setBrandModalOpen(false)}
+                                className="rounded-lg border px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={saveBrandMut.isPending}
+                                className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {saveBrandMut.isPending ? 'Saving…' : 'Save Brand'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
         </div>

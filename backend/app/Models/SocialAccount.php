@@ -16,6 +16,7 @@ class SocialAccount extends Model
     public const STATUSES = ['connected', 'needs_reauth', 'disconnected'];
 
     protected $fillable = [
+        'social_brand_id',
         'platform',
         'account_name',
         'handle',
@@ -56,6 +57,11 @@ class SocialAccount extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(SocialBrand::class, 'social_brand_id');
     }
 
     public function contents(): HasMany
