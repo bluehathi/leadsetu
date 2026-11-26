@@ -613,7 +613,7 @@ class SocialOAuthSyncService
         }
 
         $count = count($items);
-        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById));
+        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById ?? []));
         $totalLikes = array_sum(array_column($items, 'likes'));
         $totalComments = array_sum(array_column($items, 'comments'));
         $shortsCount = count(array_filter($items, fn ($i) => $i['type'] === 'short'));
@@ -816,7 +816,7 @@ class SocialOAuthSyncService
             ];
         }
 
-        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById));
+        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById ?? []));
         $count = count($items);
         $base['summary']['views_count'] = $totalViews;
         $base['summary']['recent_videos_count'] = $count;
@@ -942,7 +942,7 @@ class SocialOAuthSyncService
             ];
         }
 
-        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById));
+        $totalViews = max(array_sum(array_column($items, 'views')), array_sum($videoViewsById ?? []));
         $count = count($items);
         $base['summary']['posts_count'] = max($account->posts_count, $count);
         $base['summary']['views_count'] = $totalViews;
