@@ -601,17 +601,25 @@ class McpServerService
             ];
         }
 
-        // Read from DB metadata cache (respecting locked default folder).
+        // Read from DB metadata cache (strictly enforcing locked default folder tree).
         $resolvedFolderId = $folderId ?: ($conn->default_folder_id ?: 'root');
-        if ($conn->lock_to_default_folder && $conn->default_folder_id && ! $folderId) {
-            $resolvedFolderId = $conn->default_folder_id;
+        if ($conn->lock_to_default_folder) {
+            if (! $conn->default_folder_id) {
+                throw new InvalidArgumentException('Drive access is locked, but no default Google Drive folder is configured.');
+            }
+            if (! $folderId || $folderId === 'root') {
+                $resolvedFolderId = $conn->default_folder_id;
+            } elseif (! $this->driveService->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $folderId)) {
+                throw new InvalidArgumentException('Access is locked to the default Google Drive folder.');
+            }
         }
 
         $q = GoogleDriveFile::query();
         if ($search) {
             $q->where('name', 'like', "%{$search}%");
             if ($conn->lock_to_default_folder && $conn->default_folder_id) {
-                $q->where('parent_folder_id', $conn->default_folder_id);
+                $allowedParents = $this->driveService->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
+                $q->whereIn('parent_folder_id', $allowedParents);
             }
         } else {
             $q->where('parent_folder_id', $resolvedFolderId);
@@ -897,10 +905,22 @@ class McpServerService
     protected function resolveDriveAttachments(array $args): array
     {
         $extra = [];
+        $allowedParents = null;
+        $conn = GoogleDriveConnection::query()->first();
+        if ($conn && $conn->lock_to_default_folder) {
+            if (! $conn->default_folder_id) {
+                throw new InvalidArgumentException('Drive access is locked, but no default Google Drive folder is configured.');
+            }
+            $allowedParents = $this->driveService->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
+        }
+
         if (! empty($args['drive_file_id'])) {
             $file = GoogleDriveFile::where('drive_file_id', $args['drive_file_id'])->first();
             if (! $file || ! $file->is_video) {
                 throw new InvalidArgumentException('drive_file_id must refer to a cached Google Drive video file.');
+            }
+            if ($allowedParents !== null && ! in_array($file->parent_folder_id, $allowedParents, true)) {
+                throw new InvalidArgumentException('Access is locked to the default Google Drive folder.');
             }
             $extra['drive_file_id'] = $file->drive_file_id;
             $extra['drive_file_name'] = $file->name;
@@ -911,6 +931,9 @@ class McpServerService
             $thumb = GoogleDriveFile::where('drive_file_id', $args['drive_thumbnail_file_id'])->first();
             if (! $thumb || ! $thumb->is_image) {
                 throw new InvalidArgumentException('drive_thumbnail_file_id must refer to a cached Google Drive image file.');
+            }
+            if ($allowedParents !== null && ! in_array($thumb->parent_folder_id, $allowedParents, true)) {
+                throw new InvalidArgumentException('Access is locked to the default Google Drive folder.');
             }
             $extra['drive_thumbnail_file_id'] = $thumb->drive_file_id;
         }

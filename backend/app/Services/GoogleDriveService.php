@@ -138,7 +138,10 @@ class GoogleDriveService
     ): array {
         $parent = $folderId ?: 'root';
 
-        if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+        if ($conn->lock_to_default_folder) {
+            if (! $conn->default_folder_id) {
+                throw new RuntimeException('Drive access is locked, but no default Google Drive folder is configured.');
+            }
             if (! $folderId || $folderId === 'root') {
                 $parent = $conn->default_folder_id;
             } elseif (! $this->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $parent)) {
@@ -272,12 +275,12 @@ class GoogleDriveService
         ];
     }
 
-    protected function isFolderWithinTree(int $workspaceId, string $rootFolderId, string $targetFolderId): bool
+    public function isFolderWithinTree(int $workspaceId, string $rootFolderId, string $targetFolderId): bool
     {
         return in_array($targetFolderId, $this->getDescendantFolderIds($workspaceId, $rootFolderId), true);
     }
 
-    protected function getDescendantFolderIds(int $workspaceId, string $rootFolderId): array
+    public function getDescendantFolderIds(int $workspaceId, string $rootFolderId): array
     {
         $allFolders = GoogleDriveFile::withoutGlobalScopes()
             ->where('workspace_id', $workspaceId)
@@ -809,6 +812,9 @@ class GoogleDriveService
         if ($newName === '') {
             throw new RuntimeException('New file name is required.');
         }
+        if ($conn->lock_to_default_folder && $conn->default_folder_id && $fileId === $conn->default_folder_id) {
+            throw new RuntimeException('Cannot rename the locked default Google Drive folder.');
+        }
 
         $token = $this->ensureFreshToken($conn);
         $this->assertFileAllowed($conn, $fileId, $token);
@@ -826,6 +832,10 @@ class GoogleDriveService
 
     public function moveFile(GoogleDriveConnection $conn, string $fileId, string $targetFolderId): array
     {
+        if ($conn->lock_to_default_folder && $conn->default_folder_id && $fileId === $conn->default_folder_id) {
+            throw new RuntimeException('Cannot move the locked default Google Drive folder.');
+        }
+
         $token = $this->ensureFreshToken($conn);
         $this->assertFileAllowed($conn, $fileId, $token);
         $this->assertFolderAllowed($conn, $targetFolderId);
@@ -885,17 +895,24 @@ class GoogleDriveService
 
     protected function assertFolderAllowed(GoogleDriveConnection $conn, string $folderId): void
     {
-        if ($conn->lock_to_default_folder && $conn->default_folder_id) {
-            if (! $this->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $folderId)) {
-                throw new RuntimeException('Access is locked to the default Google Drive folder.');
-            }
+        if (! $conn->lock_to_default_folder) {
+            return;
+        }
+        if (! $conn->default_folder_id) {
+            throw new RuntimeException('Drive access is locked, but no default Google Drive folder is configured.');
+        }
+        if (! $this->isFolderWithinTree($conn->workspace_id, $conn->default_folder_id, $folderId)) {
+            throw new RuntimeException('Access is locked to the default Google Drive folder.');
         }
     }
 
     protected function assertFileAllowed(GoogleDriveConnection $conn, string $fileId, string $token): void
     {
-        if (! $conn->lock_to_default_folder || ! $conn->default_folder_id) {
+        if (! $conn->lock_to_default_folder) {
             return;
+        }
+        if (! $conn->default_folder_id) {
+            throw new RuntimeException('Drive access is locked, but no default Google Drive folder is configured.');
         }
 
         $allowed = $this->getDescendantFolderIds($conn->workspace_id, $conn->default_folder_id);
