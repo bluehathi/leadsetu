@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
@@ -66,13 +66,22 @@ export default function SocialStudio() {
         setSearchParams(next, { replace: true });
     };
     const [connectMenuOpen, setConnectMenuOpen] = useState(false);
-    const [brandFilter, setBrandFilter] = useState('');
+    const [brandFilter, setBrandFilter] = useState(() => localStorage.getItem('leadsetu_studio_brand') || '');
     const [brandModalOpen, setBrandModalOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState(null);
     const [brandForm, setBrandForm] = useState({ name: '', niche: '', account_ids: [] });
     const [publishPrivacy, setPublishPrivacy] = useState({});
     const [publishError, setPublishError] = useState('');
-    const [platformFilter, setPlatformFilter] = useState('');
+    const [platformFilter, setPlatformFilter] = useState(() => localStorage.getItem('leadsetu_studio_platform') || '');
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('leadsetu_studio_brand', brandFilter || '');
+            localStorage.setItem('leadsetu_studio_platform', platformFilter || '');
+        } catch {
+            // ignore storage errors
+        }
+    }, [brandFilter, platformFilter]);
     const [selectedAccountId, setSelectedAccountId] = useState('');
     const [oauthError, setOauthError] = useState(searchParams.get('oauth_error') || '');
     const connectedNotice = searchParams.get('connected');

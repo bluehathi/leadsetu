@@ -37,13 +37,25 @@ export default function ContentPlannerTab({
     canManage,
     onSaved,
 }) {
-    const [stageFilter, setStageFilter] = useState('all');
-    const [platformFilter, setPlatformFilter] = useState('all');
-    const [failedOnly, setFailedOnly] = useState(false);
-    const [viewMode, setViewMode] = useState('list');
+    const [stageFilter, setStageFilter] = useState(() => localStorage.getItem('leadsetu_planner_stage') || 'all');
+    const [platformFilter, setPlatformFilter] = useState(() => localStorage.getItem('leadsetu_planner_platform') || 'all');
+    const [failedOnly, setFailedOnly] = useState(() => localStorage.getItem('leadsetu_planner_failed') === '1');
+    const [viewMode, setViewMode] = useState(() => localStorage.getItem('leadsetu_planner_view') || 'list');
     const [formTab, setFormTab] = useState('basics');
     const [showCrossPost, setShowCrossPost] = useState(false);
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(() => localStorage.getItem('leadsetu_planner_search') || '');
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('leadsetu_planner_stage', stageFilter);
+            localStorage.setItem('leadsetu_planner_platform', platformFilter);
+            localStorage.setItem('leadsetu_planner_failed', failedOnly ? '1' : '0');
+            localStorage.setItem('leadsetu_planner_view', viewMode);
+            localStorage.setItem('leadsetu_planner_search', search);
+        } catch {
+            // ignore storage errors
+        }
+    }, [stageFilter, platformFilter, failedOnly, viewMode, search]);
     const [editingId, setEditingId] = useState(null);
     const [aiSuggestion, setAiSuggestion] = useState(null);
     const [publishPrivacy, setPublishPrivacy] = useState({});
