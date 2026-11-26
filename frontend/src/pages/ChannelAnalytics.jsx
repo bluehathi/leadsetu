@@ -5,7 +5,9 @@ import { socialApi } from '../api/social';
 import YouTubeDeepAnalytics from '../components/YouTubeDeepAnalytics';
 
 function platformBadge(platform) {
-    return platform === 'youtube' ? 'bg-red-100 text-red-700' : 'bg-pink-100 text-pink-700';
+    if (platform === 'youtube') return 'bg-red-100 text-red-700';
+    if (platform === 'facebook') return 'bg-blue-100 text-blue-700';
+    return 'bg-pink-100 text-pink-700';
 }
 
 function formatDuration(seconds) {

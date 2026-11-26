@@ -236,6 +236,9 @@ class GoogleDriveController extends Controller
             if ($socialContent->platform === 'instagram') {
                 $updated = $this->drive->publishContentToInstagram($socialContent, $conn);
                 $this->audit->log('instagram_media_published', $updated, "Published {$updated->title} from Google Drive to Instagram ({$updated->instagram_media_id})");
+            } elseif ($socialContent->platform === 'facebook') {
+                $updated = $this->drive->publishContentToFacebook($socialContent, $conn);
+                $this->audit->log('facebook_post_published', $updated, "Published {$updated->title} to Facebook Page");
             } else {
                 $privacy = $request->input('privacy_status', 'private');
                 $updated = $this->drive->publishContentToYouTube($socialContent, $conn, $privacy);

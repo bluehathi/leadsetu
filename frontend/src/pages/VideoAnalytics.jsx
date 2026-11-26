@@ -48,6 +48,8 @@ export default function VideoAnalytics() {
 
     const { account, video, metrics, seo, source, synced_at: syncedAt, deep_analytics: deepAnalytics, recent_comments: comments } = data;
     const isIg = account.platform === 'instagram';
+    const isFb = account.platform === 'facebook';
+    const platformLabel = isIg ? 'IG' : isFb ? 'FB' : 'YT';
 
     return (
         <div className="space-y-6">
@@ -62,7 +64,7 @@ export default function VideoAnalytics() {
                     )}
                     <div className="max-w-2xl">
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${isIg ? 'bg-pink-100 text-pink-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${isIg ? 'bg-pink-100 text-pink-700' : isFb ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
                                 {video.type}
                             </span>
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase text-gray-700">
@@ -102,7 +104,7 @@ export default function VideoAnalytics() {
                             rel="noreferrer"
                             className="rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                         >
-                            {isIg ? 'View on Instagram ↗' : 'Watch on YouTube ↗'}
+                            {isIg ? 'View on Instagram ↗' : isFb ? 'View on Facebook ↗' : 'Watch on YouTube ↗'}
                         </a>
                     )}
                     <button
@@ -110,7 +112,7 @@ export default function VideoAnalytics() {
                         disabled={refreshMut.isPending}
                         className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                     >
-                        {refreshMut.isPending ? `Refreshing from ${isIg ? 'IG' : 'YT'}…` : `Refresh from ${isIg ? 'IG' : 'YT'}`}
+                        {refreshMut.isPending ? `Refreshing from ${platformLabel}…` : `Refresh from ${platformLabel}`}
                     </button>
                 </div>
             </div>

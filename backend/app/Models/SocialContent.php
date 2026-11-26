@@ -11,7 +11,7 @@ class SocialContent extends Model
 {
     use BelongsToWorkspace, HasFactory;
 
-    public const PLATFORMS = ['youtube', 'instagram'];
+    public const PLATFORMS = ['youtube', 'instagram', 'facebook'];
     public const TYPES = ['video', 'short', 'reel', 'post', 'carousel'];
     public const STATUSES = ['idea', 'draft', 'scheduled', 'published'];
 

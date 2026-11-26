@@ -11,7 +11,7 @@ class SocialKeyword extends Model
 {
     use BelongsToWorkspace, HasFactory;
 
-    public const PLATFORMS = ['youtube', 'instagram', 'both'];
+    public const PLATFORMS = ['youtube', 'instagram', 'facebook', 'both'];
     public const TRENDS = ['rising', 'steady', 'declining'];
 
     protected $fillable = [

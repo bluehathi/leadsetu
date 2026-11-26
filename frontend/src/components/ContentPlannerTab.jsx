@@ -18,7 +18,11 @@ const scoreBadge = (score) => {
 };
 
 const platformBadge = (platform) =>
-    platform === 'youtube' ? 'bg-red-100 text-red-700' : 'bg-pink-100 text-pink-700';
+    platform === 'youtube'
+        ? 'bg-red-100 text-red-700'
+        : platform === 'facebook'
+        ? 'bg-blue-100 text-blue-700'
+        : 'bg-pink-100 text-pink-700';
 
 export default function ContentPlannerTab({
     accounts,
@@ -593,6 +597,19 @@ export default function ContentPlannerTab({
                                                 )}
                                             </div>
                                         )}
+                                        {item.platform === 'facebook' && item.published_url && (
+                                            <div className="mt-1 text-xs text-blue-700">
+                                                ✅ Published on Facebook:{' '}
+                                                <a
+                                                    href={item.published_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="font-medium underline"
+                                                >
+                                                    View ↗
+                                                </a>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
@@ -631,6 +648,15 @@ export default function ContentPlannerTab({
                                                 className="rounded-lg bg-pink-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-pink-700 disabled:opacity-50"
                                             >
                                                 {publishMut.isPending ? 'Publishing…' : 'Publish to IG'}
+                                            </button>
+                                        )}
+                                        {canManage && item.platform === 'facebook' && !item.published_url && (
+                                            <button
+                                                onClick={() => publishMut.mutate({ id: item.id, privacy: 'public' })}
+                                                disabled={publishMut.isPending}
+                                                className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                                            >
+                                                {publishMut.isPending ? 'Publishing…' : 'Publish to FB'}
                                             </button>
                                         )}
                                         {canManage && (

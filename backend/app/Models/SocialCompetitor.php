@@ -11,7 +11,7 @@ class SocialCompetitor extends Model
 {
     use BelongsToWorkspace, HasFactory;
 
-    public const PLATFORMS = ['youtube', 'instagram'];
+    public const PLATFORMS = ['youtube', 'instagram', 'facebook'];
 
     protected $fillable = [
         'social_account_id',

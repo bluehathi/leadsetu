@@ -12,7 +12,7 @@ class SocialAccount extends Model
 {
     use BelongsToWorkspace, HasFactory;
 
-    public const PLATFORMS = ['youtube', 'instagram'];
+    public const PLATFORMS = ['youtube', 'instagram', 'facebook'];
     public const STATUSES = ['connected', 'needs_reauth', 'disconnected'];
 
     protected $fillable = [

@@ -542,4 +542,66 @@ class GoogleDriveService
 
         return $content->fresh()->load('account:id,platform,account_name,handle');
     }
+
+    public function publishContentToFacebook(SocialContent $content, GoogleDriveConnection $driveConn): SocialContent
+    {
+        $account = $content->account;
+        if (! $account || $account->platform !== 'facebook' || ! $account->external_id) {
+            throw new RuntimeException('Selected content must belong to a connected Facebook Page.');
+        }
+        if (! $account->access_token) {
+            throw new RuntimeException('Facebook Page token is missing. Please reconnect your Facebook Page.');
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $message = trim((string) ($content->title ? "{$content->title}\n\n" : '').(string) ($content->description ?? ''));
+        if (is_array($content->hashtags) && count($content->hashtags) > 0) {
+            $tagsLine = implode(' ', array_map(fn ($h) => str_starts_with($h, '#') ? $h : "#{$h}", $content->hashtags));
+            $message = trim($message."\n\n".$tagsLine);
+        }
+
+        $fileId = $content->drive_file_id ?: $content->drive_thumbnail_file_id;
+        $isVideo = (bool) $content->drive_file_id && str_starts_with((string) ($content->drive_mime_type ?? 'video/'), 'video/');
+
+        if ($fileId) {
+            $mediaUrl = URL::temporarySignedRoute('social.drive.temp-media', now()->addMinutes(15), [
+                'workspaceId' => $content->workspace_id,
+                'fileId' => $fileId,
+            ]);
+
+            if ($isVideo) {
+                $resp = Http::timeout(120)->post("https://graph-video.facebook.com/{$version}/{$account->external_id}/videos", [
+                    'file_url' => $mediaUrl,
+                    'title' => mb_substr($content->title, 0, 255),
+                    'description' => $message,
+                    'access_token' => $account->access_token,
+                ]);
+            } else {
+                $resp = Http::timeout(60)->post("https://graph.facebook.com/{$version}/{$account->external_id}/photos", [
+                    'url' => $mediaUrl,
+                    'caption' => $message,
+                    'access_token' => $account->access_token,
+                ]);
+            }
+        } else {
+            $resp = Http::post("https://graph.facebook.com/{$version}/{$account->external_id}/feed", [
+                'message' => $message,
+                'access_token' => $account->access_token,
+            ]);
+        }
+
+        if (! $resp->successful()) {
+            $msg = $resp->json('error.message') ?: 'Failed to publish to Facebook Page.';
+            throw new RuntimeException($msg);
+        }
+
+        $postId = $resp->json('post_id') ?: $resp->json('id');
+        $content->forceFill([
+            'published_url' => $postId ? "https://www.facebook.com/{$postId}" : "https://www.facebook.com/{$account->external_id}",
+            'status' => 'published',
+            'published_at' => now(),
+        ])->save();
+
+        return $content->fresh()->load('account:id,platform,account_name,handle');
+    }
 }

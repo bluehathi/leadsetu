@@ -22,7 +22,11 @@ const scoreBadge = (score) => {
 };
 
 const platformBadge = (platform) =>
-    platform === 'youtube' ? 'bg-red-100 text-red-700' : 'bg-pink-100 text-pink-700';
+    platform === 'youtube'
+        ? 'bg-red-100 text-red-700'
+        : platform === 'facebook'
+        ? 'bg-blue-100 text-blue-700'
+        : 'bg-pink-100 text-pink-700';
 
 const EMPTY_ACCOUNT = {
     platform: 'youtube',
@@ -292,9 +296,9 @@ export default function SocialStudio() {
         <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold">Growth Studio (YouTube & Instagram)</h1>
+                    <h1 className="text-2xl font-bold">Growth Studio (YouTube, Instagram & Facebook)</h1>
                     <p className="text-sm text-gray-500">
-                        Manage multiple YT & IG accounts, score SEO, research keywords, track competitors & generate daily ideas.
+                        Manage multiple YT, IG & FB accounts, score SEO, research keywords, track competitors & generate daily ideas.
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -311,6 +315,12 @@ export default function SocialStudio() {
                                 className="rounded bg-pink-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-pink-700"
                             >
                                 + Connect Instagram (OAuth)
+                            </button>
+                            <button
+                                onClick={() => startOAuth('facebook')}
+                                className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                            >
+                                + Connect Facebook Page (OAuth)
                             </button>
                         </>
                     )}
@@ -329,6 +339,7 @@ export default function SocialStudio() {
                         <option value="">All Platforms</option>
                         <option value="youtube">YouTube Only</option>
                         <option value="instagram">Instagram Only</option>
+                        <option value="facebook">Facebook Only</option>
                     </select>
                     <select
                         value={selectedAccountId}

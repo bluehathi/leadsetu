@@ -11,7 +11,7 @@ class SocialIdea extends Model
 {
     use BelongsToWorkspace, HasFactory;
 
-    public const PLATFORMS = ['youtube', 'instagram'];
+    public const PLATFORMS = ['youtube', 'instagram', 'facebook'];
     public const STATUSES = ['new', 'saved', 'dismissed', 'converted'];
 
     protected $fillable = [

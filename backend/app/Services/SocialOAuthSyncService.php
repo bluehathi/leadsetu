@@ -50,34 +50,41 @@ class SocialOAuthSyncService
             throw new RuntimeException('INSTAGRAM_CLIENT_ID is not configured in backend .env.');
         }
 
+        $scopes = $platform === 'facebook'
+            ? 'pages_show_list,pages_read_engagement,pages_manage_posts'
+            : 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_content_publish';
+
         return "https://www.facebook.com/{$version}/dialog/oauth?".http_build_query([
             'client_id' => $clientId,
             'redirect_uri' => $redirect,
             'response_type' => 'code',
-            'scope' => 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_content_publish',
+            'scope' => $scopes,
             'auth_type' => 'rerequest',
             'state' => $state,
         ]);
     }
 
     /**
-     * Handle OAuth callback, exchange code for tokens, and connect all discovered YT/IG accounts.
+     * Handle OAuth callback, exchange code for tokens, and connect all discovered YT/IG/FB accounts.
      *
      * @return SocialAccount[]
      */
     public function handleCallback(string $platform, string $code, string $encryptedState): array
     {
         $payload = json_decode(Crypt::decryptString($encryptedState), true);
-        if (! is_array($payload) || ($payload['platform'] ?? null) !== $platform) {
+        $targetPlatform = $payload['platform'] ?? null;
+        if (! is_array($payload) || ! in_array($targetPlatform, SocialAccount::PLATFORMS, true)) {
             throw new RuntimeException('Invalid OAuth state.');
         }
 
         $workspaceId = (int) $payload['workspace_id'];
         $userId = (int) $payload['user_id'];
 
-        return $platform === 'youtube'
-            ? $this->connectYouTube($code, $workspaceId, $userId)
-            : $this->connectInstagram($code, $workspaceId, $userId);
+        return match ($targetPlatform) {
+            'youtube' => $this->connectYouTube($code, $workspaceId, $userId),
+            'facebook' => $this->connectFacebook($code, $workspaceId, $userId),
+            default => $this->connectInstagram($code, $workspaceId, $userId),
+        };
     }
 
     protected function connectYouTube(string $code, int $workspaceId, int $userId): array
@@ -217,6 +224,70 @@ class SocialOAuthSyncService
         return $connected;
     }
 
+    protected function connectFacebook(string $code, int $workspaceId, int $userId): array
+    {
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $redirect = config('services.instagram.redirect') ?: url('/api/v1/social/oauth/instagram/callback');
+
+        $tokenResp = Http::get("https://graph.facebook.com/{$version}/oauth/access_token", [
+            'client_id' => config('services.instagram.client_id'),
+            'client_secret' => config('services.instagram.client_secret'),
+            'redirect_uri' => $redirect,
+            'code' => $code,
+        ]);
+
+        if (! $tokenResp->successful()) {
+            throw new RuntimeException('Failed to exchange Facebook OAuth code.');
+        }
+
+        $shortToken = $tokenResp->json('access_token');
+        $longResp = Http::get("https://graph.facebook.com/{$version}/oauth/access_token", [
+            'grant_type' => 'fb_exchange_token',
+            'client_id' => config('services.instagram.client_id'),
+            'client_secret' => config('services.instagram.client_secret'),
+            'fb_exchange_token' => $shortToken,
+        ]);
+
+        $userToken = $longResp->successful() ? ($longResp->json('access_token') ?: $shortToken) : $shortToken;
+        $expiresIn = $longResp->successful() ? $longResp->json('expires_in') : $tokenResp->json('expires_in');
+        $expiresAt = $expiresIn ? now()->addSeconds((int) $expiresIn) : now()->addDays(60);
+
+        $pagesResp = Http::get("https://graph.facebook.com/{$version}/me/accounts", [
+            'fields' => 'id,name,username,fan_count,followers_count,picture{url},access_token',
+            'access_token' => $userToken,
+        ]);
+
+        if (! $pagesResp->successful()) {
+            throw new RuntimeException('Failed to fetch Facebook Pages: '.($pagesResp->json('error.message') ?: $pagesResp->status()));
+        }
+
+        $pages = $pagesResp->json('data', []);
+        if (count($pages) === 0) {
+            throw new RuntimeException('Facebook returned 0 Pages. Make sure you select at least one Facebook Page during login.');
+        }
+
+        $connected = [];
+        foreach ($pages as $page) {
+            $handle = ! empty($page['username']) ? '@'.$page['username'] : '@fb-'.$page['id'];
+            $followers = (int) ($page['followers_count'] ?? ($page['fan_count'] ?? 0));
+
+            $account = $this->upsertConnectedAccount($workspaceId, $userId, 'facebook', $page['id'], [
+                'account_name' => $page['name'] ?? 'Facebook Page',
+                'handle' => $handle,
+                'avatar_url' => $page['picture']['data']['url'] ?? null,
+                'followers_count' => $followers,
+                'access_token' => $page['access_token'] ?? $userToken,
+                'token_expires_at' => $expiresAt,
+                'status' => 'connected',
+                'last_synced_at' => now(),
+            ]);
+
+            $connected[] = $this->syncFacebook($account);
+        }
+
+        return $connected;
+    }
+
     /**
      * Create or update a connected social account with explicit tenant/user ownership
      * (OAuth callbacks have no authenticated session for BelongsToWorkspace).
@@ -256,9 +327,11 @@ class SocialOAuthSyncService
             return $account->fresh();
         }
 
-        $synced = $account->platform === 'youtube'
-            ? $this->syncYouTube($account)
-            : $this->syncInstagram($account);
+        $synced = match ($account->platform) {
+            'youtube' => $this->syncYouTube($account),
+            'facebook' => $this->syncFacebook($account),
+            default => $this->syncInstagram($account),
+        };
 
         if ($synced->access_token && $synced->status === 'connected') {
             $this->getChannelAnalytics($synced, true);
@@ -354,9 +427,11 @@ class SocialOAuthSyncService
             return $base;
         }
 
-        $result = $account->platform === 'youtube'
-            ? $this->getYouTubeAnalytics($account, $base)
-            : $this->getInstagramAnalytics($account, $base);
+        $result = match ($account->platform) {
+            'youtube' => $this->getYouTubeAnalytics($account, $base),
+            'facebook' => $this->getFacebookAnalytics($account, $base),
+            default => $this->getInstagramAnalytics($account, $base),
+        };
 
         if ($result['source'] === 'live') {
             $now = now();
@@ -702,9 +777,252 @@ class SocialOAuthSyncService
      */
     public function getMediaAnalytics(SocialAccount $account, string $mediaId, bool $forceRefresh = false): array
     {
-        return $account->platform === 'instagram'
-            ? $this->getInstagramMediaAnalytics($account, $mediaId, $forceRefresh)
-            : $this->getYouTubeVideoAnalytics($account, $mediaId, $forceRefresh);
+        return match ($account->platform) {
+            'instagram' => $this->getInstagramMediaAnalytics($account, $mediaId, $forceRefresh),
+            'facebook' => $this->getFacebookPostAnalytics($account, $mediaId, $forceRefresh),
+            default => $this->getYouTubeVideoAnalytics($account, $mediaId, $forceRefresh),
+        };
+    }
+
+    protected function getFacebookAnalytics(SocialAccount $account, array $base): array
+    {
+        if (! $account->external_id) {
+            $base['warning'] = 'Facebook Page ID is missing.';
+            return $base;
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $pageResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}", [
+            'fields' => 'id,name,username,fan_count,followers_count,picture{url},link',
+            'access_token' => $account->access_token,
+        ]);
+
+        if ($pageResp->status() === 401 || $pageResp->status() === 400) {
+            $base['warning'] = 'Unable to fetch Facebook Page data. Token may need re-authentication.';
+            return $base;
+        }
+
+        $pageData = $pageResp->successful() ? $pageResp->json() : [];
+        $followers = (int) ($pageData['followers_count'] ?? ($pageData['fan_count'] ?? $account->followers_count));
+
+        $postsResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/posts", [
+            'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares',
+            'limit' => 25,
+            'access_token' => $account->access_token,
+        ]);
+
+        $base['source'] = 'live';
+        $base['channel_meta'] = [
+            'channel_url' => $pageData['link'] ?? "https://www.facebook.com/{$account->external_id}",
+        ];
+        $base['summary']['followers_count'] = $followers;
+
+        $items = [];
+        foreach ($postsResp->json('data', []) as $post) {
+            $likes = (int) ($post['likes']['summary']['total_count'] ?? 0);
+            $comments = (int) ($post['comments']['summary']['total_count'] ?? 0);
+            $shares = (int) ($post['shares']['count'] ?? 0);
+            $title = mb_strimwidth((string) ($post['message'] ?? ($post['story'] ?? 'Facebook Post')), 0, 80, '…');
+            $items[] = [
+                'id' => $post['id'],
+                'title' => $title,
+                'thumbnail_url' => $post['full_picture'] ?? null,
+                'published_at' => $post['created_time'] ?? null,
+                'duration_seconds' => null,
+                'type' => 'post',
+                'views' => 0,
+                'likes' => $likes,
+                'comments' => $comments,
+                'engagement_rate' => round((($likes + $comments + $shares) / max(1, $followers)) * 100, 2),
+                'url' => $post['permalink_url'] ?? null,
+            ];
+        }
+
+        $base['summary']['posts_count'] = max($account->posts_count, count($items));
+        $base['summary']['recent_videos_count'] = count($items);
+        $base['summary']['recent_total_likes'] = array_sum(array_column($items, 'likes'));
+        $base['summary']['recent_total_comments'] = array_sum(array_column($items, 'comments'));
+        if (count($items) > 0 && $followers > 0) {
+            $avgEng = array_sum(array_column($items, 'engagement_rate')) / count($items);
+            $base['summary']['engagement_rate'] = round($avgEng, 2);
+        }
+
+        $sorted = $items;
+        usort($sorted, fn ($a, $b) => ($b['likes'] + $b['comments']) <=> ($a['likes'] + $a['comments']));
+        $base['top_items'] = array_slice($sorted, 0, 5);
+        $base['recent_items'] = $items;
+
+        return $base;
+    }
+
+    protected function getFacebookPostAnalytics(SocialAccount $account, string $postId, bool $forceRefresh = false): array
+    {
+        $cached = SocialVideoAnalytic::where('social_account_id', $account->id)
+            ->where('external_video_id', $postId)
+            ->first();
+
+        if (! $forceRefresh && $cached && is_array($cached->payload)) {
+            return array_merge($cached->payload, [
+                'account' => $account,
+                'source' => 'cache',
+                'synced_at' => $cached->synced_at?->toIso8601String(),
+            ]);
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $postResp = Http::get("https://graph.facebook.com/{$version}/{$postId}", [
+            'fields' => 'id,message,story,created_time,permalink_url,full_picture,likes.summary(true),comments.summary(true),shares',
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $postResp->successful()) {
+            throw new RuntimeException('Unable to fetch Facebook post details.');
+        }
+
+        $post = $postResp->json();
+        $message = (string) ($post['message'] ?? ($post['story'] ?? ''));
+        $likes = (int) ($post['likes']['summary']['total_count'] ?? 0);
+        $commentsCount = (int) ($post['comments']['summary']['total_count'] ?? 0);
+        $shares = (int) ($post['shares']['count'] ?? 0);
+        $followers = max(1, (int) $account->followers_count);
+
+        $recentComments = [];
+        $commentsResp = Http::get("https://graph.facebook.com/{$version}/{$postId}/comments", [
+            'fields' => 'id,message,from,created_time,like_count',
+            'limit' => 10,
+            'access_token' => $account->access_token,
+        ]);
+        if ($commentsResp->successful()) {
+            foreach ($commentsResp->json('data', []) as $c) {
+                $recentComments[] = [
+                    'id' => $c['id'] ?? uniqid(),
+                    'author' => $c['from']['name'] ?? 'Facebook User',
+                    'author_avatar' => null,
+                    'text' => $c['message'] ?? '',
+                    'likes' => (int) ($c['like_count'] ?? 0),
+                    'published_at' => $c['created_time'] ?? null,
+                ];
+            }
+        }
+
+        $publishedAt = isset($post['created_time']) ? Carbon::parse($post['created_time']) : null;
+        $daysSince = $publishedAt ? max(1, (int) $publishedAt->diffInDays(now())) : 1;
+        preg_match_all('/#[\p{L}\p{N}_]+/u', $message, $hashMatches);
+        $hashtags = $hashMatches[0] ?? [];
+
+        $checks = [
+            ['label' => 'Post copy depth (80+ chars)', 'passed' => mb_strlen($message) >= 80, 'value' => mb_strlen($message).' chars'],
+            ['label' => 'Hashtags included (2+)', 'passed' => count($hashtags) >= 2, 'value' => count($hashtags).' hashtags'],
+            ['label' => 'Visual attached', 'passed' => ! empty($post['full_picture']), 'value' => ! empty($post['full_picture']) ? 'Yes' : 'No'],
+            ['label' => 'Shares recorded', 'passed' => $shares > 0, 'value' => $shares.' shares'],
+        ];
+        $seoScore = (int) round((count(array_filter($checks, fn ($c) => $c['passed'])) / count($checks)) * 100);
+
+        $payload = [
+            'video' => [
+                'id' => $post['id'],
+                'title' => mb_strimwidth($message ?: 'Facebook Post', 0, 80, '…'),
+                'description' => $message,
+                'thumbnail_url' => $post['full_picture'] ?? null,
+                'published_at' => $post['created_time'] ?? null,
+                'duration_seconds' => null,
+                'type' => 'post',
+                'tags' => $hashtags,
+                'definition' => 'HD',
+                'has_captions' => false,
+                'privacy_status' => 'public',
+                'url' => $post['permalink_url'] ?? null,
+            ],
+            'metrics' => [
+                'views' => $likes + $commentsCount + $shares,
+                'shares' => $shares,
+                'likes' => $likes,
+                'comments' => $commentsCount,
+                'engagement_rate' => round((($likes + $commentsCount + $shares) / $followers) * 100, 2),
+                'like_rate' => round(($likes / $followers) * 100, 2),
+                'comment_rate' => round(($commentsCount / $followers) * 100, 2),
+                'days_since_published' => $daysSince,
+                'views_per_day' => round(($likes + $commentsCount + $shares) / $daysSince, 1),
+            ],
+            'seo' => [
+                'score' => $seoScore,
+                'checks' => $checks,
+            ],
+            'recent_comments' => $recentComments,
+            'deep_analytics' => null,
+        ];
+
+        $now = now();
+        SocialVideoAnalytic::updateOrCreate(
+            [
+                'social_account_id' => $account->id,
+                'external_video_id' => $post['id'],
+            ],
+            [
+                'payload' => $payload,
+                'synced_at' => $now,
+            ]
+        );
+
+        return array_merge($payload, [
+            'account' => $account,
+            'source' => 'live',
+            'synced_at' => $now->toIso8601String(),
+        ]);
+    }
+
+    protected function syncFacebook(SocialAccount $account): SocialAccount
+    {
+        if (! $account->external_id) {
+            $account->update(['last_synced_at' => now()]);
+            return $account->fresh();
+        }
+
+        $version = config('services.instagram.graph_version', 'v21.0');
+        $resp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}", [
+            'fields' => 'id,name,username,fan_count,followers_count,picture{url}',
+            'access_token' => $account->access_token,
+        ]);
+
+        if ($resp->status() === 401 || $resp->status() === 400) {
+            $account->update(['status' => 'needs_reauth']);
+            return $account->fresh();
+        }
+
+        if ($resp->successful()) {
+            $data = $resp->json();
+            $followers = (int) ($data['followers_count'] ?? ($data['fan_count'] ?? $account->followers_count));
+
+            $engagement = $account->engagement_rate;
+            $postsResp = Http::get("https://graph.facebook.com/{$version}/{$account->external_id}/posts", [
+                'fields' => 'likes.summary(true),comments.summary(true),shares',
+                'limit' => 10,
+                'access_token' => $account->access_token,
+            ]);
+
+            if ($postsResp->successful() && $followers > 0) {
+                $posts = $postsResp->json('data', []);
+                if (count($posts) > 0) {
+                    $interactions = collect($posts)->sum(fn ($p) => (int) ($p['likes']['summary']['total_count'] ?? 0)
+                        + (int) ($p['comments']['summary']['total_count'] ?? 0)
+                        + (int) ($p['shares']['count'] ?? 0));
+                    $engagement = round((($interactions / count($posts)) / $followers) * 100, 2);
+                }
+            }
+
+            $account->fill([
+                'account_name' => $data['name'] ?? $account->account_name,
+                'handle' => ! empty($data['username']) ? '@'.$data['username'] : $account->handle,
+                'avatar_url' => $data['picture']['data']['url'] ?? $account->avatar_url,
+                'followers_count' => $followers,
+                'engagement_rate' => $engagement,
+                'status' => 'connected',
+                'last_synced_at' => now(),
+            ]);
+            $account->save();
+        }
+
+        return $account->fresh();
     }
 
     /**
