@@ -1,0 +1,342 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Company;
+use App\Models\Contact;
+use App\Models\GoogleDriveConnection;
+use App\Models\GoogleDriveFile;
+use App\Models\Invoice;
+use App\Models\Lead;
+use App\Models\SocialAccount;
+use App\Models\SocialContent;
+use App\Models\SocialVideoAnalytic;
+use App\Models\Workspace;
+use App\Support\WorkspaceContext;
+use InvalidArgumentException;
+
+class McpServerService
+{
+    public function __construct(
+        protected SocialOAuthSyncService $socialSync,
+        protected GoogleDriveService $driveService,
+    ) {
+    }
+
+    /**
+     * Read-only MCP tool definitions exposed to authenticated AI agents.
+     */
+    public function tools(): array
+    {
+        return [
+            [
+                'name' => 'get_workspace_summary',
+                'description' => 'Get read-only summary counts for the LeadSetu workspace (leads, contacts, companies, invoices, social channels, planned content, and cached Drive files).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => (object) [],
+                ],
+            ],
+            [
+                'name' => 'list_leads',
+                'description' => 'List CRM leads in the workspace (read-only).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'status' => ['type' => 'string', 'description' => 'Filter by status (new, contacted, qualified, unqualified, lost, won)'],
+                        'search' => ['type' => 'string', 'description' => 'Search by name, email, or company'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max rows to return (1-100, default 25)'],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'list_contacts',
+                'description' => 'List CRM contacts in the workspace (read-only).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'search' => ['type' => 'string', 'description' => 'Search by name or email'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max rows to return (1-100, default 25)'],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'list_companies',
+                'description' => 'List companies/customers in the workspace (read-only).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'search' => ['type' => 'string', 'description' => 'Search by company name'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max rows to return (1-100, default 25)'],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'list_invoices',
+                'description' => 'List billing invoices in the workspace (read-only).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'status' => ['type' => 'string', 'description' => 'Filter by invoice status'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max rows to return (1-100, default 25)'],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'list_social_accounts',
+                'description' => 'List connected YouTube and Instagram accounts with summary metrics (read-only).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'platform' => ['type' => 'string', 'description' => 'Optional filter: youtube or instagram'],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'get_channel_analytics',
+                'description' => 'Get cached DB channel analytics (subscribers, views, 28-day watch time, traffic sources, recent uploads) for a social account.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'account_id' => ['type' => 'integer', 'description' => 'SocialAccount ID from list_social_accounts'],
+                    ],
+                    'required' => ['account_id'],
+                ],
+            ],
+            [
+                'name' => 'get_video_analytics',
+                'description' => 'Get cached DB per-video analytics (views, likes, comments, SEO score, tags, 28-day trends) for a YouTube video.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'account_id' => ['type' => 'integer', 'description' => 'SocialAccount ID'],
+                        'video_id' => ['type' => 'string', 'description' => 'YouTube video ID'],
+                    ],
+                    'required' => ['account_id', 'video_id'],
+                ],
+            ],
+            [
+                'name' => 'list_content_planner',
+                'description' => 'List Growth Studio Content Planner items (ideas, drafts, scheduled, published) with SEO scores and Drive attachments.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'status' => ['type' => 'string', 'description' => 'Filter by stage: idea, draft, scheduled, published'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max rows to return (1-100, default 25)'],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'list_drive_files',
+                'description' => 'List cached Google Drive folder and file metadata (read-only; respects folder lock if enabled).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'folder_id' => ['type' => 'string', 'description' => 'Optional Google Drive folder ID'],
+                        'search' => ['type' => 'string', 'description' => 'Optional filename search'],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    public function callTool(string $name, array $args): array
+    {
+        $limit = max(1, min(100, (int) ($args['limit'] ?? 25)));
+
+        $result = match ($name) {
+            'get_workspace_summary' => $this->getWorkspaceSummary(),
+            'list_leads' => $this->listLeads($args, $limit),
+            'list_contacts' => $this->listContacts($args, $limit),
+            'list_companies' => $this->listCompanies($args, $limit),
+            'list_invoices' => $this->listInvoices($args, $limit),
+            'list_social_accounts' => $this->listSocialAccounts($args),
+            'get_channel_analytics' => $this->getChannelAnalytics($args),
+            'get_video_analytics' => $this->getVideoAnalytics($args),
+            'list_content_planner' => $this->listContentPlanner($args, $limit),
+            'list_drive_files' => $this->listDriveFiles($args),
+            default => throw new InvalidArgumentException("Unknown MCP tool: {$name}"),
+        };
+
+        return [
+            [
+                'type' => 'text',
+                'text' => json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            ],
+        ];
+    }
+
+    protected function getWorkspaceSummary(): array
+    {
+        $workspace = Workspace::find(WorkspaceContext::id());
+
+        return [
+            'workspace' => [
+                'id' => $workspace?->id,
+                'name' => $workspace?->name,
+                'description' => $workspace?->description,
+            ],
+            'counts' => [
+                'leads' => Lead::count(),
+                'contacts' => Contact::count(),
+                'companies' => Company::count(),
+                'invoices' => Invoice::count(),
+                'social_accounts' => SocialAccount::count(),
+                'planned_contents' => SocialContent::count(),
+                'cached_drive_files' => GoogleDriveFile::count(),
+            ],
+        ];
+    }
+
+    protected function listLeads(array $args, int $limit): array
+    {
+        $q = Lead::query();
+        if (! empty($args['status'])) {
+            $q->where('status', $args['status']);
+        }
+        if (! empty($args['search'])) {
+            $s = $args['search'];
+            $q->where(fn ($sub) => $sub->where('name', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%")->orWhere('company', 'like', "%{$s}%"));
+        }
+
+        return $q->latest()->limit($limit)->get([
+            'id', 'name', 'email', 'phone', 'company', 'status', 'source', 'priority', 'deal_value', 'expected_close', 'created_at',
+        ])->toArray();
+    }
+
+    protected function listContacts(array $args, int $limit): array
+    {
+        $q = Contact::query();
+        if (! empty($args['search'])) {
+            $s = $args['search'];
+            $q->where(fn ($sub) => $sub->where('name', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%"));
+        }
+
+        return $q->latest()->limit($limit)->get()->toArray();
+    }
+
+    protected function listCompanies(array $args, int $limit): array
+    {
+        $q = Company::query();
+        if (! empty($args['search'])) {
+            $q->where('name', 'like', "%{$args['search']}%");
+        }
+
+        return $q->latest()->limit($limit)->get()->toArray();
+    }
+
+    protected function listInvoices(array $args, int $limit): array
+    {
+        $q = Invoice::query();
+        if (! empty($args['status'])) {
+            $q->where('status', $args['status']);
+        }
+
+        return $q->latest()->limit($limit)->get()->toArray();
+    }
+
+    protected function listSocialAccounts(array $args): array
+    {
+        $q = SocialAccount::query();
+        if (! empty($args['platform'])) {
+            $q->where('platform', $args['platform']);
+        }
+
+        return $q->latest()->get([
+            'id', 'platform', 'account_name', 'handle', 'external_id', 'niche', 'followers_count', 'views_count', 'posts_count', 'engagement_rate', 'status', 'last_synced_at', 'analytics_synced_at',
+        ])->toArray();
+    }
+
+    protected function getChannelAnalytics(array $args): array
+    {
+        $accountId = (int) ($args['account_id'] ?? 0);
+        $account = SocialAccount::findOrFail($accountId);
+
+        if (is_array($account->analytics_cache)) {
+            return array_merge($account->analytics_cache, [
+                'account_id' => $account->id,
+                'account_name' => $account->account_name,
+                'handle' => $account->handle,
+                'source' => 'cache',
+                'synced_at' => $account->analytics_synced_at?->toIso8601String(),
+            ]);
+        }
+
+        return [
+            'account_id' => $account->id,
+            'account_name' => $account->account_name,
+            'source' => 'cache',
+            'message' => 'No cached analytics yet. Open Channel Analytics or run social:sync first.',
+        ];
+    }
+
+    protected function getVideoAnalytics(array $args): array
+    {
+        $accountId = (int) ($args['account_id'] ?? 0);
+        $videoId = (string) ($args['video_id'] ?? '');
+        $account = SocialAccount::findOrFail($accountId);
+
+        $cached = SocialVideoAnalytic::where('social_account_id', $account->id)
+            ->where('external_video_id', $videoId)
+            ->first();
+
+        if (! $cached) {
+            return [
+                'account_id' => $account->id,
+                'video_id' => $videoId,
+                'message' => 'No cached video analytics found yet. Open the video analytics page in LeadSetu once to cache it.',
+            ];
+        }
+
+        return array_merge($cached->payload ?? [], [
+            'source' => 'cache',
+            'synced_at' => $cached->synced_at?->toIso8601String(),
+        ]);
+    }
+
+    protected function listContentPlanner(array $args, int $limit): array
+    {
+        $q = SocialContent::query()->with('account:id,platform,account_name,handle');
+        if (! empty($args['status'])) {
+            $q->where('status', $args['status']);
+        }
+
+        return $q->latest()->limit($limit)->get([
+            'id', 'social_account_id', 'platform', 'content_type', 'title', 'target_keyword', 'hook', 'status', 'seo_score', 'scheduled_at', 'published_at', 'drive_file_name', 'youtube_video_id',
+        ])->toArray();
+    }
+
+    protected function listDriveFiles(array $args): array
+    {
+        $conn = GoogleDriveConnection::query()->first();
+        if (! $conn) {
+            return ['connected' => false, 'items' => []];
+        }
+
+        // Read strictly from DB metadata cache (never hits Google Drive API or copies files).
+        $folderId = $args['folder_id'] ?? ($conn->default_folder_id ?: 'root');
+        $search = $args['search'] ?? null;
+
+        if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+            $folderId = $conn->default_folder_id;
+        }
+
+        $q = GoogleDriveFile::query();
+        if ($search) {
+            $q->where('name', 'like', "%{$search}%");
+            if ($conn->lock_to_default_folder && $conn->default_folder_id) {
+                $q->where('parent_folder_id', $conn->default_folder_id);
+            }
+        } else {
+            $q->where('parent_folder_id', $folderId);
+        }
+
+        return [
+            'connected' => true,
+            'locked_to_default_folder' => (bool) $conn->lock_to_default_folder,
+            'items' => $q->orderByDesc('is_folder')->orderByDesc('modified_time')->limit(60)->get([
+                'drive_file_id', 'parent_folder_id', 'name', 'mime_type', 'is_folder', 'is_video', 'is_image', 'size', 'web_view_url', 'modified_time', 'synced_at',
+            ])->toArray(),
+        ];
+    }
+}

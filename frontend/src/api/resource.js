@@ -81,3 +81,8 @@ export const invoicesApi = {
     pay: (id, payload) => api.post(`/invoices/${id}/payments`, payload).then((r) => r.data.data),
     voidPayment: (paymentId, reason) => api.post(`/payments/${paymentId}/void`, { reason }).then((r) => r.data.data),
 };
+export const mcpApi = {
+    listTokens: () => api.get('/mcp/tokens').then((r) => r.data.data),
+    createToken: (name) => api.post('/mcp/tokens', { name }).then((r) => r.data.data),
+    deleteToken: (id) => api.delete(`/mcp/tokens/${id}`),
+};
