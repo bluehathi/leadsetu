@@ -1,6 +1,29 @@
 import { useMemo, useState } from 'react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const CALENDAR_TIMEZONE = 'Asia/Kolkata';
+
+const toIstDateKey = (dateInput) => {
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (Number.isNaN(d.getTime())) return null;
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: CALENDAR_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(d);
+};
+
+const formatIstTime = (dateInput) => {
+    const d = new Date(dateInput);
+    if (Number.isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('en-IN', {
+        timeZone: CALENDAR_TIMEZONE,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).format(d);
+};
 
 const platformBadge = (platform) =>
     platform === 'youtube'
@@ -25,19 +48,15 @@ export default function ContentCalendarView({ contents, bestTimes = null, onSele
         contents.forEach((item) => {
             const rawDate = item.scheduled_at || item.published_at;
             if (!rawDate) return;
-            const d = new Date(rawDate);
-            if (Number.isNaN(d.getTime())) return;
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const key = toIstDateKey(rawDate);
+            if (!key) return;
             if (!map[key]) map[key] = [];
             map[key].push(item);
         });
         return map;
     }, [contents]);
 
-    const todayKey = (() => {
-        const t = new Date();
-        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-    })();
+    const todayKey = toIstDateKey(new Date());
 
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -149,7 +168,11 @@ export default function ContentCalendarView({ contents, bestTimes = null, onSele
                                         <button
                                             type="button"
                                             onClick={() => onSelectItem(item)}
-                                            title={item.publish_error ? `${item.title} (Failed: ${item.publish_error})` : `${item.title} (${item.status})`}
+                                            title={`${item.title} (${item.status}${
+                                                item.scheduled_at || item.published_at
+                                                    ? ` · ${formatIstTime(item.scheduled_at || item.published_at)} IST`
+                                                    : ''
+                                            })${item.publish_error ? ` · Failed: ${item.publish_error}` : ''}`}
                                             className="flex min-w-0 flex-1 items-center gap-1 text-left"
                                         >
                                             <span className={`rounded px-1 text-[9px] font-bold uppercase flex-shrink-0 ${platformBadge(item.platform)}`}>
