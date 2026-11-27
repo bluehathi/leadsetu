@@ -41,6 +41,7 @@ export default function ContentPlannerTab({
     const [stageFilter, setStageFilter] = useState(() => localStorage.getItem('leadsetu_planner_stage') || 'all');
     const [failedOnly, setFailedOnly] = useState(() => localStorage.getItem('leadsetu_planner_failed') === '1');
     const [viewMode, setViewMode] = useState(() => localStorage.getItem('leadsetu_planner_view') || 'list');
+    const [sortBy, setSortBy] = useState(() => localStorage.getItem('leadsetu_planner_sort') || 'newest');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(() => Number(localStorage.getItem('leadsetu_planner_page_size')) || 10);
     const [formTab, setFormTab] = useState('basics');
@@ -54,12 +55,13 @@ export default function ContentPlannerTab({
             localStorage.setItem('leadsetu_planner_stage', stageFilter);
             localStorage.setItem('leadsetu_planner_failed', failedOnly ? '1' : '0');
             localStorage.setItem('leadsetu_planner_view', viewMode);
+            localStorage.setItem('leadsetu_planner_sort', sortBy);
             localStorage.setItem('leadsetu_planner_page_size', String(pageSize));
             localStorage.setItem('leadsetu_planner_search', search);
         } catch {
             // ignore storage errors
         }
-    }, [stageFilter, failedOnly, viewMode, pageSize, search]);
+    }, [stageFilter, failedOnly, viewMode, sortBy, pageSize, search]);
     const [editingId, setEditingId] = useState(null);
     const [aiSuggestion, setAiSuggestion] = useState(null);
     const [publishPrivacy, setPublishPrivacy] = useState({});
@@ -236,7 +238,7 @@ export default function ContentPlannerTab({
 
     const filteredContents = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return brandScopedContents.filter((item) => {
+        const list = brandScopedContents.filter((item) => {
             if (stageFilter !== 'all' && item.status !== stageFilter) return false;
             if (failedOnly && !item.publish_error) return false;
             if (q && !item.title.toLowerCase().includes(q) && !(item.target_keyword || '').toLowerCase().includes(q)) {
@@ -244,11 +246,26 @@ export default function ContentPlannerTab({
             }
             return true;
         });
-    }, [brandScopedContents, stageFilter, failedOnly, search]);
+
+        return [...list].sort((a, b) => {
+            if (sortBy === 'most_viewed') {
+                return (b.views_count || 0) - (a.views_count || 0);
+            }
+            if (sortBy === 'highest_seo') {
+                return (b.seo_score || 0) - (a.seo_score || 0);
+            }
+            if (sortBy === 'scheduled_soon') {
+                const aTime = a.scheduled_at ? new Date(a.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER;
+                const bTime = b.scheduled_at ? new Date(b.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER;
+                return aTime - bTime;
+            }
+            return (b.id || 0) - (a.id || 0);
+        });
+    }, [brandScopedContents, stageFilter, failedOnly, search, sortBy]);
 
     useEffect(() => {
         setPage(1);
-    }, [brandFilter, stageFilter, failedOnly, search]);
+    }, [brandFilter, stageFilter, failedOnly, search, sortBy]);
 
     const totalPages = Math.max(1, Math.ceil(filteredContents.length / pageSize));
     const currentPage = Math.min(page, totalPages);
@@ -946,6 +963,17 @@ export default function ContentPlannerTab({
                             placeholder="Search title or keyword…"
                             className="w-44 rounded-lg border border-gray-200 px-3 py-1 text-xs focus:border-indigo-500 focus:outline-none"
                         />
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            aria-label="Sort Content"
+                            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700"
+                        >
+                            <option value="newest">Sort: Newest</option>
+                            <option value="most_viewed">Sort: Most Viewed</option>
+                            <option value="highest_seo">Sort: Highest SEO</option>
+                            <option value="scheduled_soon">Sort: Scheduled Soon</option>
+                        </select>
                         {canManage && (
                             <button
                                 type="button"
@@ -1081,6 +1109,13 @@ export default function ContentPlannerTab({
                                                 >
                                                     {item.drive_folder_name || item.drive_folder_id} ↗
                                                 </a>
+                                            </div>
+                                        )}
+                                        {item.status === 'published' && (item.views_count > 0 || item.likes_count > 0 || item.comments_count > 0) && (
+                                            <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-medium text-gray-600">
+                                                <span className="rounded bg-gray-100 px-2 py-0.5 tabular-nums">👁️ {(item.views_count || 0).toLocaleString()}</span>
+                                                <span className="rounded bg-gray-100 px-2 py-0.5 tabular-nums">👍 {(item.likes_count || 0).toLocaleString()}</span>
+                                                <span className="rounded bg-gray-100 px-2 py-0.5 tabular-nums">💬 {(item.comments_count || 0).toLocaleString()}</span>
                                             </div>
                                         )}
                                         {item.youtube_video_id && (
