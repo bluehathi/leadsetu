@@ -282,6 +282,20 @@ export default function ContentPlannerTab({
         }
     }, [contentForm.drive_file_id, contentForm.drive_thumbnail_file_id, editingId]);
 
+    const toLocalInputValue = (isoStr) => {
+        if (!isoStr) return '';
+        const d = new Date(isoStr);
+        if (Number.isNaN(d.getTime())) return String(isoStr).slice(0, 16);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    const localInputToUtcIso = (localStr) => {
+        if (!localStr) return null;
+        const d = new Date(localStr);
+        return Number.isNaN(d.getTime()) ? localStr : d.toISOString();
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!effectiveAccountId) {
@@ -303,7 +317,7 @@ export default function ContentPlannerTab({
             tags: splitList(contentForm.tagsText),
             hashtags: splitList(contentForm.hashtagsText),
             status: contentForm.status,
-            scheduled_at: contentForm.scheduled_at || null,
+            scheduled_at: localInputToUtcIso(contentForm.scheduled_at),
             drive_folder_id: contentForm.drive_folder_id || null,
             drive_folder_name: contentForm.drive_folder_name || null,
             ...(contentForm.drive_file_id
@@ -344,7 +358,7 @@ export default function ContentPlannerTab({
             tagsText: Array.isArray(item.tags) ? item.tags.join(', ') : '',
             hashtagsText: Array.isArray(item.hashtags) ? item.hashtags.join(' ') : '',
             status: item.status || 'draft',
-            scheduled_at: item.scheduled_at ? item.scheduled_at.slice(0, 16) : '',
+            scheduled_at: toLocalInputValue(item.scheduled_at),
             drive_folder_id: item.drive_folder_id || null,
             drive_folder_name: item.drive_folder_name || null,
             drive_file_id: item.drive_file_id || null,
