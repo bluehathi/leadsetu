@@ -151,4 +151,17 @@ class SocialGrowthController extends Controller
 
         return response()->json(['data' => $content], 201);
     }
+
+    public function bestPostingTimes(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', SocialAccount::class);
+
+        $data = $this->growth->getBestPostingTimes(
+            $request->query('social_brand_id') ? (int) $request->query('social_brand_id') : null,
+            $request->query('social_account_id') ? (int) $request->query('social_account_id') : null,
+            $request->query('platform') ?: null,
+        );
+
+        return response()->json(['data' => $data]);
+    }
 }

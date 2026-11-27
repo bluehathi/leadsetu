@@ -572,4 +572,153 @@ class SocialGrowthService
 
         return $content;
     }
+
+    /**
+     * Analyze historical post performance by day-of-week and hour-of-day across matching channels.
+     */
+    public function getBestPostingTimes(?int $brandId = null, ?int $accountId = null, ?string $platform = null): array
+    {
+        $accountsQuery = SocialAccount::query();
+        if ($brandId) {
+            $accountsQuery->where('social_brand_id', $brandId);
+        }
+        if ($accountId) {
+            $accountsQuery->where('id', $accountId);
+        }
+        if ($platform && in_array($platform, SocialAccount::PLATFORMS, true)) {
+            $accountsQuery->where('platform', $platform);
+        }
+
+        $accounts = $accountsQuery->get();
+        if ($accounts->isEmpty()) {
+            return [
+                'source' => 'none',
+                'sample_size' => 0,
+                'top_slots' => [],
+                'by_day' => [],
+                'by_hour' => [],
+            ];
+        }
+
+        $samples = [];
+        $seen = [];
+
+        foreach ($accounts as $acc) {
+            $recent = $acc->analytics_cache['recent_videos'] ?? [];
+            foreach ($recent as $v) {
+                $pub = $v['published_at'] ?? null;
+                if (! $pub) {
+                    continue;
+                }
+                $key = $acc->id.':'.($v['id'] ?? $pub);
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $samples[] = [
+                    'published_at' => $pub,
+                    'views' => (int) ($v['views'] ?? 0),
+                    'engagement' => (int) ($v['likes'] ?? 0) + (int) ($v['comments'] ?? 0) * 2,
+                ];
+            }
+        }
+
+        $publishedContents = SocialContent::whereIn('social_account_id', $accounts->pluck('id'))
+            ->where('status', 'published')
+            ->whereNotNull('published_at')
+            ->get(['id', 'social_account_id', 'youtube_video_id', 'instagram_media_id', 'published_at', 'views_count', 'likes_count', 'comments_count']);
+
+        foreach ($publishedContents as $c) {
+            $extId = $c->youtube_video_id ?: ($c->instagram_media_id ?: 'content_'.$c->id);
+            $key = $c->social_account_id.':'.$extId;
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $samples[] = [
+                'published_at' => $c->published_at->toIso8601String(),
+                'views' => (int) $c->views_count,
+                'engagement' => (int) $c->likes_count + (int) $c->comments_count * 2,
+            ];
+        }
+
+        if (empty($samples)) {
+            $fallbackSlots = [];
+            foreach ($accounts as $acc) {
+                $strat = $acc->resolvedGrowthStrategy();
+                foreach ((array) ($strat['best_times'] ?? []) as $time) {
+                    $fallbackSlots[] = [
+                        'day_index' => null,
+                        'day' => 'Any',
+                        'hour' => (int) substr((string) $time, 0, 2),
+                        'time_label' => (string) $time,
+                        'label' => strtoupper($acc->platform)." {$time}",
+                        'avg_views' => 0,
+                        'sample_size' => 0,
+                    ];
+                }
+            }
+
+            return [
+                'source' => 'strategy_default',
+                'sample_size' => 0,
+                'top_slots' => array_slice($fallbackSlots, 0, 5),
+                'by_day' => [],
+                'by_hour' => [],
+            ];
+        }
+
+        $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        $byDay = [];
+        $byHour = [];
+        $bySlot = [];
+
+        foreach ($samples as $s) {
+            try {
+                $dt = Carbon::parse($s['published_at'])->timezone(config('app.timezone', 'UTC'));
+            } catch (\Throwable) {
+                continue;
+            }
+            $dIdx = (int) $dt->dayOfWeek;
+            $hr = (int) $dt->hour;
+            $slotKey = "{$dIdx}_{$hr}";
+
+            $byDay[$dIdx] ??= ['day_index' => $dIdx, 'day' => $dayNames[$dIdx], 'count' => 0, 'views' => 0, 'engagement' => 0];
+            $byDay[$dIdx]['count']++;
+            $byDay[$dIdx]['views'] += $s['views'];
+            $byDay[$dIdx]['engagement'] += $s['engagement'];
+
+            $byHour[$hr] ??= ['hour' => $hr, 'time_label' => sprintf('%02d:00', $hr), 'count' => 0, 'views' => 0, 'engagement' => 0];
+            $byHour[$hr]['count']++;
+            $byHour[$hr]['views'] += $s['views'];
+            $byHour[$hr]['engagement'] += $s['engagement'];
+
+            $bySlot[$slotKey] ??= ['day_index' => $dIdx, 'day' => $dayNames[$dIdx], 'hour' => $hr, 'time_label' => sprintf('%02d:00', $hr), 'count' => 0, 'views' => 0, 'engagement' => 0];
+            $bySlot[$slotKey]['count']++;
+            $bySlot[$slotKey]['views'] += $s['views'];
+            $bySlot[$slotKey]['engagement'] += $s['engagement'];
+        }
+
+        $finalize = fn (array $row) => array_merge($row, [
+            'avg_views' => $row['count'] > 0 ? (int) round($row['views'] / $row['count']) : 0,
+            'avg_engagement' => $row['count'] > 0 ? (int) round($row['engagement'] / $row['count']) : 0,
+            'sample_size' => $row['count'],
+        ]);
+
+        $dayStats = collect($byDay)->map($finalize)->sortByDesc('avg_views')->values()->all();
+        $hourStats = collect($byHour)->map($finalize)->sortByDesc('avg_views')->values()->all();
+        $topSlots = collect($bySlot)->map(function ($row) use ($finalize) {
+            $f = $finalize($row);
+            $f['label'] = "{$f['day']} {$f['time_label']}";
+            return $f;
+        })->sortByDesc('avg_views')->take(5)->values()->all();
+
+        return [
+            'source' => 'historical_analytics',
+            'sample_size' => count($samples),
+            'top_slots' => $topSlots,
+            'by_day' => $dayStats,
+            'by_hour' => $hourStats,
+        ];
+    }
 }

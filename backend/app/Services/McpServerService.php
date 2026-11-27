@@ -160,6 +160,18 @@ class McpServerService
                     ],
                 ],
             ],
+            [
+                'name' => 'get_best_posting_times',
+                'description' => 'Analyze historical post performance by day-of-week and hour-of-day to recommend the best posting times for a Brand, Channel, or Platform.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'brand_id' => ['type' => 'integer', 'description' => 'Optional SocialBrand ID from list_social_brands'],
+                        'account_id' => ['type' => 'integer', 'description' => 'Optional SocialAccount ID from list_social_accounts'],
+                        'platform' => ['type' => 'string', 'description' => 'Optional filter: youtube, instagram, facebook'],
+                    ],
+                ],
+            ],
         ];
 
         if (in_array('content:write', $scopes, true)) {
@@ -446,6 +458,11 @@ class McpServerService
             'get_video_analytics' => $this->getVideoAnalytics($args),
             'list_content_planner' => $this->listContentPlanner($args, $limit),
             'list_drive_files' => $this->listDriveFiles($args),
+            'get_best_posting_times' => $this->growthService->getBestPostingTimes(
+                isset($args['brand_id']) ? (int) $args['brand_id'] : null,
+                isset($args['account_id']) ? (int) $args['account_id'] : null,
+                isset($args['platform']) ? (string) $args['platform'] : null,
+            ),
             'create_content_plan' => $this->createContentPlan($args),
             'update_content_plan' => $this->updateContentPlan($args),
             'delete_content_plan' => $this->deleteContentPlan($args),

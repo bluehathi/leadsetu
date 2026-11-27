@@ -116,6 +116,7 @@ Route::prefix('v1')->group(function () {
         Route::post('social/competitors', [V1\SocialGrowthController::class, 'storeCompetitor']);
         Route::delete('social/competitors/{social_competitor}', [V1\SocialGrowthController::class, 'destroyCompetitor']);
         Route::get('social/ideas', [V1\SocialGrowthController::class, 'ideas']);
+        Route::get('social/best-posting-times', [V1\SocialGrowthController::class, 'bestPostingTimes']);
         Route::post('social/ideas/generate', [V1\SocialGrowthController::class, 'generateIdeas']);
         Route::patch('social/ideas/{social_idea}/status', [V1\SocialGrowthController::class, 'updateIdeaStatus']);
         Route::post('social/ideas/{social_idea}/convert', [V1\SocialGrowthController::class, 'convertIdea']);

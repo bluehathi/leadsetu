@@ -44,6 +44,7 @@ export const socialApi = {
     generateIdeas: (payload) => api.post('/social/ideas/generate', payload).then((r) => r.data.data),
     updateIdeaStatus: (id, status) => api.patch(`/social/ideas/${id}/status`, { status }).then((r) => r.data.data),
     convertIdea: (id, social_account_id) => api.post(`/social/ideas/${id}/convert`, { social_account_id }).then((r) => r.data.data),
+    getBestPostingTimes: (params) => api.get('/social/best-posting-times', { params }).then((r) => r.data.data),
 
     getDriveStatus: () => api.get('/social/drive/status').then((r) => r.data.data),
     getDriveOAuthUrl: () => api.get('/social/drive/oauth/url').then((r) => r.data.data),

@@ -9,7 +9,7 @@ const platformBadge = (platform) =>
         ? 'bg-blue-100 text-blue-700'
         : 'bg-pink-100 text-pink-700';
 
-export default function ContentCalendarView({ contents, onSelectItem, onRetryItem, canManage = false, isRetrying = false }) {
+export default function ContentCalendarView({ contents, bestTimes = null, onSelectItem, onRetryItem, canManage = false, isRetrying = false }) {
     const [cursor, setCursor] = useState(() => {
         const d = new Date();
         return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -45,9 +45,32 @@ export default function ContentCalendarView({ contents, onSelectItem, onRetryIte
 
     const monthLabel = cursor.toLocaleString('default', { month: 'long', year: 'numeric' });
     const unscheduledCount = contents.filter((c) => !c.scheduled_at && !c.published_at).length;
+    const topDays = useMemo(() => {
+        const list = bestTimes?.by_day || [];
+        return new Set(list.slice(0, 2).map((d) => d.day_index));
+    }, [bestTimes]);
+    const topSlots = bestTimes?.top_slots || [];
 
     return (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+            {topSlots.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-amber-900">
+                            🔥 Best Posting Slots {bestTimes?.sample_size > 0 ? `(from ${bestTimes.sample_size} posts)` : '(Strategy Defaults)'}:
+                        </span>
+                        {topSlots.slice(0, 4).map((slot, i) => (
+                            <span
+                                key={`${slot.label}-${i}`}
+                                className="rounded-lg border border-amber-200 bg-white px-2 py-0.5 font-medium text-amber-900"
+                            >
+                                {slot.label}
+                                {slot.avg_views > 0 && ` · ${slot.avg_views.toLocaleString()} avg views`}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                     <h3 className="text-base font-semibold text-gray-900">{monthLabel}</h3>
@@ -86,9 +109,10 @@ export default function ContentCalendarView({ contents, onSelectItem, onRetryIte
             </div>
 
             <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500">
-                {DAYS.map((d) => (
-                    <div key={d} className="py-1">
-                        {d}
+                {DAYS.map((d, idx) => (
+                    <div key={d} className="py-1 flex items-center justify-center gap-1">
+                        <span>{d}</span>
+                        {topDays.has(idx) && <span className="text-[10px] text-amber-600" title="Top performing day">★</span>}
                     </div>
                 ))}
             </div>

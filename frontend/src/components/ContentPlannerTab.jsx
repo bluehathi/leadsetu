@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
 import ContentCalendarView from './ContentCalendarView';
 import DriveFilePickerModal from './DriveFilePickerModal';
@@ -78,6 +78,15 @@ export default function ContentPlannerTab({
             : accounts[0]
             ? String(accounts[0].id)
             : '';
+
+    const { data: bestTimes } = useQuery({
+        queryKey: ['social-best-posting-times', brandFilter],
+        queryFn: () =>
+            socialApi.getBestPostingTimes({
+                ...(brandFilter ? { social_brand_id: brandFilter } : {}),
+            }),
+        enabled: viewMode === 'calendar',
+    });
 
     const selectedAccount = accounts.find((a) => String(a.id) === String(effectiveAccountId)) || null;
     const activeStrategy = selectedAccount?.growth_strategy || null;
@@ -955,6 +964,7 @@ export default function ContentPlannerTab({
                 {viewMode === 'calendar' ? (
                     <ContentCalendarView
                         contents={filteredContents}
+                        bestTimes={bestTimes}
                         canManage={canManage}
                         isRetrying={publishMut.isPending}
                         onSelectItem={(item) => {
