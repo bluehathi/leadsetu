@@ -41,6 +41,8 @@ export default function ContentPlannerTab({
     const [stageFilter, setStageFilter] = useState(() => localStorage.getItem('leadsetu_planner_stage') || 'all');
     const [failedOnly, setFailedOnly] = useState(() => localStorage.getItem('leadsetu_planner_failed') === '1');
     const [viewMode, setViewMode] = useState(() => localStorage.getItem('leadsetu_planner_view') || 'list');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(() => Number(localStorage.getItem('leadsetu_planner_page_size')) || 10);
     const [formTab, setFormTab] = useState('basics');
     const [showCrossPost, setShowCrossPost] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -52,11 +54,12 @@ export default function ContentPlannerTab({
             localStorage.setItem('leadsetu_planner_stage', stageFilter);
             localStorage.setItem('leadsetu_planner_failed', failedOnly ? '1' : '0');
             localStorage.setItem('leadsetu_planner_view', viewMode);
+            localStorage.setItem('leadsetu_planner_page_size', String(pageSize));
             localStorage.setItem('leadsetu_planner_search', search);
         } catch {
             // ignore storage errors
         }
-    }, [stageFilter, failedOnly, viewMode, search]);
+    }, [stageFilter, failedOnly, viewMode, pageSize, search]);
     const [editingId, setEditingId] = useState(null);
     const [aiSuggestion, setAiSuggestion] = useState(null);
     const [publishPrivacy, setPublishPrivacy] = useState({});
@@ -242,6 +245,19 @@ export default function ContentPlannerTab({
             return true;
         });
     }, [brandScopedContents, stageFilter, failedOnly, search]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [brandFilter, stageFilter, failedOnly, search]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredContents.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, filteredContents.length);
+    const paginatedContents = useMemo(
+        () => filteredContents.slice(startIdx, endIdx),
+        [filteredContents, startIdx, endIdx]
+    );
 
     useEffect(() => {
         if (!editingId && (contentForm.drive_file_id || contentForm.drive_thumbnail_file_id)) {
@@ -996,7 +1012,7 @@ export default function ContentPlannerTab({
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {filteredContents.map((item) => (
+                        {paginatedContents.map((item) => (
                             <div key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                                 <div className="flex flex-wrap items-start justify-between gap-4">
                                     {item.thumbnail_url && (
@@ -1275,6 +1291,48 @@ export default function ContentPlannerTab({
                                 )}
                             </div>
                         ))}
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600 shadow-sm">
+                            <div className="flex items-center gap-2">
+                                <span>
+                                    Showing <strong className="text-gray-900">{startIdx + 1}–{endIdx}</strong> of{' '}
+                                    <strong className="text-gray-900">{filteredContents.length}</strong>
+                                </span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => {
+                                        setPageSize(Number(e.target.value));
+                                        setPage(1);
+                                    }}
+                                    className="rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-700"
+                                >
+                                    <option value={10}>10 / page</option>
+                                    <option value={20}>20 / page</option>
+                                    <option value={50}>50 / page</option>
+                                </select>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    disabled={currentPage <= 1}
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    className="rounded-lg border border-gray-200 px-3 py-1 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                                >
+                                    ← Prev
+                                </button>
+                                <span className="px-2 font-medium text-gray-800">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <button
+                                    type="button"
+                                    disabled={currentPage >= totalPages}
+                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    className="rounded-lg border border-gray-200 px-3 py-1 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                                >
+                                    Next →
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

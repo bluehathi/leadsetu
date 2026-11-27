@@ -628,6 +628,11 @@ class GoogleDriveService
             throw new RuntimeException($msg);
         }
 
+        $fbVideoId = $isVideo ? $resp->json('id') : null;
+        if ($fbVideoId && $content->drive_thumbnail_file_id) {
+            $this->tryUploadFacebookVideoThumbnail($driveConn, $account, (string) $fbVideoId, $content->drive_thumbnail_file_id, $version);
+        }
+
         $postId = $resp->json('post_id') ?: $resp->json('id');
         $content->forceFill([
             'published_url' => $postId ? "https://www.facebook.com/{$postId}" : "https://www.facebook.com/{$account->external_id}",
@@ -638,6 +643,50 @@ class GoogleDriveService
         $this->tryPostFirstComment($content, $postId);
 
         return $content->fresh()->load('account:id,platform,account_name,handle');
+    }
+
+    protected function tryUploadFacebookVideoThumbnail(
+        GoogleDriveConnection $driveConn,
+        SocialAccount $account,
+        string $fbVideoId,
+        string $driveThumbFileId,
+        string $version
+    ): void {
+        $tempThumbPath = tempnam(sys_get_temp_dir(), 'fb_thumb_');
+        try {
+            $driveToken = $this->ensureFreshToken($driveConn);
+            $download = Http::withToken($driveToken)
+                ->timeout(60)
+                ->sink($tempThumbPath)
+                ->get("https://www.googleapis.com/drive/v3/files/{$driveThumbFileId}", [
+                    'alt' => 'media',
+                    'supportsAllDrives' => 'true',
+                ]);
+
+            if (! $download->successful() || ! file_exists($tempThumbPath) || filesize($tempThumbPath) === 0) {
+                return;
+            }
+
+            $stream = fopen($tempThumbPath, 'rb');
+            try {
+                Http::timeout(60)
+                    ->attach('source', $stream, 'thumbnail.jpg')
+                    ->post("https://graph.facebook.com/{$version}/{$fbVideoId}/thumbnails", [
+                        'is_preferred' => 'true',
+                        'access_token' => $account->access_token,
+                    ]);
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
+        } catch (\Throwable) {
+            // Do not fail video publish if thumbnail upload fails.
+        } finally {
+            if ($tempThumbPath && file_exists($tempThumbPath)) {
+                @unlink($tempThumbPath);
+            }
+        }
     }
 
     protected function tryPostFirstComment(SocialContent $content, ?string $fbPostId = null): void
