@@ -37,6 +37,7 @@ class UpdateSocialAccountRequest extends FormRequest
             'refresh_token' => ['nullable', 'string', 'max:4096'],
             'status' => ['sometimes', Rule::in(SocialAccount::STATUSES)],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'growth_strategy' => ['nullable', 'array'],
         ];
     }
 }

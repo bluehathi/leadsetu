@@ -134,31 +134,7 @@ class SocialContentController extends Controller implements HasMiddleware
                 continue;
             }
 
-            $contentType = $this->mapContentTypeForPlatform($socialContent->content_type, $target->platform);
-            $data = [
-                'social_account_id' => $target->id,
-                'platform' => $target->platform,
-                'content_type' => $contentType,
-                'title' => $socialContent->title,
-                'description' => $socialContent->description,
-                'first_comment' => $socialContent->first_comment,
-                'pin_first_comment' => (bool) $socialContent->pin_first_comment,
-                'hook' => $socialContent->hook,
-                'script' => $socialContent->script,
-                'tags' => $socialContent->tags ?? [],
-                'hashtags' => $socialContent->hashtags ?? [],
-                'thumbnail_url' => $socialContent->thumbnail_url,
-                'drive_folder_id' => $socialContent->drive_folder_id,
-                'drive_folder_name' => $socialContent->drive_folder_name,
-                'drive_file_id' => $socialContent->drive_file_id,
-                'drive_file_name' => $socialContent->drive_file_name,
-                'drive_file_url' => $socialContent->drive_file_url,
-                'drive_mime_type' => $socialContent->drive_mime_type,
-                'drive_thumbnail_file_id' => $socialContent->drive_thumbnail_file_id,
-                'target_keyword' => $socialContent->target_keyword,
-                'status' => $socialContent->status === 'published' ? 'draft' : $socialContent->status,
-                'scheduled_at' => $socialContent->scheduled_at,
-            ];
+            $data = $this->growth->adaptContentForAccount($socialContent, $target);
 
             $scored = $this->growth->scoreContent($data);
             $clone = SocialContent::create(array_merge($data, $scored));

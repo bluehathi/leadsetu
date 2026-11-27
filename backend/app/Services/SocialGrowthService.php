@@ -53,24 +53,33 @@ class SocialGrowthService
     public function scoreContent(array $data): array
     {
         $platform = $data['platform'] ?? 'youtube';
+        $contentType = $data['content_type'] ?? 'video';
         $title = trim((string) ($data['title'] ?? ''));
         $description = trim((string) ($data['description'] ?? ''));
         $hook = trim((string) ($data['hook'] ?? ''));
+        $firstComment = trim((string) ($data['first_comment'] ?? ''));
         $keyword = mb_strtolower(trim((string) ($data['target_keyword'] ?? '')));
         $tags = array_values(array_filter((array) ($data['tags'] ?? [])));
         $hashtags = array_values(array_filter((array) ($data['hashtags'] ?? [])));
+
+        if ($platform === 'instagram') {
+            return $this->scoreInstagramContent($title, $description, $hook, $firstComment, $keyword, $hashtags, $contentType);
+        }
+        if ($platform === 'facebook') {
+            return $this->scoreFacebookContent($title, $description, $hook, $firstComment, $keyword, $hashtags);
+        }
 
         $checks = [];
         $score = 0;
 
         // 1. Title length & punchiness (20 pts)
         $titleLen = mb_strlen($title);
-        $idealTitle = $platform === 'youtube' ? ($titleLen >= 35 && $titleLen <= 70) : ($titleLen >= 15 && $titleLen <= 60);
+        $idealTitle = $titleLen >= 35 && $titleLen <= 70;
         $titlePts = $idealTitle ? 20 : ($titleLen >= 10 ? 10 : 0);
         $score += $titlePts;
         $checks[] = [
             'key' => 'title_length',
-            'label' => $platform === 'youtube' ? 'Title length (35–70 chars)' : 'Hook/Title length (15–60 chars)',
+            'label' => 'Title length (35–70 chars)',
             'passed' => $idealTitle,
             'points' => $titlePts,
             'max' => 20,
@@ -88,27 +97,27 @@ class SocialGrowthService
             'max' => 20,
         ];
 
-        // 3. Description / Caption depth (20 pts)
+        // 3. Description depth (20 pts)
         $descLen = mb_strlen($description);
         $goodDesc = $descLen >= 120;
         $descPts = $goodDesc ? 20 : ($descLen >= 40 ? 10 : 0);
         $score += $descPts;
         $checks[] = [
             'key' => 'description_depth',
-            'label' => $platform === 'youtube' ? 'Description depth (120+ chars)' : 'Caption depth (120+ chars)',
+            'label' => 'Description depth (120+ chars)',
             'passed' => $goodDesc,
             'points' => $descPts,
             'max' => 20,
         ];
 
-        // 4. Tags / Hashtags volume (20 pts)
-        $tagCount = $platform === 'youtube' ? count($tags) : count($hashtags);
-        $goodTags = $platform === 'youtube' ? ($tagCount >= 5) : ($tagCount >= 5 && $tagCount <= 15);
+        // 4. Tags volume (20 pts)
+        $tagCount = count($tags);
+        $goodTags = $tagCount >= 5;
         $tagPts = $goodTags ? 20 : ($tagCount >= 2 ? 10 : 0);
         $score += $tagPts;
         $checks[] = [
             'key' => 'tags_count',
-            'label' => $platform === 'youtube' ? 'At least 5 relevant tags' : '5–15 targeted hashtags',
+            'label' => 'At least 5 relevant tags',
             'passed' => $goodTags,
             'points' => $tagPts,
             'max' => 20,
@@ -130,6 +139,216 @@ class SocialGrowthService
         return [
             'seo_score' => min(100, max(0, $score)),
             'seo_breakdown' => $checks,
+        ];
+    }
+
+    protected function scoreInstagramContent(
+        string $title,
+        string $description,
+        string $hook,
+        string $firstComment,
+        string $keyword,
+        array $hashtags,
+        string $contentType
+    ): array {
+        $checks = [];
+        $score = 0;
+
+        $hookText = $hook !== '' ? $hook : $title;
+        $hookLen = mb_strlen($hookText);
+        $idealHook = $hookLen >= 15 && $hookLen <= 60;
+        $hookPts = $idealHook ? 20 : ($hookLen >= 8 ? 10 : 0);
+        $score += $hookPts;
+        $checks[] = [
+            'key' => 'ig_hook',
+            'label' => 'Scroll-stopping hook (15–60 chars)',
+            'passed' => $idealHook,
+            'points' => $hookPts,
+            'max' => 20,
+        ];
+
+        $kwMatch = $keyword !== '' && (str_contains(mb_strtolower($hookText.' '.$description), $keyword));
+        $kwPts = $kwMatch ? 20 : ($keyword === '' ? 5 : 0);
+        $score += $kwPts;
+        $checks[] = [
+            'key' => 'ig_keyword',
+            'label' => 'Topic/keyword in hook or caption',
+            'passed' => $kwMatch,
+            'points' => $kwPts,
+            'max' => 20,
+        ];
+
+        $descLen = mb_strlen($description);
+        $goodCaption = $descLen >= 80;
+        $capPts = $goodCaption ? 20 : ($descLen >= 30 ? 10 : 0);
+        $score += $capPts;
+        $checks[] = [
+            'key' => 'ig_caption',
+            'label' => 'Caption value & CTA (80+ chars)',
+            'passed' => $goodCaption,
+            'points' => $capPts,
+            'max' => 20,
+        ];
+
+        $hashCount = count($hashtags);
+        $goodHash = $hashCount >= 5 && $hashCount <= 15;
+        $hashPts = $goodHash ? 20 : (($hashCount >= 2 && $hashCount <= 20) ? 10 : 0);
+        $score += $hashPts;
+        $checks[] = [
+            'key' => 'ig_hashtags',
+            'label' => '5–15 targeted hashtags',
+            'passed' => $goodHash,
+            'points' => $hashPts,
+            'max' => 20,
+        ];
+
+        $isReelOrCarousel = in_array($contentType, ['reel', 'carousel'], true);
+        $hasComment = $firstComment !== '';
+        $extraPts = ($isReelOrCarousel ? 10 : 0) + ($hasComment ? 10 : 0);
+        $score += $extraPts;
+        $checks[] = [
+            'key' => 'ig_reel_comment',
+            'label' => 'Reel/Carousel format & first comment CTA',
+            'passed' => $isReelOrCarousel && $hasComment,
+            'points' => $extraPts,
+            'max' => 20,
+        ];
+
+        return ['seo_score' => min(100, max(0, $score)), 'seo_breakdown' => $checks];
+    }
+
+    protected function scoreFacebookContent(
+        string $title,
+        string $description,
+        string $hook,
+        string $firstComment,
+        string $keyword,
+        array $hashtags
+    ): array {
+        $checks = [];
+        $score = 0;
+
+        $leadText = $hook !== '' ? $hook : $title;
+        $leadLen = mb_strlen($leadText);
+        $idealLead = $leadLen >= 15 && $leadLen <= 80;
+        $leadPts = $idealLead ? 20 : ($leadLen >= 8 ? 10 : 0);
+        $score += $leadPts;
+        $checks[] = [
+            'key' => 'fb_hook',
+            'label' => 'Conversational hook (15–80 chars)',
+            'passed' => $idealLead,
+            'points' => $leadPts,
+            'max' => 20,
+        ];
+
+        $kwMatch = $keyword !== '' && str_contains(mb_strtolower($leadText.' '.$description), $keyword);
+        $kwPts = $kwMatch ? 20 : ($keyword === '' ? 5 : 0);
+        $score += $kwPts;
+        $checks[] = [
+            'key' => 'fb_keyword',
+            'label' => 'Topic/keyword in post',
+            'passed' => $kwMatch,
+            'points' => $kwPts,
+            'max' => 20,
+        ];
+
+        $descLen = mb_strlen($description);
+        $goodDesc = $descLen >= 80;
+        $descPts = $goodDesc ? 20 : ($descLen >= 30 ? 10 : 0);
+        $score += $descPts;
+        $checks[] = [
+            'key' => 'fb_caption',
+            'label' => 'Story/post depth (80+ chars)',
+            'passed' => $goodDesc,
+            'points' => $descPts,
+            'max' => 20,
+        ];
+
+        $hashCount = count($hashtags);
+        $goodHash = $hashCount <= 5;
+        $hashPts = $goodHash ? 20 : ($hashCount <= 10 ? 10 : 0);
+        $score += $hashPts;
+        $checks[] = [
+            'key' => 'fb_hashtags',
+            'label' => 'Focused hashtags (0–5 tags)',
+            'passed' => $goodHash,
+            'points' => $hashPts,
+            'max' => 20,
+        ];
+
+        $hasComment = $firstComment !== '';
+        $commentPts = $hasComment ? 20 : (mb_strlen($hook) >= 12 ? 10 : 0);
+        $score += $commentPts;
+        $checks[] = [
+            'key' => 'fb_first_comment',
+            'label' => 'Link / engagement CTA in first comment',
+            'passed' => $hasComment,
+            'points' => $commentPts,
+            'max' => 20,
+        ];
+
+        return ['seo_score' => min(100, max(0, $score)), 'seo_breakdown' => $checks];
+    }
+
+    /**
+     * Adapt a source SocialContent item to a target channel's platform & growth_strategy.
+     */
+    public function adaptContentForAccount(SocialContent $source, SocialAccount $target): array
+    {
+        $strategy = $target->resolvedGrowthStrategy();
+        $contentType = match ($target->platform) {
+            'youtube' => in_array($source->content_type, ['reel', 'short'], true) ? 'short' : 'video',
+            'instagram' => in_array($source->content_type, ['short', 'video', 'reel'], true)
+                ? 'reel'
+                : (in_array($source->content_type, ['carousel', 'post'], true) ? $source->content_type : 'post'),
+            default => in_array($source->content_type, ['reel', 'post', 'video'], true) ? $source->content_type : 'post',
+        };
+
+        $description = trim((string) ($source->description ?? ''));
+        $footer = trim((string) ($strategy['description_footer'] ?? ''));
+        if ($footer !== '' && ! str_contains($description, $footer)) {
+            $description = $description !== '' ? $description."\n\n".$footer : $footer;
+        }
+
+        $tags = $target->platform === 'youtube'
+            ? (! empty($source->tags) ? $source->tags : ($strategy['default_tags'] ?? []))
+            : ($source->tags ?? []);
+
+        $defaultHashtags = array_values(array_filter((array) ($strategy['default_hashtags'] ?? [])));
+        $hashtags = ! empty($defaultHashtags) ? $defaultHashtags : ($source->hashtags ?? []);
+        if ($target->platform === 'facebook' && count($hashtags) > 5) {
+            $hashtags = array_slice($hashtags, 0, 5);
+        }
+
+        $defaultComment = trim((string) ($strategy['default_first_comment'] ?? ''));
+        $firstComment = $defaultComment !== '' ? $defaultComment : $source->first_comment;
+        $pinFirstComment = array_key_exists('pin_first_comment', $strategy)
+            ? (bool) $strategy['pin_first_comment']
+            : (bool) $source->pin_first_comment;
+
+        return [
+            'social_account_id' => $target->id,
+            'platform' => $target->platform,
+            'content_type' => $contentType,
+            'title' => $source->title,
+            'description' => $description !== '' ? $description : null,
+            'first_comment' => $firstComment,
+            'pin_first_comment' => $pinFirstComment,
+            'hook' => $source->hook,
+            'script' => $source->script,
+            'tags' => $tags,
+            'hashtags' => $hashtags,
+            'thumbnail_url' => $source->thumbnail_url,
+            'drive_folder_id' => $source->drive_folder_id,
+            'drive_folder_name' => $source->drive_folder_name,
+            'drive_file_id' => $source->drive_file_id,
+            'drive_file_name' => $source->drive_file_name,
+            'drive_file_url' => $source->drive_file_url,
+            'drive_mime_type' => $source->drive_mime_type,
+            'drive_thumbnail_file_id' => $source->drive_thumbnail_file_id,
+            'target_keyword' => $source->target_keyword,
+            'status' => $source->status === 'published' ? 'draft' : $source->status,
+            'scheduled_at' => $source->scheduled_at,
         ];
     }
 

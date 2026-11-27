@@ -81,6 +81,9 @@ export default function ContentPlannerTab({
             ? String(accounts[0].id)
             : '';
 
+    const selectedAccount = accounts.find((a) => String(a.id) === String(effectiveAccountId)) || null;
+    const activeStrategy = selectedAccount?.growth_strategy || null;
+
     const splitList = (str) =>
         String(str || '')
             .split(/[,\s]+/)
@@ -531,6 +534,52 @@ export default function ContentPlannerTab({
                                     </div>
                                 )}
                             </div>
+
+                            {selectedAccount && (
+                                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-2.5 text-[11px] text-amber-900">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="font-semibold">
+                                            ⚡ {selectedAccount.platform.toUpperCase()} Strategy
+                                        </span>
+                                        {activeStrategy && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setContentForm((p) => {
+                                                        const footer = (activeStrategy.description_footer || '').trim();
+                                                        const desc = (p.description || '').trim();
+                                                        const nextDesc =
+                                                            footer && !desc.includes(footer)
+                                                                ? (desc ? `${desc}\n\n${footer}` : footer)
+                                                                : p.description;
+                                                        return {
+                                                            ...p,
+                                                            tagsText: p.tagsText || (activeStrategy.default_tags || []).join(', '),
+                                                            hashtagsText: p.hashtagsText || (activeStrategy.default_hashtags || []).join(' '),
+                                                            description: nextDesc,
+                                                            first_comment: p.first_comment || activeStrategy.default_first_comment || '',
+                                                            pin_first_comment: activeStrategy.pin_first_comment ?? p.pin_first_comment,
+                                                        };
+                                                    })
+                                                }
+                                                className="rounded-md bg-amber-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-700"
+                                            >
+                                                Apply Defaults
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="mt-1 text-amber-800">
+                                        {activeStrategy ? (
+                                            <>
+                                                <strong>{activeStrategy.goal}</strong> · {activeStrategy.cadence}
+                                                {activeStrategy.best_times?.length > 0 && ` · Best: ${activeStrategy.best_times.join(', ')}`}
+                                            </>
+                                        ) : (
+                                            <>Configure this channel’s custom strategy in Channels &amp; Brands → ⚡ Strategy.</>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <div className="mb-1 flex justify-between text-xs">

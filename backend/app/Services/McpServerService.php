@@ -314,6 +314,27 @@ class McpServerService
                     ],
                 ],
                 [
+                    'name' => 'update_channel_strategy',
+                    'description' => 'Configure per-platform growth strategy (goal, cadence, best_times, title_or_hook_rule, default_tags, default_hashtags, description_footer, default_first_comment) for a YouTube, Instagram, or Facebook channel.',
+                    'inputSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'social_account_id' => ['type' => 'integer', 'description' => 'SocialAccount ID from list_social_accounts'],
+                            'goal' => ['type' => 'string'],
+                            'cadence' => ['type' => 'string'],
+                            'best_times' => ['type' => 'array', 'items' => ['type' => 'string']],
+                            'content_focus' => ['type' => 'string'],
+                            'title_or_hook_rule' => ['type' => 'string'],
+                            'default_tags' => ['type' => 'array', 'items' => ['type' => 'string']],
+                            'default_hashtags' => ['type' => 'array', 'items' => ['type' => 'string']],
+                            'description_footer' => ['type' => 'string'],
+                            'default_first_comment' => ['type' => 'string'],
+                            'pin_first_comment' => ['type' => 'boolean'],
+                        ],
+                        'required' => ['social_account_id'],
+                    ],
+                ],
+                [
                     'name' => 'publish_content_now',
                     'description' => 'Immediately publish (or retry publishing) a draft, scheduled, or failed Content Planner item to YouTube, Instagram, or Facebook.',
                     'inputSchema' => [
@@ -398,6 +419,7 @@ class McpServerService
             'update_live_youtube_video',
             'update_live_facebook_post',
             'sync_youtube_to_planner',
+            'update_channel_strategy',
             'publish_content_now',
             'create_drive_folder',
             'rename_drive_file',
@@ -430,6 +452,7 @@ class McpServerService
             'update_live_youtube_video' => $this->updateLiveYouTubeVideo($args),
             'update_live_facebook_post' => $this->updateLiveFacebookPost($args),
             'sync_youtube_to_planner' => $this->syncYouTubeToPlanner($args),
+            'update_channel_strategy' => $this->updateChannelStrategy($args),
             'publish_content_now' => $this->publishContentNow($args),
             'create_drive_folder' => $this->createDriveFolder($args),
             'rename_drive_file' => $this->renameDriveFile($args),
@@ -572,8 +595,12 @@ class McpServerService
         }
 
         return $q->latest()->get([
-            'id', 'platform', 'account_name', 'handle', 'external_id', 'niche', 'followers_count', 'views_count', 'posts_count', 'engagement_rate', 'status', 'last_synced_at', 'analytics_synced_at',
-        ])->toArray();
+            'id', 'platform', 'account_name', 'handle', 'external_id', 'niche', 'followers_count', 'views_count', 'posts_count', 'engagement_rate', 'status', 'growth_strategy', 'last_synced_at', 'analytics_synced_at',
+        ])->map(function (SocialAccount $acc) {
+            $arr = $acc->toArray();
+            $arr['growth_strategy'] = $acc->resolvedGrowthStrategy();
+            return $arr;
+        })->all();
     }
 
     protected function getChannelAnalytics(array $args): array
@@ -833,36 +860,7 @@ class McpServerService
 
         $created = [];
         foreach ($targets as $target) {
-            $type = match ($target->platform) {
-                'youtube' => in_array($source->content_type, ['reel', 'short'], true) ? 'short' : 'video',
-                'instagram' => in_array($source->content_type, ['short', 'video', 'reel'], true) ? 'reel' : (in_array($source->content_type, ['carousel', 'post'], true) ? $source->content_type : 'post'),
-                default => in_array($source->content_type, ['reel', 'post', 'video'], true) ? $source->content_type : 'post',
-            };
-
-            $data = [
-                'social_account_id' => $target->id,
-                'platform' => $target->platform,
-                'content_type' => $type,
-                'title' => $source->title,
-                'description' => $source->description,
-                'first_comment' => $source->first_comment,
-                'pin_first_comment' => (bool) $source->pin_first_comment,
-                'hook' => $source->hook,
-                'script' => $source->script,
-                'tags' => $source->tags ?? [],
-                'hashtags' => $source->hashtags ?? [],
-                'thumbnail_url' => $source->thumbnail_url,
-                'drive_folder_id' => $source->drive_folder_id,
-                'drive_folder_name' => $source->drive_folder_name,
-                'drive_file_id' => $source->drive_file_id,
-                'drive_file_name' => $source->drive_file_name,
-                'drive_file_url' => $source->drive_file_url,
-                'drive_mime_type' => $source->drive_mime_type,
-                'drive_thumbnail_file_id' => $source->drive_thumbnail_file_id,
-                'target_keyword' => $source->target_keyword,
-                'status' => $source->status === 'published' ? 'draft' : $source->status,
-                'scheduled_at' => $source->scheduled_at,
-            ];
+            $data = $this->growthService->adaptContentForAccount($source, $target);
 
             $scored = $this->growthService->scoreContent($data);
             $clone = SocialContent::create(array_merge($data, $scored));
@@ -976,6 +974,36 @@ class McpServerService
         $this->audit->log('youtube_videos_synced_to_planner', $account, "MCP synced YouTube videos to Content Planner ({$result['linked']} linked, {$result['imported']} imported)");
 
         return $result;
+    }
+
+    protected function updateChannelStrategy(array $args): array
+    {
+        $account = SocialAccount::findOrFail((int) ($args['social_account_id'] ?? 0));
+        $strategy = $account->resolvedGrowthStrategy();
+
+        foreach (['goal', 'cadence', 'content_focus', 'title_or_hook_rule', 'description_footer', 'default_first_comment'] as $strField) {
+            if (array_key_exists($strField, $args)) {
+                $strategy[$strField] = (string) ($args[$strField] ?? '');
+            }
+        }
+        foreach (['best_times', 'default_tags', 'default_hashtags'] as $arrField) {
+            if (isset($args[$arrField]) && is_array($args[$arrField])) {
+                $strategy[$arrField] = array_values(array_filter(array_map('strval', $args[$arrField])));
+            }
+        }
+        if (array_key_exists('pin_first_comment', $args)) {
+            $strategy['pin_first_comment'] = (bool) $args['pin_first_comment'];
+        }
+
+        $account->update(['growth_strategy' => $strategy]);
+        $this->audit->log('social_channel_strategy_updated', $account, "MCP updated {$account->platform} growth strategy for {$account->account_name}");
+
+        return [
+            'id' => $account->id,
+            'platform' => $account->platform,
+            'account_name' => $account->account_name,
+            'growth_strategy' => $account->fresh()->resolvedGrowthStrategy(),
+        ];
     }
 
     protected function publishContentNow(array $args): array

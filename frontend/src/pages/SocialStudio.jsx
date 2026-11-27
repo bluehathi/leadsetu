@@ -28,6 +28,45 @@ const platformBadge = (platform) =>
         ? 'bg-blue-100 text-blue-700'
         : 'bg-pink-100 text-pink-700';
 
+const PLATFORM_STRATEGY_DEFAULTS = {
+    youtube: {
+        goal: 'Search discovery & retention',
+        cadence: '5x / week (Shorts + Long-form)',
+        best_times: ['08:00', '18:00'],
+        content_focus: 'Shorts + Search-driven videos',
+        title_or_hook_rule: '35–70 chars, primary keyword front-loaded',
+        default_tags: [],
+        default_hashtags: ['#Shorts'],
+        description_footer: '',
+        default_first_comment: '',
+        pin_first_comment: true,
+    },
+    instagram: {
+        goal: 'Shares, saves & non-follower Reel reach',
+        cadence: '1–2 Reels / day',
+        best_times: ['09:00', '19:30'],
+        content_focus: 'Reels + Carousels',
+        title_or_hook_rule: '1–2 line scroll-stopping hook (15–60 chars)',
+        default_tags: [],
+        default_hashtags: [],
+        description_footer: '',
+        default_first_comment: '',
+        pin_first_comment: true,
+    },
+    facebook: {
+        goal: 'Conversations, shares & link clicks',
+        cadence: '1–2 posts or Reels / day',
+        best_times: ['10:00', '20:00'],
+        content_focus: 'Reels + Story-led posts',
+        title_or_hook_rule: 'Conversational / question-led hook',
+        default_tags: [],
+        default_hashtags: [],
+        description_footer: '',
+        default_first_comment: '',
+        pin_first_comment: true,
+    },
+};
+
 const EMPTY_ACCOUNT = {
     platform: 'youtube',
     account_name: '',
@@ -70,6 +109,8 @@ export default function SocialStudio() {
     const [brandModalOpen, setBrandModalOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState(null);
     const [brandForm, setBrandForm] = useState({ name: '', niche: '', account_ids: [] });
+    const [strategyAccount, setStrategyAccount] = useState(null);
+    const [strategyForm, setStrategyForm] = useState(null);
     const [publishPrivacy, setPublishPrivacy] = useState({});
     const [publishError, setPublishError] = useState('');
     const [platformFilter, setPlatformFilter] = useState(() => localStorage.getItem('leadsetu_studio_platform') || '');
@@ -151,6 +192,15 @@ export default function SocialStudio() {
     const assignAccountBrandMut = useMutation({
         mutationFn: ({ id, social_brand_id }) => socialApi.updateAccount(id, { social_brand_id: social_brand_id || null }),
         onSuccess: invalidateAll,
+    });
+
+    const saveStrategyMut = useMutation({
+        mutationFn: ({ id, growth_strategy }) => socialApi.updateAccount(id, { growth_strategy }),
+        onSuccess: () => {
+            setStrategyAccount(null);
+            setStrategyForm(null);
+            invalidateAll();
+        },
     });
 
     const [analyticsAccountId, setAnalyticsAccountId] = useState(null);
@@ -750,6 +800,25 @@ export default function SocialStudio() {
                                             </Link>
                                             {can('manage_social_accounts') && (
                                                 <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const base = {
+                                                                ...(PLATFORM_STRATEGY_DEFAULTS[acc.platform] || PLATFORM_STRATEGY_DEFAULTS.youtube),
+                                                                ...(acc.growth_strategy || {}),
+                                                            };
+                                                            setStrategyAccount(acc);
+                                                            setStrategyForm({
+                                                                ...base,
+                                                                bestTimesText: (base.best_times || []).join(', '),
+                                                                defaultTagsText: (base.default_tags || []).join(', '),
+                                                                defaultHashtagsText: (base.default_hashtags || []).join(' '),
+                                                            });
+                                                        }}
+                                                        className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                                                    >
+                                                        ⚡ Strategy
+                                                    </button>
                                                     <button
                                                         onClick={() => syncAccountMut.mutate(acc.id)}
                                                         className="rounded-lg border px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
@@ -1371,6 +1440,176 @@ export default function SocialStudio() {
                                 className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                             >
                                 {saveBrandMut.isPending ? 'Saving…' : 'Save Brand'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {strategyAccount && strategyForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            const split = (str) =>
+                                String(str || '')
+                                    .split(/[,\s]+/)
+                                    .map((s) => s.trim())
+                                    .filter(Boolean);
+                            saveStrategyMut.mutate({
+                                id: strategyAccount.id,
+                                growth_strategy: {
+                                    goal: strategyForm.goal || '',
+                                    cadence: strategyForm.cadence || '',
+                                    best_times: split(strategyForm.bestTimesText),
+                                    content_focus: strategyForm.content_focus || '',
+                                    title_or_hook_rule: strategyForm.title_or_hook_rule || '',
+                                    default_tags: String(strategyForm.defaultTagsText || '')
+                                        .split(',')
+                                        .map((s) => s.trim())
+                                        .filter(Boolean),
+                                    default_hashtags: split(strategyForm.defaultHashtagsText),
+                                    description_footer: strategyForm.description_footer || '',
+                                    default_first_comment: strategyForm.default_first_comment || '',
+                                    pin_first_comment: Boolean(strategyForm.pin_first_comment),
+                                },
+                            });
+                        }}
+                        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl space-y-3.5"
+                    >
+                        <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
+                            <div>
+                                <h3 className="text-base font-semibold text-gray-900">
+                                    ⚡ {strategyAccount.platform.toUpperCase()} Growth Strategy
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                    {strategyAccount.account_name} · Applied to Content Planner &amp; Cross-Posting
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setStrategyAccount(null)}
+                                className="rounded-lg border px-2 py-1 text-xs text-gray-500 hover:bg-gray-50"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Primary Goal</label>
+                                <input
+                                    value={strategyForm.goal}
+                                    onChange={(e) => setStrategyForm({ ...strategyForm, goal: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Posting Cadence</label>
+                                <input
+                                    value={strategyForm.cadence}
+                                    onChange={(e) => setStrategyForm({ ...strategyForm, cadence: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Content Focus</label>
+                                <input
+                                    value={strategyForm.content_focus}
+                                    onChange={(e) => setStrategyForm({ ...strategyForm, content_focus: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Best Posting Times</label>
+                                <input
+                                    placeholder="08:00, 18:00"
+                                    value={strategyForm.bestTimesText}
+                                    onChange={(e) => setStrategyForm({ ...strategyForm, bestTimesText: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-700">Title / Hook Rule</label>
+                            <input
+                                value={strategyForm.title_or_hook_rule}
+                                onChange={(e) => setStrategyForm({ ...strategyForm, title_or_hook_rule: e.target.value })}
+                                className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Default Tags (comma-sep)</label>
+                                <input
+                                    placeholder="tag1, tag2"
+                                    value={strategyForm.defaultTagsText}
+                                    onChange={(e) => setStrategyForm({ ...strategyForm, defaultTagsText: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Default Hashtags</label>
+                                <input
+                                    placeholder="#Shorts #Motivation"
+                                    value={strategyForm.defaultHashtagsText}
+                                    onChange={(e) => setStrategyForm({ ...strategyForm, defaultHashtagsText: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-700">Description / Caption Footer</label>
+                            <textarea
+                                rows={2}
+                                placeholder="Auto-appended CTA, links, or channel bio when adapting posts…"
+                                value={strategyForm.description_footer}
+                                onChange={(e) => setStrategyForm({ ...strategyForm, description_footer: e.target.value })}
+                                className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                            />
+                        </div>
+
+                        <div>
+                            <div className="mb-1 flex items-center justify-between">
+                                <label className="text-xs font-medium text-gray-700">Default First Comment</label>
+                                <label className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(strategyForm.pin_first_comment)}
+                                        onChange={(e) => setStrategyForm({ ...strategyForm, pin_first_comment: e.target.checked })}
+                                    />
+                                    Pin intent
+                                </label>
+                            </div>
+                            <textarea
+                                rows={2}
+                                placeholder="Platform-specific first comment CTA…"
+                                value={strategyForm.default_first_comment}
+                                onChange={(e) => setStrategyForm({ ...strategyForm, default_first_comment: e.target.value })}
+                                className="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs"
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-2 border-t border-gray-100 pt-3">
+                            <button
+                                type="button"
+                                onClick={() => setStrategyAccount(null)}
+                                className="rounded-xl border px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={saveStrategyMut.isPending}
+                                className="rounded-xl bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {saveStrategyMut.isPending ? 'Saving…' : 'Save Strategy'}
                             </button>
                         </div>
                     </form>
