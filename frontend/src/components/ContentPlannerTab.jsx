@@ -38,7 +38,6 @@ export default function ContentPlannerTab({
     onSaved,
 }) {
     const [stageFilter, setStageFilter] = useState(() => localStorage.getItem('leadsetu_planner_stage') || 'all');
-    const [platformFilter, setPlatformFilter] = useState(() => localStorage.getItem('leadsetu_planner_platform') || 'all');
     const [failedOnly, setFailedOnly] = useState(() => localStorage.getItem('leadsetu_planner_failed') === '1');
     const [viewMode, setViewMode] = useState(() => localStorage.getItem('leadsetu_planner_view') || 'list');
     const [formTab, setFormTab] = useState('basics');
@@ -50,14 +49,13 @@ export default function ContentPlannerTab({
     useEffect(() => {
         try {
             localStorage.setItem('leadsetu_planner_stage', stageFilter);
-            localStorage.setItem('leadsetu_planner_platform', platformFilter);
             localStorage.setItem('leadsetu_planner_failed', failedOnly ? '1' : '0');
             localStorage.setItem('leadsetu_planner_view', viewMode);
             localStorage.setItem('leadsetu_planner_search', search);
         } catch {
             // ignore storage errors
         }
-    }, [stageFilter, platformFilter, failedOnly, viewMode, search]);
+    }, [stageFilter, failedOnly, viewMode, search]);
     const [editingId, setEditingId] = useState(null);
     const [aiSuggestion, setAiSuggestion] = useState(null);
     const [publishPrivacy, setPublishPrivacy] = useState({});
@@ -227,14 +225,13 @@ export default function ContentPlannerTab({
         const q = search.trim().toLowerCase();
         return brandScopedContents.filter((item) => {
             if (stageFilter !== 'all' && item.status !== stageFilter) return false;
-            if (platformFilter !== 'all' && item.platform !== platformFilter) return false;
             if (failedOnly && !item.publish_error) return false;
             if (q && !item.title.toLowerCase().includes(q) && !(item.target_keyword || '').toLowerCase().includes(q)) {
                 return false;
             }
             return true;
         });
-    }, [brandScopedContents, stageFilter, platformFilter, failedOnly, search]);
+    }, [brandScopedContents, stageFilter, failedOnly, search]);
 
     useEffect(() => {
         if (!editingId && (contentForm.drive_file_id || contentForm.drive_thumbnail_file_id)) {
@@ -876,125 +873,81 @@ export default function ContentPlannerTab({
             )}
 
             <div className="space-y-4">
-                <div className="space-y-2.5 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap gap-1">
-                            {STAGES.map((s) => (
-                                <button
-                                    key={s.id}
-                                    onClick={() => setStageFilter(s.id)}
-                                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${stageFilter === s.id
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        }`}
-                                >
-                                    {s.label} ({stageCounts[s.id] ?? 0})
-                                </button>
-                            ))}
-                            {failedCount > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setFailedOnly((v) => !v)}
-                                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${failedOnly
-                                        ? 'bg-red-600 text-white shadow-sm'
-                                        : 'bg-red-50 text-red-700 hover:bg-red-100'
-                                        }`}
-                                >
-                                    ⚠ Failed ({failedCount})
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {canManage && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setEditingId(null);
-                                        setAiSuggestion(null);
-                                        setFormTab('basics');
-                                        setContentForm({ ...emptyContent, social_account_id: effectiveAccountId });
-                                        setDrawerOpen(true);
-                                    }}
-                                    className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
-                                >
-                                    + Plan Content
-                                </button>
-                            )}
-                            {canManage && accounts.some((a) => a.platform === 'youtube') && (
-                                <button
-                                    type="button"
-                                    disabled={importYtMut.isPending}
-                                    onClick={() => importYtMut.mutate()}
-                                    className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
-                                >
-                                    {importYtMut.isPending ? 'Syncing YT…' : '↻ Sync YT Videos'}
-                                </button>
-                            )}
-                            <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('list')}
-                                    className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
-                                >
-                                    List
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('calendar')}
-                                    className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
-                                >
-                                    Calendar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2.5">
-                        <div className="flex flex-wrap gap-1 text-[11px]">
-                            {[
-                                { id: 'all', label: 'All Platforms' },
-                                { id: 'youtube', label: 'YouTube' },
-                                { id: 'instagram', label: 'Instagram' },
-                                { id: 'facebook', label: 'Facebook' },
-                            ].map((p) => (
-                                <button
-                                    key={p.id}
-                                    type="button"
-                                    onClick={() => setPlatformFilter(p.id)}
-                                    className={`rounded-md px-2 py-1 font-medium transition ${platformFilter === p.id
-                                        ? 'bg-gray-900 text-white'
-                                        : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
-                                >
-                                    {p.label}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            {brands.length > 0 && setBrandFilter && (
-                                <select
-                                    value={brandFilter}
-                                    onChange={(e) => setBrandFilter(e.target.value)}
-                                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
-                                        brandFilter
-                                            ? 'border-indigo-300 bg-indigo-50 text-indigo-800'
-                                            : 'border-gray-200 bg-white text-gray-700'
+                <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm">
+                    <div className="flex flex-wrap gap-1">
+                        {STAGES.map((s) => (
+                            <button
+                                key={s.id}
+                                onClick={() => setStageFilter(s.id)}
+                                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${stageFilter === s.id
+                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
-                                >
-                                    <option value="">All Brands</option>
-                                    {brands.map((b) => (
-                                        <option key={b.id} value={String(b.id)}>
-                                            🏷️ {b.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
-                            <input
-                                type="search"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search title or keyword…"
-                                className="w-48 rounded-lg border border-gray-200 px-3 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                            />
+                            >
+                                {s.label} ({stageCounts[s.id] ?? 0})
+                            </button>
+                        ))}
+                        {failedCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setFailedOnly((v) => !v)}
+                                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${failedOnly
+                                    ? 'bg-red-600 text-white shadow-sm'
+                                    : 'bg-red-50 text-red-700 hover:bg-red-100'
+                                    }`}
+                            >
+                                ⚠ Failed ({failedCount})
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <input
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search title or keyword…"
+                            className="w-44 rounded-lg border border-gray-200 px-3 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                        />
+                        {canManage && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setEditingId(null);
+                                    setAiSuggestion(null);
+                                    setFormTab('basics');
+                                    setContentForm({ ...emptyContent, social_account_id: effectiveAccountId });
+                                    setDrawerOpen(true);
+                                }}
+                                className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+                            >
+                                + Plan Content
+                            </button>
+                        )}
+                        {canManage && accounts.some((a) => a.platform === 'youtube') && (
+                            <button
+                                type="button"
+                                disabled={importYtMut.isPending}
+                                onClick={() => importYtMut.mutate()}
+                                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                            >
+                                {importYtMut.isPending ? 'Syncing YT…' : '↻ Sync YT Videos'}
+                            </button>
+                        )}
+                        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs">
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('list')}
+                                className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
+                            >
+                                List
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('calendar')}
+                                className={`rounded-md px-2.5 py-1 font-medium ${viewMode === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'}`}
+                            >
+                                Calendar
+                            </button>
                         </div>
                     </div>
                 </div>
