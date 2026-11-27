@@ -294,8 +294,38 @@ export default function DriveFilePickerModal({
                                     No folders{mode === 'folder' ? '' : ` or ${mode === 'video' ? 'video' : 'image'} files`} found here.
                                 </div>
                             ) : (
-                                <div className="grid gap-2.5 sm:grid-cols-2">
-                                    {items.map((file) => (
+                                <div className="space-y-4">
+                                    {mode !== 'folder' && items.some((f) => f.is_folder) && (
+                                        <div>
+                                            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                                                Folders (click to open)
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {items
+                                                    .filter((f) => f.is_folder)
+                                                    .map((folder) => (
+                                                        <button
+                                                            key={folder.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSearch('');
+                                                                setBreadcrumbs([...breadcrumbs, { id: folder.id, name: folder.name }]);
+                                                            }}
+                                                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:border-indigo-300 hover:bg-indigo-50"
+                                                        >
+                                                            <span>📁</span>
+                                                            <span className="max-w-[200px] truncate">{folder.name}</span>
+                                                            <span className="text-gray-400">→</span>
+                                                        </button>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="grid gap-2.5 sm:grid-cols-2">
+                                        {items
+                                            .filter((f) => mode === 'folder' || !f.is_folder)
+                                            .map((file) => (
                                         <div
                                             key={file.id}
                                             onClick={() => {
@@ -355,6 +385,12 @@ export default function DriveFilePickerModal({
                                             )}
                                         </div>
                                     ))}
+                                    </div>
+                                    {mode !== 'folder' && items.filter((f) => !f.is_folder).length === 0 && (
+                                        <div className="rounded-xl border border-dashed border-gray-200 py-6 text-center text-xs text-gray-500">
+                                            Open a folder above to pick a {mode === 'video' ? 'video' : 'thumbnail image'} (or click Refresh).
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

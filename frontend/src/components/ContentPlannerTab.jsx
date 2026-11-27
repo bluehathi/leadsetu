@@ -381,8 +381,13 @@ export default function ContentPlannerTab({
                         <div className="space-y-4">
                             <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-3">
                                 <div>
-                                    <h2 className="text-base font-semibold text-gray-900">
-                                        {editingId ? 'Edit Planned Content' : 'Plan New Content'}
+                                    <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                        <span>{editingId ? 'Edit Planned Content' : 'Plan New Content'}</span>
+                                        {editingId && (
+                                            <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-mono font-semibold text-gray-700">
+                                                #{editingId}
+                                            </span>
+                                        )}
                                     </h2>
                                     <p className="text-xs text-gray-500">Draft, optimize SEO, schedule, or link Drive</p>
                                 </div>
@@ -1066,6 +1071,9 @@ export default function ContentPlannerTab({
                                     )}
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
+                                            <span className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-gray-600">
+                                                #{item.id}
+                                            </span>
                                             <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(item.platform)}`}>
                                                 {item.platform} · {item.content_type}
                                             </span>
@@ -1400,6 +1408,7 @@ export default function ContentPlannerTab({
                                 drive_folder_name: file.name,
                             }));
                         } else if (drivePickerMode === 'video') {
+                            if (file.is_folder) return;
                             const cleanTitle = file.name.replace(/\.[^.]+$/, '');
                             setContentForm((p) => ({
                                 ...p,
@@ -1410,6 +1419,7 @@ export default function ContentPlannerTab({
                                 drive_mime_type: file.mime_type,
                             }));
                         } else {
+                            if (file.is_folder) return;
                             setContentForm((p) => ({
                                 ...p,
                                 drive_thumbnail_file_id: file.id,
