@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { socialApi } from '../api/social';
 import ContentCalendarView from './ContentCalendarView';
 import DriveFilePickerModal from './DriveFilePickerModal';
+import PlatformPreviewCard from './PlatformPreviewCard';
 
 const STAGES = [
     { id: 'all', label: 'All' },
@@ -423,7 +424,7 @@ export default function ContentPlannerTab({
                     )}
 
                     {/* Composer Section Tabs */}
-                    <div className="grid grid-cols-3 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 text-xs font-medium">
+                    <div className="grid grid-cols-4 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 text-xs font-medium">
                         <button
                             type="button"
                             onClick={() => setFormTab('basics')}
@@ -446,10 +447,18 @@ export default function ContentPlannerTab({
                             className={`rounded-lg py-1.5 transition ${formTab === 'media' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
-                            3. Media &amp; Comment
+                            3. Media
                             {(contentForm.drive_file_id || contentForm.drive_folder_id || contentForm.first_comment) && (
                                 <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-indigo-600 align-middle" />
                             )}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFormTab('preview')}
+                            className={`rounded-lg py-1.5 transition ${formTab === 'preview' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            4. Preview
                         </button>
                     </div>
 
@@ -847,6 +856,10 @@ export default function ContentPlannerTab({
                                 />
                             </div>
                         </div>
+                    )}
+
+                    {formTab === 'preview' && (
+                        <PlatformPreviewCard form={contentForm} account={selectedAccount} />
                     )}
 
                         </div>
