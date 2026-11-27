@@ -334,6 +334,7 @@ class SocialGrowthService
             'description' => $description !== '' ? $description : null,
             'first_comment' => $firstComment,
             'pin_first_comment' => $pinFirstComment,
+            'contains_ai_content' => (bool) $source->contains_ai_content,
             'hook' => $source->hook,
             'script' => $source->script,
             'tags' => $tags,

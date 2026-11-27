@@ -374,6 +374,7 @@ class GoogleDriveService
                     ],
                     'status' => [
                         'privacyStatus' => in_array($privacyStatus, ['private', 'unlisted', 'public'], true) ? $privacyStatus : 'private',
+                        'containsSyntheticMedia' => (bool) $content->contains_ai_content,
                     ],
                 ]);
 
@@ -512,6 +513,9 @@ class GoogleDriveService
             $containerParams['video_url'] = $mediaUrl;
         } else {
             $containerParams['image_url'] = $mediaUrl;
+        }
+        if ($content->contains_ai_content) {
+            $containerParams['is_ai_generated'] = true;
         }
 
         $createResp = Http::post("https://graph.facebook.com/{$version}/{$account->external_id}/media", $containerParams);
@@ -1144,6 +1148,7 @@ class GoogleDriveService
             'privacyStatus' => $privacyStatus && in_array($privacyStatus, ['public', 'unlisted', 'private'], true)
                 ? $privacyStatus
                 : ($existingStatus['privacyStatus'] ?? 'public'),
+            'containsSyntheticMedia' => (bool) $content->contains_ai_content,
         ];
         if (array_key_exists('selfDeclaredMadeForKids', $existingStatus)) {
             $statusPayload['selfDeclaredMadeForKids'] = (bool) $existingStatus['selfDeclaredMadeForKids'];

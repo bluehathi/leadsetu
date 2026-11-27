@@ -259,6 +259,7 @@ export default function ContentPlannerTab({
             description: contentForm.description || null,
             first_comment: contentForm.first_comment || null,
             pin_first_comment: contentForm.pin_first_comment ?? true,
+            contains_ai_content: Boolean(contentForm.contains_ai_content),
             tags: splitList(contentForm.tagsText),
             hashtags: splitList(contentForm.hashtagsText),
             status: contentForm.status,
@@ -299,6 +300,7 @@ export default function ContentPlannerTab({
             description: item.description || '',
             first_comment: item.first_comment || '',
             pin_first_comment: item.pin_first_comment ?? true,
+            contains_ai_content: Boolean(item.contains_ai_content),
             tagsText: Array.isArray(item.tags) ? item.tags.join(', ') : '',
             hashtagsText: Array.isArray(item.hashtags) ? item.hashtags.join(' ') : '',
             status: item.status || 'draft',
@@ -647,6 +649,21 @@ export default function ContentPlannerTab({
                                     />
                                 </div>
                             </div>
+
+                            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs">
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(contentForm.contains_ai_content)}
+                                    onChange={(e) => setContentForm({ ...contentForm, contains_ai_content: e.target.checked })}
+                                    className="mt-0.5"
+                                />
+                                <div>
+                                    <div className="font-semibold text-gray-800">🤖 AI-generated / Altered content label</div>
+                                    <div className="text-[11px] text-gray-500">
+                                        Applies YouTube’s Altered Content label (also editable live via Sync to YT) and Instagram’s AI Info label on publish.
+                                    </div>
+                                </div>
+                            </label>
                         </div>
                     )}
 
@@ -1018,6 +1035,11 @@ export default function ContentPlannerTab({
                                             <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${platformBadge(item.platform)}`}>
                                                 {item.platform} · {item.content_type}
                                             </span>
+                                            {item.contains_ai_content && (
+                                                <span className="rounded bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700">
+                                                    🤖 AI Label
+                                                </span>
+                                            )}
                                             {canManage ? (
                                                 <select
                                                     value={item.status}

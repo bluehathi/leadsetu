@@ -178,6 +178,7 @@ class McpServerService
                             'description' => ['type' => 'string', 'description' => 'Video description or caption'],
                             'first_comment' => ['type' => 'string', 'description' => 'Optional first comment to post automatically on publish'],
                             'pin_first_comment' => ['type' => 'boolean', 'description' => 'Whether to mark the first comment as pinned (default true)'],
+                            'contains_ai_content' => ['type' => 'boolean', 'description' => 'Mark true if content is AI-generated/altered (applies YouTube Altered Content & Instagram AI Info label)'],
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of tags'],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of hashtags'],
                             'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled (default: draft)'],
@@ -203,6 +204,7 @@ class McpServerService
                             'description' => ['type' => 'string'],
                             'first_comment' => ['type' => 'string'],
                             'pin_first_comment' => ['type' => 'boolean'],
+                            'contains_ai_content' => ['type' => 'boolean', 'description' => 'Mark true if content is AI-generated/altered'],
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'status' => ['type' => 'string', 'description' => 'idea, draft, scheduled, or published'],
@@ -282,6 +284,7 @@ class McpServerService
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Updated YouTube tags'],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Updated hashtags appended to description'],
                             'drive_thumbnail_file_id' => ['type' => 'string', 'description' => 'Optional Google Drive image file ID to push as live YouTube thumbnail'],
+                            'contains_ai_content' => ['type' => 'boolean', 'description' => 'Toggle YouTube Altered/Synthetic media label live on YouTube'],
                             'privacy_status' => ['type' => 'string', 'enum' => ['public', 'unlisted', 'private'], 'description' => 'Optional new privacy status'],
                         ],
                         'required' => ['content_id'],
@@ -752,6 +755,7 @@ class McpServerService
             'description' => $args['description'] ?? null,
             'first_comment' => $args['first_comment'] ?? null,
             'pin_first_comment' => array_key_exists('pin_first_comment', $args) ? (bool) $args['pin_first_comment'] : true,
+            'contains_ai_content' => (bool) ($args['contains_ai_content'] ?? false),
             'tags' => is_array($args['tags'] ?? null) ? array_values($args['tags']) : [],
             'hashtags' => is_array($args['hashtags'] ?? null) ? array_values($args['hashtags']) : [],
             'status' => $status,
@@ -780,6 +784,9 @@ class McpServerService
         if (array_key_exists('pin_first_comment', $args)) {
             $updates['pin_first_comment'] = (bool) $args['pin_first_comment'];
         }
+        if (array_key_exists('contains_ai_content', $args)) {
+            $updates['contains_ai_content'] = (bool) $args['contains_ai_content'];
+        }
         if (isset($args['content_type']) && in_array($args['content_type'], SocialContent::TYPES, true)) {
             $updates['content_type'] = $args['content_type'];
         }
@@ -791,6 +798,9 @@ class McpServerService
         }
         if (isset($args['hashtags']) && is_array($args['hashtags'])) {
             $updates['hashtags'] = array_values($args['hashtags']);
+        }
+        if (array_key_exists('contains_ai_content', $args)) {
+            $updates['contains_ai_content'] = (bool) $args['contains_ai_content'];
         }
 
         $updates = array_merge($updates, $this->resolveDriveAttachments($args));
@@ -918,6 +928,9 @@ class McpServerService
         if (isset($args['hashtags']) && is_array($args['hashtags'])) {
             $updates['hashtags'] = array_values($args['hashtags']);
         }
+        if (array_key_exists('contains_ai_content', $args)) {
+            $updates['contains_ai_content'] = (bool) $args['contains_ai_content'];
+        }
         if (! empty($args['drive_thumbnail_file_id'])) {
             $updates = array_merge($updates, $this->resolveDriveAttachments([
                 'drive_thumbnail_file_id' => $args['drive_thumbnail_file_id'],
@@ -952,6 +965,9 @@ class McpServerService
         }
         if (isset($args['hashtags']) && is_array($args['hashtags'])) {
             $updates['hashtags'] = array_values($args['hashtags']);
+        }
+        if (array_key_exists('contains_ai_content', $args)) {
+            $updates['contains_ai_content'] = (bool) $args['contains_ai_content'];
         }
         if (! empty($updates)) {
             $merged = array_merge($content->toArray(), $updates);

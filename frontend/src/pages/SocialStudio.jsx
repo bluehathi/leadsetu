@@ -88,6 +88,7 @@ const EMPTY_CONTENT = {
     description: '',
     first_comment: '',
     pin_first_comment: true,
+    contains_ai_content: false,
     tagsText: '',
     hashtagsText: '',
     status: 'draft',

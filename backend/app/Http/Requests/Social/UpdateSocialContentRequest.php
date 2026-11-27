@@ -29,6 +29,7 @@ class UpdateSocialContentRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:5000'],
             'first_comment' => ['nullable', 'string', 'max:2000'],
             'pin_first_comment' => ['sometimes', 'boolean'],
+            'contains_ai_content' => ['sometimes', 'boolean'],
             'hook' => ['nullable', 'string', 'max:1000'],
             'script' => ['nullable', 'string', 'max:20000'],
             'tags' => ['nullable', 'array', 'max:30'],
