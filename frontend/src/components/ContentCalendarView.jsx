@@ -57,7 +57,7 @@ export default function ContentCalendarView({ contents, bestTimes = null, onSele
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2 text-xs">
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-amber-900">
-                            🔥 Best Posting Slots {bestTimes?.sample_size > 0 ? `(from ${bestTimes.sample_size} posts)` : '(Strategy Defaults)'}:
+                            🔥 Best Posting Slots {bestTimes?.timezone ? `(${bestTimes.timezone})` : ''} {bestTimes?.sample_size > 0 ? `· ${bestTimes.sample_size} posts` : '(Strategy Defaults)'}:
                         </span>
                         {topSlots.slice(0, 4).map((slot, i) => (
                             <span

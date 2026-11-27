@@ -668,6 +668,7 @@ class SocialGrowthService
             ];
         }
 
+        $displayTimezone = 'Asia/Kolkata';
         $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         $byDay = [];
         $byHour = [];
@@ -675,7 +676,7 @@ class SocialGrowthService
 
         foreach ($samples as $s) {
             try {
-                $dt = Carbon::parse($s['published_at'])->timezone(config('app.timezone', 'UTC'));
+                $dt = Carbon::parse($s['published_at'])->timezone($displayTimezone);
             } catch (\Throwable) {
                 continue;
             }
@@ -715,6 +716,7 @@ class SocialGrowthService
 
         return [
             'source' => 'historical_analytics',
+            'timezone' => $displayTimezone,
             'sample_size' => count($samples),
             'top_slots' => $topSlots,
             'by_day' => $dayStats,
