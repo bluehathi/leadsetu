@@ -511,6 +511,14 @@ class GoogleDriveService
         if ($isVideo) {
             $containerParams['media_type'] = 'REELS';
             $containerParams['video_url'] = $mediaUrl;
+            if ($content->drive_thumbnail_file_id) {
+                $containerParams['cover_url'] = URL::temporarySignedRoute('social.drive.temp-media', now()->addMinutes(15), [
+                    'workspaceId' => $content->workspace_id,
+                    'fileId' => $content->drive_thumbnail_file_id,
+                ]);
+            } elseif ($content->thumbnail_url) {
+                $containerParams['cover_url'] = $content->thumbnail_url;
+            }
         } else {
             $containerParams['image_url'] = $mediaUrl;
         }
