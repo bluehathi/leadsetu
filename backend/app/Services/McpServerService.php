@@ -139,12 +139,17 @@ class McpServerService
             ],
             [
                 'name' => 'list_content_planner',
-                'description' => 'List Growth Studio Content Planner items (ideas, drafts, scheduled, published) with SEO scores and Drive attachments.',
+                'description' => 'List Growth Studio Content Planner items (ideas, drafts, scheduled, published) with channel/brand/platform filters, search, and pagination.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
+                        'social_account_id' => ['type' => 'integer', 'description' => 'Filter by SocialAccount ID from list_social_accounts'],
+                        'brand_id' => ['type' => 'integer', 'description' => 'Filter by SocialBrand ID from list_social_brands'],
+                        'platform' => ['type' => 'string', 'description' => 'Filter by platform: youtube, instagram, facebook'],
                         'status' => ['type' => 'string', 'description' => 'Filter by stage: idea, draft, scheduled, published'],
-                        'limit' => ['type' => 'integer', 'description' => 'Max rows to return (1-100, default 25)'],
+                        'search' => ['type' => 'string', 'description' => 'Search by title or target keyword'],
+                        'page' => ['type' => 'integer', 'description' => 'Page number (1-indexed, default 1)'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max rows per page (1-100, default 25)'],
                     ],
                 ],
             ],
@@ -673,13 +678,47 @@ class McpServerService
     protected function listContentPlanner(array $args, int $limit): array
     {
         $q = SocialContent::query()->with('account:id,platform,account_name,handle');
+
+        if (! empty($args['social_account_id'])) {
+            $q->where('social_account_id', (int) $args['social_account_id']);
+        }
+        if (! empty($args['brand_id'])) {
+            $accountIds = SocialAccount::where('social_brand_id', (int) $args['brand_id'])->pluck('id');
+            $q->whereIn('social_account_id', $accountIds);
+        }
+        if (! empty($args['platform'])) {
+            $q->where('platform', $args['platform']);
+        }
         if (! empty($args['status'])) {
             $q->where('status', $args['status']);
         }
+        if (! empty($args['search'])) {
+            $term = trim((string) $args['search']);
+            $q->where(function ($sub) use ($term) {
+                $sub->where('title', 'like', "%{$term}%")
+                    ->orWhere('target_keyword', 'like', "%{$term}%");
+            });
+        }
 
-        return $q->latest()->limit($limit)->get([
-            'id', 'social_account_id', 'platform', 'content_type', 'title', 'target_keyword', 'hook', 'first_comment', 'pin_first_comment', 'first_comment_id', 'status', 'seo_score', 'scheduled_at', 'published_at', 'drive_file_name', 'youtube_video_id', 'instagram_media_id', 'published_url',
-        ])->toArray();
+        $page = max(1, (int) ($args['page'] ?? 1));
+        $total = (clone $q)->count();
+        $totalPages = max(1, (int) ceil($total / $limit));
+        $items = $q->latest()
+            ->offset(($page - 1) * $limit)
+            ->limit($limit)
+            ->get([
+                'id', 'social_account_id', 'platform', 'content_type', 'title', 'target_keyword', 'hook', 'first_comment', 'pin_first_comment', 'first_comment_id', 'contains_ai_content', 'status', 'seo_score', 'scheduled_at', 'published_at', 'drive_folder_id', 'drive_folder_name', 'drive_file_name', 'drive_thumbnail_file_id', 'youtube_video_id', 'instagram_media_id', 'published_url',
+            ])
+            ->toArray();
+
+        return [
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $total,
+            'total_pages' => $totalPages,
+            'has_more' => $page < $totalPages,
+            'items' => $items,
+        ];
     }
 
     protected function listDriveFiles(array $args): array
