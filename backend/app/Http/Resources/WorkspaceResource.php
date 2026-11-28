@@ -14,6 +14,7 @@ class WorkspaceResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
+            'timezone' => $this->timezone ?: 'Asia/Kolkata',
         ];
     }
 }

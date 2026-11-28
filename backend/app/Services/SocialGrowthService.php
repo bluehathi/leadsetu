@@ -668,7 +668,9 @@ class SocialGrowthService
             ];
         }
 
-        $displayTimezone = 'Asia/Kolkata';
+        $displayTimezone = auth()->user()?->workspace?->resolvedTimezone()
+            ?? Workspace::find(\App\Support\WorkspaceContext::id())?->resolvedTimezone()
+            ?? 'Asia/Kolkata';
         $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         $byDay = [];
         $byHour = [];

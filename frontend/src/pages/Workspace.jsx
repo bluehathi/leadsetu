@@ -10,7 +10,7 @@ export default function Workspace() {
     const qc = useQueryClient();
     const { data, isLoading } = useQuery({ queryKey: ['workspace'], queryFn: workspaceApi.get });
     const { data: mcpData } = useQuery({ queryKey: ['mcp-tokens'], queryFn: mcpApi.listTokens });
-    const [values, setValues] = useState({ name: '', description: '' });
+    const [values, setValues] = useState({ name: '', description: '', timezone: 'Asia/Kolkata' });
     const [error, setError] = useState({ fields: {} });
     const [saved, setSaved] = useState(false);
     const [tokenName, setTokenName] = useState('');
@@ -18,7 +18,7 @@ export default function Workspace() {
     const [createdToken, setCreatedToken] = useState(null);
 
     useEffect(() => {
-        if (data) setValues({ name: data.name ?? '', description: data.description ?? '' });
+        if (data) setValues({ name: data.name ?? '', description: data.description ?? '', timezone: data.timezone || 'Asia/Kolkata' });
     }, [data]);
 
     const save = useMutation({
@@ -76,6 +76,20 @@ export default function Workspace() {
                 </Field>
                 <Field label="Description" error={error.fields.description}>
                     <textarea className={inputClass} rows={3} disabled={!editable} value={values.description} onChange={(e) => setValues({ ...values, description: e.target.value })} />
+                </Field>
+                <Field label="Timezone" error={error.fields.timezone}>
+                    <select className={inputClass} disabled={!editable} value={values.timezone} onChange={(e) => setValues({ ...values, timezone: e.target.value })}>
+                        <option value="Asia/Kolkata">Asia/Kolkata (IST, UTC+05:30)</option>
+                        <option value="UTC">UTC (UTC+00:00)</option>
+                        <option value="America/New_York">America/New_York (EST/EDT)</option>
+                        <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                        <option value="Europe/London">Europe/London (GMT/BST)</option>
+                        <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+                        <option value="Asia/Dubai">Asia/Dubai (GST, UTC+04:00)</option>
+                        <option value="Asia/Singapore">Asia/Singapore (SGT, UTC+08:00)</option>
+                        <option value="Asia/Tokyo">Asia/Tokyo (JST, UTC+09:00)</option>
+                        <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                    </select>
                 </Field>
                 {editable && (
                     <div className="flex items-center gap-3">

@@ -10,6 +10,7 @@ use App\Http\Requests\Social\UpdateSocialContentRequest;
 use App\Models\GoogleDriveConnection;
 use App\Models\SocialAccount;
 use App\Models\SocialContent;
+use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\GoogleDriveService;
 use App\Services\SocialGrowthService;
@@ -58,6 +59,10 @@ class SocialContentController extends Controller implements HasMiddleware
     public function store(StoreSocialContentRequest $request): JsonResponse
     {
         $data = $request->validated();
+        if (array_key_exists('scheduled_at', $data)) {
+            $tz = $request->user()?->workspace?->resolvedTimezone();
+            $data['scheduled_at'] = Workspace::parseInTimezone($data['scheduled_at'], $tz);
+        }
         $scored = $this->growth->scoreContent($data);
 
         $content = SocialContent::create(array_merge($data, $scored));
@@ -77,10 +82,15 @@ class SocialContentController extends Controller implements HasMiddleware
 
     public function update(UpdateSocialContentRequest $request, SocialContent $socialContent): JsonResponse
     {
-        $merged = array_merge($socialContent->toArray(), $request->validated());
+        $data = $request->validated();
+        if (array_key_exists('scheduled_at', $data)) {
+            $tz = $request->user()?->workspace?->resolvedTimezone();
+            $data['scheduled_at'] = Workspace::parseInTimezone($data['scheduled_at'], $tz);
+        }
+        $merged = array_merge($socialContent->toArray(), $data);
         $scored = $this->growth->scoreContent($merged);
 
-        $socialContent->update(array_merge($request->validated(), $scored));
+        $socialContent->update(array_merge($data, $scored));
         $this->audit->log('social_content_updated', $socialContent, "Updated {$socialContent->platform} content: {$socialContent->title}");
 
         return response()->json([

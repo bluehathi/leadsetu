@@ -1,27 +1,27 @@
 import { useMemo, useState } from 'react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const CALENDAR_TIMEZONE = 'Asia/Kolkata';
+const DEFAULT_TIMEZONE = 'Asia/Kolkata';
 
-const toIstDateKey = (dateInput) => {
+const toWorkspaceDateKey = (dateInput, timeZone = DEFAULT_TIMEZONE) => {
     const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
     if (Number.isNaN(d.getTime())) return null;
     return new Intl.DateTimeFormat('en-CA', {
-        timeZone: CALENDAR_TIMEZONE,
+        timeZone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
     }).format(d);
 };
 
-const formatIstTime = (dateInput) => {
+const formatWorkspaceTime = (dateInput, timeZone = DEFAULT_TIMEZONE) => {
     const d = new Date(dateInput);
     if (Number.isNaN(d.getTime())) return '';
     return new Intl.DateTimeFormat('en-IN', {
-        timeZone: CALENDAR_TIMEZONE,
+        timeZone,
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false,
+        hourCycle: 'h23',
     }).format(d);
 };
 
@@ -32,7 +32,7 @@ const platformBadge = (platform) =>
         ? 'bg-blue-100 text-blue-700'
         : 'bg-pink-100 text-pink-700';
 
-export default function ContentCalendarView({ contents, bestTimes = null, onSelectItem, onRetryItem, canManage = false, isRetrying = false }) {
+export default function ContentCalendarView({ contents, bestTimes = null, timezone = DEFAULT_TIMEZONE, onSelectItem, onRetryItem, canManage = false, isRetrying = false }) {
     const [cursor, setCursor] = useState(() => {
         const d = new Date();
         return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -48,15 +48,15 @@ export default function ContentCalendarView({ contents, bestTimes = null, onSele
         contents.forEach((item) => {
             const rawDate = item.scheduled_at || item.published_at;
             if (!rawDate) return;
-            const key = toIstDateKey(rawDate);
+            const key = toWorkspaceDateKey(rawDate, timezone);
             if (!key) return;
             if (!map[key]) map[key] = [];
             map[key].push(item);
         });
         return map;
-    }, [contents]);
+    }, [contents, timezone]);
 
-    const todayKey = toIstDateKey(new Date());
+    const todayKey = toWorkspaceDateKey(new Date(), timezone);
 
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -170,7 +170,7 @@ export default function ContentCalendarView({ contents, bestTimes = null, onSele
                                             onClick={() => onSelectItem(item)}
                                             title={`${item.title} (${item.status}${
                                                 item.scheduled_at || item.published_at
-                                                    ? ` · ${formatIstTime(item.scheduled_at || item.published_at)} IST`
+                                                    ? ` · ${formatWorkspaceTime(item.scheduled_at || item.published_at, timezone)} (${timezone})`
                                                     : ''
                                             })${item.publish_error ? ` · Failed: ${item.publish_error}` : ''}`}
                                             className="flex min-w-0 flex-1 items-center gap-1 text-left"

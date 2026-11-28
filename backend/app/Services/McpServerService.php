@@ -199,7 +199,7 @@ class McpServerService
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of tags'],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'List of hashtags'],
                             'status' => ['type' => 'string', 'description' => 'idea, draft, or scheduled (default: draft)'],
-                            'scheduled_at' => ['type' => 'string', 'description' => 'Optional ISO 8601 schedule datetime'],
+                            'scheduled_at' => ['type' => 'string', 'description' => 'Optional schedule datetime in workspace timezone (e.g. 2026-11-28 19:00:00 or ISO 8601 with offset)'],
                             'drive_folder_id' => ['type' => 'string', 'description' => 'Optional Google Drive folder ID to link with this content'],
                             'drive_file_id' => ['type' => 'string', 'description' => 'Optional Google Drive video file ID from list_drive_files'],
                             'drive_thumbnail_file_id' => ['type' => 'string', 'description' => 'Optional Google Drive thumbnail image file ID'],
@@ -225,7 +225,7 @@ class McpServerService
                             'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'hashtags' => ['type' => 'array', 'items' => ['type' => 'string']],
                             'status' => ['type' => 'string', 'description' => 'idea, draft, scheduled, or published'],
-                            'scheduled_at' => ['type' => 'string'],
+                            'scheduled_at' => ['type' => 'string', 'description' => 'Schedule datetime in workspace timezone (e.g. 2026-11-28 19:00:00 or ISO 8601 with offset)'],
                             'youtube_video_id' => ['type' => 'string', 'description' => 'Optional live YouTube video ID to link with this planner item'],
                             'instagram_media_id' => ['type' => 'string', 'description' => 'Optional live Instagram media ID to link with this planner item'],
                             'published_url' => ['type' => 'string', 'description' => 'Optional live post/video URL'],
@@ -494,6 +494,11 @@ class McpServerService
         ];
     }
 
+    protected function workspaceTimezone(): string
+    {
+        return Workspace::find(WorkspaceContext::id())?->resolvedTimezone() ?? 'Asia/Kolkata';
+    }
+
     protected function getWorkspaceSummary(): array
     {
         $workspace = Workspace::find(WorkspaceContext::id());
@@ -503,6 +508,7 @@ class McpServerService
                 'id' => $workspace?->id,
                 'name' => $workspace?->name,
                 'description' => $workspace?->description,
+                'timezone' => $workspace?->resolvedTimezone() ?? 'Asia/Kolkata',
             ],
             'counts' => [
                 'leads' => Lead::count(),
@@ -700,6 +706,7 @@ class McpServerService
             });
         }
 
+        $tz = $this->workspaceTimezone();
         $page = max(1, (int) ($args['page'] ?? 1));
         $total = (clone $q)->count();
         $totalPages = max(1, (int) ceil($total / $limit));
@@ -709,9 +716,17 @@ class McpServerService
             ->get([
                 'id', 'social_account_id', 'platform', 'content_type', 'title', 'target_keyword', 'hook', 'first_comment', 'pin_first_comment', 'first_comment_id', 'contains_ai_content', 'status', 'seo_score', 'scheduled_at', 'published_at', 'drive_folder_id', 'drive_folder_name', 'drive_file_name', 'drive_thumbnail_file_id', 'youtube_video_id', 'instagram_media_id', 'published_url',
             ])
+            ->map(function (SocialContent $item) use ($tz) {
+                $arr = $item->toArray();
+                $arr['scheduled_at_local'] = $item->scheduled_at
+                    ? $item->scheduled_at->copy()->timezone($tz)->format('Y-m-d h:i A T')
+                    : null;
+                return $arr;
+            })
             ->toArray();
 
         return [
+            'timezone' => $tz,
             'page' => $page,
             'limit' => $limit,
             'total' => $total,
@@ -815,7 +830,7 @@ class McpServerService
             'tags' => is_array($args['tags'] ?? null) ? array_values($args['tags']) : [],
             'hashtags' => is_array($args['hashtags'] ?? null) ? array_values($args['hashtags']) : [],
             'status' => $status,
-            'scheduled_at' => $args['scheduled_at'] ?? null,
+            'scheduled_at' => Workspace::parseInTimezone($args['scheduled_at'] ?? null, $this->workspaceTimezone()),
         ];
 
         $data = array_merge($data, $this->resolveDriveAttachments($args));
@@ -832,10 +847,13 @@ class McpServerService
         $content = SocialContent::findOrFail((int) ($args['content_id'] ?? 0));
 
         $updates = [];
-        foreach (['title', 'target_keyword', 'hook', 'description', 'first_comment', 'scheduled_at', 'youtube_video_id', 'instagram_media_id', 'published_url'] as $field) {
+        foreach (['title', 'target_keyword', 'hook', 'description', 'first_comment', 'youtube_video_id', 'instagram_media_id', 'published_url'] as $field) {
             if (array_key_exists($field, $args)) {
                 $updates[$field] = $args[$field];
             }
+        }
+        if (array_key_exists('scheduled_at', $args)) {
+            $updates['scheduled_at'] = Workspace::parseInTimezone($args['scheduled_at'], $this->workspaceTimezone());
         }
         if (array_key_exists('pin_first_comment', $args)) {
             $updates['pin_first_comment'] = (bool) $args['pin_first_comment'];

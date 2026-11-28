@@ -4,6 +4,7 @@ import { socialApi } from '../api/social';
 import ContentCalendarView from './ContentCalendarView';
 import DriveFilePickerModal from './DriveFilePickerModal';
 import PlatformPreviewCard from './PlatformPreviewCard';
+import { useMe } from '../hooks/useMe';
 
 const STAGES = [
     { id: 'all', label: 'All' },
@@ -282,18 +283,34 @@ export default function ContentPlannerTab({
         }
     }, [contentForm.drive_file_id, contentForm.drive_thumbnail_file_id, editingId]);
 
+    const { me } = useMe();
+    const workspaceTz = me?.workspace?.timezone || 'Asia/Kolkata';
+
     const toLocalInputValue = (isoStr) => {
         if (!isoStr) return '';
         const d = new Date(isoStr);
         if (Number.isNaN(d.getTime())) return String(isoStr).slice(0, 16);
-        const pad = (n) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const parts = Object.fromEntries(
+            new Intl.DateTimeFormat('en-CA', {
+                timeZone: workspaceTz,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hourCycle: 'h23',
+            })
+                .formatToParts(d)
+                .map((p) => [p.type, p.value])
+        );
+        return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
     };
 
     const localInputToUtcIso = (localStr) => {
         if (!localStr) return null;
-        const d = new Date(localStr);
-        return Number.isNaN(d.getTime()) ? localStr : d.toISOString();
+        if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(localStr)) return localStr;
+        const normalized = localStr.replace('T', ' ');
+        return normalized.length === 16 ? `${normalized}:00` : normalized;
     };
 
     const handleSubmit = (e) => {
@@ -1041,6 +1058,7 @@ export default function ContentPlannerTab({
                     <ContentCalendarView
                         contents={filteredContents}
                         bestTimes={bestTimes}
+                        timezone={workspaceTz}
                         canManage={canManage}
                         isRetrying={publishMut.isPending}
                         onSelectItem={(item) => {
@@ -1099,7 +1117,11 @@ export default function ContentPlannerTab({
                                             <span className="text-xs text-gray-500">{item.account?.handle}</span>
                                             {item.scheduled_at && (
                                                 <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
-                                                    📅 {new Date(item.scheduled_at).toLocaleString()}
+                                                    📅 {new Intl.DateTimeFormat(undefined, {
+                                                        timeZone: workspaceTz,
+                                                        dateStyle: 'medium',
+                                                        timeStyle: 'short',
+                                                    }).format(new Date(item.scheduled_at))} ({workspaceTz})
                                                 </span>
                                             )}
                                         </div>

@@ -16,6 +16,7 @@ class UpdateCurrentWorkspaceRequest extends FormRequest
         return [
             'name' => 'sometimes|required|string|max:180',
             'description' => 'nullable|string|max:2000',
+            'timezone' => 'sometimes|required|timezone',
         ];
     }
 }
