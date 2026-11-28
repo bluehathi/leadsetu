@@ -23,7 +23,7 @@ Route::prefix('v1')->group(function () {
         ->name('social.drive.temp-media');
 
     // Signed-in account endpoints: available even before the email is verified.
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'active.workspace'])->group(function () {
         Route::post('auth/logout', [V1\AuthController::class, 'logout']);
         Route::post('auth/email/verification-notification', [V1\EmailVerificationController::class, 'resend'])->middleware('throttle:3,1');
         Route::get('me', [V1\AuthController::class, 'me']);
@@ -34,7 +34,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Business endpoints: require a verified email when REQUIRE_VERIFIED_EMAIL is on.
-    Route::middleware(['auth:sanctum', 'verified.api'])->group(function () {
+    Route::middleware(['auth:sanctum', 'active.workspace', 'verified.api'])->group(function () {
         Route::get('workspace', [V1\WorkspaceController::class, 'show']);
         Route::put('workspace', [V1\WorkspaceController::class, 'update']);
         Route::get('mcp/tokens', [V1\McpTokenController::class, 'index']);

@@ -14,6 +14,10 @@ class Workspace extends Model
         'name',
         'description',
         'timezone',
+        'is_active',
+    ];
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
     protected $table = 'workspaces';
     protected $primaryKey = 'id';

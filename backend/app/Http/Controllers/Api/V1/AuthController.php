@@ -57,7 +57,18 @@ class AuthController extends Controller
         RateLimiter::clear($key);
         $request->session()->regenerate();
 
-        return new UserResource($request->user('web')->load('workspace', 'roles'));
+        $user = $request->user('web')->load('workspace', 'roles');
+        if ($user->workspace && ! $user->workspace->is_active) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw ValidationException::withMessages([
+                'email' => ['This workspace has been deactivated.'],
+            ]);
+        }
+
+        return new UserResource($user);
     }
 
     public function logout(Request $request): JsonResponse

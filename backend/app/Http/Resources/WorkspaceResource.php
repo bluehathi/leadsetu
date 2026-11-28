@@ -15,6 +15,7 @@ class WorkspaceResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'timezone' => $this->timezone ?: 'Asia/Kolkata',
+            'is_active' => (bool) ($this->is_active ?? true),
         ];
     }
 }
